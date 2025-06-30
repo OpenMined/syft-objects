@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2024-12-30
+
+### Changed
+- **🏗️ MAJOR REFACTORING**: Split monolithic 1857-line file into well-organized package modules
+- **Better Architecture**: Restructured from single file to 9 focused modules:
+  - `models.py` - SyftObject class and core models (232 lines)
+  - `factory.py` - syobj() factory function (286 lines) 
+  - `collections.py` - ObjectsCollection class (270 lines)
+  - `display.py` - HTML rendering and rich display (315 lines)
+  - `client.py` - SyftBox client utilities (81 lines)
+  - `permissions.py` - Permission management integration (49 lines)
+  - `file_ops.py` - File operations and URL generation (71 lines)
+  - `utils.py` - Utility functions for scanning (52 lines)
+  - `__init__.py` - Clean imports and exports (22 lines)
+
+### Improved
+- **Maintainability**: Logical separation of concerns
+- **Readability**: Each module has single responsibility  
+- **Testability**: Easier to test individual components
+- **Extensibility**: Simpler to add new features
+- **Debugging**: Faster to locate and fix issues
+- **Collaboration**: Multiple developers can work on different modules
+
+### Technical
+- Preserved 100% API compatibility - no breaking changes
+- Used TYPE_CHECKING for circular import prevention
+- Proper module dependencies and clean interfaces
+- Average module size reduced to ~140 lines (much more manageable)
+- All existing functionality maintained
+
 ## [0.3.1] - 2024-12-19
 
 ### Changed
