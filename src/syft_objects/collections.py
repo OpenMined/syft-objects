@@ -264,44 +264,344 @@ Example Usage:
 
     def _generate_interactive_table_html(self, title, count, search_indicator, container_id):
         """Generate the interactive HTML table"""
-        # This is a simplified version - the full implementation would include
-        # all the CSS styling and JavaScript functionality from the original
         html = f"""
-        <div style="border: 1px solid #ddd; border-radius: 6px; font-family: sans-serif;">
-            <div style="background: #f8f9fa; padding: 10px; border-bottom: 1px solid #ddd;">
+        <style>
+        .syft-objects-container {{
+            max-height: 500px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }}
+        .syft-objects-header {{
+            background-color: #f8f9fa;
+            padding: 10px 15px;
+            border-bottom: 1px solid #dee2e6;
+            margin: 0;
+        }}
+        .syft-objects-controls {{
+            padding: 10px 15px;
+            background-color: #fff;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }}
+        .syft-objects-search-box {{
+            flex: 1;
+            padding: 6px 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 12px;
+        }}
+        .syft-objects-btn {{
+            padding: 6px 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            text-decoration: none;
+        }}
+        .syft-objects-btn:hover {{
+            background-color: #0056b3;
+        }}
+        .syft-objects-btn-secondary {{
+            background-color: #6c757d;
+        }}
+        .syft-objects-btn-secondary:hover {{
+            background-color: #545b62;
+        }}
+        .syft-objects-table-container {{
+            max-height: 320px;
+            overflow-y: auto;
+            overflow-x: auto;
+        }}
+        .syft-objects-table {{
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 11px;
+            margin: 0;
+            min-width: 1400px;
+        }}
+        .syft-objects-table th {{
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            padding: 6px 8px;
+            text-align: left;
+            font-weight: 600;
+            color: #495057;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }}
+        .syft-objects-table td {{
+            border-bottom: 1px solid #f1f3f4;
+            padding: 4px 8px;
+            vertical-align: top;
+        }}
+        .syft-objects-table tr:hover {{
+            background-color: #f8f9fa;
+        }}
+        .syft-objects-table tr.syft-objects-selected {{
+            background-color: #e3f2fd;
+        }}
+        .syft-objects-email {{
+            color: #0066cc;
+            font-weight: 500;
+            font-size: 10px;
+            min-width: 120px;
+        }}
+        .syft-objects-name {{
+            color: #28a745;
+            font-weight: 500;
+            min-width: 150px;
+        }}
+        .syft-objects-url {{
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 9px;
+            color: #6c757d;
+            min-width: 200px;
+            word-break: break-all;
+        }}
+        .syft-objects-metadata {{
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 9px;
+            color: #8b5cf6;
+            min-width: 180px;
+            max-width: 320px;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }}
+        .syft-objects-desc {{
+            font-size: 10px;
+            color: #374151;
+            min-width: 180px;
+            max-width: 320px;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }}
+        .syft-objects-date {{
+            font-size: 10px;
+            color: #64748b;
+            min-width: 120px;
+            max-width: 160px;
+            word-break: break-word;
+        }}
+        .syft-objects-index {{
+            text-align: center;
+            font-weight: 600;
+            color: #495057;
+            background-color: #f8f9fa;
+            width: 40px;
+            min-width: 40px;
+        }}
+        .syft-objects-checkbox {{
+            width: 40px;
+            min-width: 40px;
+            text-align: center;
+        }}
+        .syft-objects-output {{
+            padding: 10px 15px;
+            background-color: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 10px;
+            color: #495057;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }}
+        .syft-objects-status {{
+            padding: 5px 15px;
+            background-color: #e9ecef;
+            font-size: 10px;
+            color: #6c757d;
+        }}
+        </style>
+        <div class="syft-objects-container" id="{container_id}">
+            <div class="syft-objects-header">
                 <strong>🔐 {title} ({count} total)</strong>
                 {search_indicator}
             </div>
-            <div style="padding: 10px;">
-                <table style="width: 100%; border-collapse: collapse;">
+            <div class="syft-objects-controls">
+                <input type="text" class="syft-objects-search-box" placeholder="🔍 Search objects..." 
+                       onkeyup="filterSyftObjects('{container_id}')">
+                <button class="syft-objects-btn" onclick="selectAllSyftObjects('{container_id}')">Select All</button>
+                <button class="syft-objects-btn syft-objects-btn-secondary" onclick="clearAllSyftObjects('{container_id}')">Clear</button>
+                <button class="syft-objects-btn" onclick="generateSyftObjectsCode('{container_id}')">Generate Code</button>
+            </div>
+            <div class="syft-objects-table-container">
+                <table class="syft-objects-table">
                     <thead>
-                        <tr style="background: #f8f9fa;">
-                            <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">#</th>
-                            <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Email</th>
-                            <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Name</th>
-                            <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Private URL</th>
+                        <tr>
+                            <th style="width: 40px; min-width: 40px;">☑</th>
+                            <th style="width: 40px; min-width: 40px;">#</th>
+                            <th style="min-width: 120px;">Email</th>
+                            <th style="min-width: 150px;">Object Name</th>
+                            <th style="min-width: 200px;">Private URL</th>
+                            <th style="min-width: 200px;">Mock URL</th>
+                            <th style="min-width: 120px;">Created</th>
+                            <th style="min-width: 120px;">Updated</th>
+                            <th style="min-width: 180px;">Description</th>
+                            <th style="min-width: 180px;">Metadata</th>
                         </tr>
                     </thead>
                     <tbody>
         """
-        
+
         for i, syft_obj in enumerate(self._objects):
             email = self._get_object_email(syft_obj)
             name = syft_obj.name or "Unnamed Object"
+            # Compact metadata string (excluding system keys)
+            system_keys = {"_file_operations"}
+            meta_items = [f"{k}={v}" for k, v in syft_obj.metadata.items() if k not in system_keys]
+            meta_str = ", ".join(meta_items) if meta_items else ""
+            created_str = syft_obj.created_at.strftime("%Y-%m-%d %H:%M") if getattr(syft_obj, 'created_at', None) else ""
+            updated_str = syft_obj.updated_at.strftime("%Y-%m-%d %H:%M") if getattr(syft_obj, 'updated_at', None) else ""
+            desc_str = syft_obj.description or ""
             html += f"""
-                        <tr>
-                            <td style="padding: 6px; border-bottom: 1px solid #eee;">{i}</td>
-                            <td style="padding: 6px; border-bottom: 1px solid #eee; color: #0066cc;">{email}</td>
-                            <td style="padding: 6px; border-bottom: 1px solid #eee; color: #28a745;">{name}</td>
-                            <td style="padding: 6px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 11px;">{syft_obj.private}</td>
-                        </tr>
+            <tr data-email="{email.lower()}" data-name="{name.lower()}" data-index="{i}" data-meta="{meta_str.lower()}" data-desc="{desc_str.lower()}" data-created="{created_str.lower()}" data-updated="{updated_str.lower()}">
+                <td class="syft-objects-checkbox">
+                    <input type="checkbox" onchange="updateSyftObjectsSelection('{container_id}')">
+                </td>
+                <td class="syft-objects-index">{i}</td>
+                <td class="syft-objects-email">{email}</td>
+                <td class="syft-objects-name">{name}</td>
+                <td class="syft-objects-url">{syft_obj.private}</td>
+                <td class="syft-objects-url">{syft_obj.mock}</td>
+                <td class="syft-objects-date">{created_str}</td>
+                <td class="syft-objects-date">{updated_str}</td>
+                <td class="syft-objects-desc">{desc_str}</td>
+                <td class="syft-objects-metadata">{meta_str}</td>
+            </tr>
             """
-        
-        html += """
+
+        html += f"""
                     </tbody>
                 </table>
             </div>
+            <div class="syft-objects-status" id="{container_id}-status">
+                0 objects selected • Use checkboxes to select objects
+            </div>
+            <div class="syft-objects-output" id="{container_id}-output" style="display: none;">
+                # Copy this code to your notebook:
+            </div>
         </div>
-        """
         
+        <script>
+        function filterSyftObjects(containerId) {{
+            const searchBox = document.querySelector(`#${{containerId}} .syft-objects-search-box`);
+            const table = document.querySelector(`#${{containerId}} .syft-objects-table tbody`);
+            const rows = table.querySelectorAll('tr');
+            const searchTerm = searchBox.value.toLowerCase();
+            
+            let visibleCount = 0;
+            rows.forEach(row => {{
+                const email = row.dataset.email || '';
+                const name = row.dataset.name || '';
+                const meta = row.dataset.meta || '';
+                const desc = row.dataset.desc || '';
+                const created = row.dataset.created || '';
+                const updated = row.dataset.updated || '';
+                const isVisible = email.includes(searchTerm) || name.includes(searchTerm) || meta.includes(searchTerm) || desc.includes(searchTerm) || created.includes(searchTerm) || updated.includes(searchTerm);
+                row.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            }});
+            
+            updateSyftObjectsSelection(containerId);
+        }}
+        
+        function selectAllSyftObjects(containerId) {{
+            const table = document.querySelector(`#${{containerId}} .syft-objects-table tbody`);
+            const checkboxes = table.querySelectorAll('input[type="checkbox"]');
+            const visibleCheckboxes = Array.from(checkboxes).filter(cb => 
+                cb.closest('tr').style.display !== 'none'
+            );
+            
+            const allChecked = visibleCheckboxes.every(cb => cb.checked);
+            visibleCheckboxes.forEach(cb => cb.checked = !allChecked);
+            
+            updateSyftObjectsSelection(containerId);
+        }}
+        
+        function clearAllSyftObjects(containerId) {{
+            const table = document.querySelector(`#${{containerId}} .syft-objects-table tbody`);
+            const checkboxes = table.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = false);
+            updateSyftObjectsSelection(containerId);
+        }}
+        
+        function updateSyftObjectsSelection(containerId) {{
+            const table = document.querySelector(`#${{containerId}} .syft-objects-table tbody`);
+            const rows = table.querySelectorAll('tr');
+            const status = document.querySelector(`#${{containerId}}-status`);
+            
+            let selectedCount = 0;
+            rows.forEach(row => {{
+                const checkbox = row.querySelector('input[type="checkbox"]');
+                if (checkbox && checkbox.checked) {{
+                    row.classList.add('syft-objects-selected');
+                    selectedCount++;
+                }} else {{
+                    row.classList.remove('syft-objects-selected');
+                }}
+            }});
+            
+            const visibleRows = Array.from(rows).filter(row => row.style.display !== 'none');
+            status.textContent = `${{selectedCount}} object(s) selected • ${{visibleRows.length}} visible`;
+        }}
+        
+        function generateSyftObjectsCode(containerId) {{
+            const table = document.querySelector(`#${{containerId}} .syft-objects-table tbody`);
+            const rows = table.querySelectorAll('tr');
+            const output = document.querySelector(`#${{containerId}}-output`);
+            
+            const selectedIndices = [];
+            rows.forEach(row => {{
+                const checkbox = row.querySelector('input[type="checkbox"]');
+                if (checkbox && checkbox.checked) {{
+                    selectedIndices.push(row.dataset.index);
+                }}
+            }});
+            
+            if (selectedIndices.length === 0) {{
+                output.style.display = 'none';
+                return;
+            }}
+            
+            let code;
+            if (selectedIndices.length === 1) {{
+                code = `# Selected object:
+obj = syo.objects[${{selectedIndices[0]}}]`;
+            }} else {{
+                const indicesStr = selectedIndices.join(', ');
+                code = `# Selected objects:
+objects = [syo.objects[i] for i in [${{indicesStr}}]]`;
+            }}
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(code).then(() => {{
+                // Update button text to show success
+                const button = document.querySelector(`#${{containerId}} button[onclick="generateSyftObjectsCode('${{containerId}}')"]`);
+                const originalText = button.textContent;
+                button.textContent = '✅ Copied!';
+                button.style.backgroundColor = '#28a745';
+                
+                // Reset button after 2 seconds
+                setTimeout(() => {{
+                    button.textContent = originalText;
+                    button.style.backgroundColor = '#007bff';
+                }}, 2000);
+            }}).catch(err => {{
+                console.warn('Could not copy to clipboard:', err);
+                // Fallback: still show the code for manual copying
+            }});
+            
+            output.textContent = code;
+            output.style.display = 'block';
+        }}
+        </script>
+        """
+
         return html 
