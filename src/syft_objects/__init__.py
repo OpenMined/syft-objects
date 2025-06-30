@@ -12,17 +12,81 @@ import hashlib
 
 from pydantic import BaseModel, Field
 
-__version__ = "0.3.0"
-
-# Try to import SyftBox client for proper file management
+# Import permission management functions from syft-perm package
 try:
-    from syft_core import Client as SyftBoxClient
-    from syft_core.url import SyftBoxURL
-    SYFTBOX_AVAILABLE = True
+    from syft_perm import (
+        set_file_permissions,
+        get_file_permissions,
+        remove_file_permissions,
+        SYFTBOX_AVAILABLE,
+    )
+    # Import SyftBox client utilities
+    try:
+        from syft_core import Client as SyftBoxClient
+        from syft_core.url import SyftBoxURL
+    except ImportError:
+        SyftBoxClient = None
+        SyftBoxURL = None
+        
+    # Define helper functions that were in permissions.py
+    def _get_syftbox_client():
+        """Get SyftBox client if available, otherwise return None"""
+        if not SYFTBOX_AVAILABLE:
+            return None
+        try:
+            return SyftBoxClient.load()
+        except Exception:
+            return None
+
+    def _extract_local_path_from_syft_url(syft_url: str):
+        """Extract local path from a syft:// URL if it points to a local SyftBox path"""
+        if not SYFTBOX_AVAILABLE:
+            return None
+        
+        try:
+            client = SyftBoxClient.load()
+            syft_url_obj = SyftBoxURL(syft_url)
+            return syft_url_obj.to_local_path(datasites_path=client.datasites)
+        except Exception:
+            return None
+
+    def _set_file_permissions_wrapper(file_path_or_url, read_permissions, write_permissions=None):
+        """Wrapper to handle the syft-perm API"""
+        try:
+            set_file_permissions(file_path_or_url, read_permissions, write_permissions)
+        except ValueError as e:
+            if "Could not resolve file path" in str(e):
+                # SyftBox not available, skip permission creation
+                pass
+            else:
+                raise
+            
 except ImportError:
+    # Fallback if syft-perm is not available
+    print("Warning: syft-perm not available. Install with: pip install syft-perm")
+    SYFTBOX_AVAILABLE = False
     SyftBoxClient = None
     SyftBoxURL = None
-    SYFTBOX_AVAILABLE = False
+    
+    def _get_syftbox_client():
+        return None
+    
+    def _extract_local_path_from_syft_url(syft_url: str):
+        return None
+        
+    def set_file_permissions(*args, **kwargs):
+        print("Warning: syft-perm not available. File permissions not set.")
+        
+    def get_file_permissions(*args, **kwargs):
+        return None
+        
+    def remove_file_permissions(*args, **kwargs):
+        print("Warning: syft-perm not available. File permissions not removed.")
+    def _set_file_permissions_wrapper(*args, **kwargs):
+        print("Warning: syft-perm not available. File permissions not set.")
+
+
+__version__ = "0.3.1"
 
 
 def _utcnow():
@@ -38,6 +102,7 @@ class SyftObject(BaseModel):
     uid: UUID = Field(default_factory=uuid4, description="Unique identifier for the object")
     private: str = Field(description="Syft:// path to the private object")
     mock: str = Field(description="Syft:// path to the public/mock object")
+    syftobject: str = Field(description="Syft:// path to the .syftobject.yaml metadata file")
     created_at: datetime = Field(default_factory=_utcnow, description="Creation timestamp")
     
     # Permission metadata - who can access what (read/write granularity)
@@ -69,6 +134,31 @@ class SyftObject(BaseModel):
     
     # Arbitrary metadata
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Arbitrary metadata")
+    
+    # Convenience properties for local file paths
+    @property
+    def private_path(self) -> str:
+        """Get the full local file path for the private object"""
+        return self._get_local_file_path(self.private)
+    
+    @property
+    def mock_path(self) -> str:
+        """Get the full local file path for the mock object"""
+        return self._get_local_file_path(self.mock)
+    
+    @property
+    def syftobject_path(self) -> str:
+        """Get the full local file path for the .syftobject.yaml file"""
+        # First try to get path from the syftobject field
+        if hasattr(self, 'syftobject') and self.syftobject:
+            return self._get_local_file_path(self.syftobject)
+        
+        # Fall back to metadata if available
+        file_ops = self.metadata.get("_file_operations", {})
+        syftobject_yaml_path = file_ops.get("syftobject_yaml_path")
+        if syftobject_yaml_path:
+            return syftobject_yaml_path
+        return ""
     
     class Config:
         arbitrary_types_allowed = True
@@ -577,127 +667,41 @@ class SyftObject(BaseModel):
     def _create_syftbox_permissions(self, syftobject_file_path: Path) -> None:
         """Create SyftBox permission files for the syft object"""
         # Create permissions for the .syftobject.yaml file itself (discovery)
-        self._create_syftpub_file(
-            target_path=syftobject_file_path.parent,
-            file_pattern=syftobject_file_path.name,
-            read_users=self.syftobject_permissions,
-            write_users=[]  # Discovery files are read-only
-        )
+        _set_file_permissions_wrapper(str(syftobject_file_path), self.syftobject_permissions)
         
-        # Create permissions for mock and private paths (if they are local paths)
-        mock_path = self._extract_local_path_from_syft_url(self.mock)
-        if mock_path:
-            self._create_syftpub_file(
-                target_path=mock_path.parent,
-                file_pattern=mock_path.name,
-                read_users=self.mock_permissions,
-                write_users=self.mock_write_permissions
-            )
-        
-        private_path = self._extract_local_path_from_syft_url(self.private)
-        if private_path:
-            self._create_syftpub_file(
-                target_path=private_path.parent,
-                file_pattern=private_path.name,
-                read_users=self.private_permissions,
-                write_users=self.private_write_permissions
-            )
+        # Create permissions for mock and private files
+        _set_file_permissions_wrapper(self.mock, self.mock_permissions, self.mock_write_permissions)
+        _set_file_permissions_wrapper(self.private, self.private_permissions, self.private_write_permissions)
 
-    def _extract_local_path_from_syft_url(self, syft_url: str) -> Optional[Path]:
-        """Extract local path from a syft:// URL if it points to a local SyftBox path"""
-        if not SYFTBOX_AVAILABLE:
-            return None
-        
-        try:
-            # Try to get SyftBox client and convert URL to local path
-            client = SyftBoxClient.load()
-            syft_url_obj = SyftBoxURL(syft_url)
-            return syft_url_obj.to_local_path(datasites_path=client.datasites)
-        except Exception:
-            return None
-
-    def _create_syftpub_file(self, target_path: Path, file_pattern: str, 
-                             read_users: list[str], write_users: list[str]) -> None:
-        """Create a syft.pub.yaml file with the correct SyftBox format"""
-        # Ensure target directory exists
-        target_path.mkdir(parents=True, exist_ok=True)
-        syftpub_path = target_path / "syft.pub.yaml"
-        
-        # Create the access dictionary based on permissions and users
-        access_dict = {}
-        
-        # Convert read users to SyftBox format
-        if read_users:
-            formatted_read_users = []
-            for user in read_users:
-                if user in ["public", "*"]:
-                    formatted_read_users.append("*")
-                else:
-                    formatted_read_users.append(user)
-            if formatted_read_users:
-                access_dict["read"] = formatted_read_users
-        
-        # Convert write users to SyftBox format
-        if write_users:
-            formatted_write_users = []
-            for user in write_users:
-                if user in ["public", "*"]:
-                    formatted_write_users.append("*")
-                else:
-                    formatted_write_users.append(user)
-            if formatted_write_users:
-                access_dict["write"] = formatted_write_users
-                # Users who can write typically also get admin permissions
-                access_dict["admin"] = formatted_write_users
-        
-        # If no permissions specified, default to empty (no access)
-        if not access_dict:
-            return
-        
-        # Create the rule for this file pattern  
-        new_rule = {
-            "pattern": "**" if file_pattern == "**" else file_pattern,
-            "access": access_dict
-        }
-        
-        # Read existing syft.pub.yaml file if it exists
-        existing_content = {"rules": []}
-        if syftpub_path.exists():
-            try:
-                with open(syftpub_path, 'r') as f:
-                    existing_content = yaml.safe_load(f) or {"rules": []}
-            except Exception as e:
-                print(f"Warning: Could not read existing syft.pub.yaml: {e}")
-                existing_content = {"rules": []}
-        
-        # Ensure rules is a list
-        if "rules" not in existing_content:
-            existing_content["rules"] = []
-        elif not isinstance(existing_content["rules"], list):
-            existing_content["rules"] = []
-        
-        # Remove any existing rules for this pattern to avoid duplicates
-        existing_content["rules"] = [
-            rule for rule in existing_content["rules"] 
-            if rule.get("pattern") != new_rule["pattern"]
-        ]
-        
-        # Add the new rule
-        existing_content["rules"].append(new_rule)
-        
-        # Write the updated syft.pub.yaml file
-        with open(syftpub_path, 'w') as f:
-            yaml.dump(existing_content, f, default_flow_style=False, sort_keys=False, indent=2)
-
-
-def _get_syftbox_client() -> Optional[SyftBoxClient]:
-    """Get SyftBox client if available, otherwise return None"""
-    if not SYFTBOX_AVAILABLE:
-        return None
-    try:
-        return SyftBoxClient.load()
-    except Exception:
-        return None
+    def set_permissions(self, file_type: str, read: list[str] = None, write: list[str] = None, syftobject_file_path: str | Path = None) -> None:
+        """
+        Update permissions for a file in this object (mock, private, or syftobject).
+        Uses the minimal permission utilities from permissions.py.
+        """
+        if file_type == "mock":
+            if read is not None:
+                self.mock_permissions = read
+            if write is not None:
+                self.mock_write_permissions = write
+            # Update syft.pub.yaml if possible
+            _set_file_permissions_wrapper(self.mock, self.mock_permissions, self.mock_write_permissions)
+        elif file_type == "private":
+            if read is not None:
+                self.private_permissions = read
+            if write is not None:
+                self.private_write_permissions = write
+            # Update syft.pub.yaml if possible
+            _set_file_permissions_wrapper(self.private, self.private_permissions, self.private_write_permissions)
+        elif file_type == "syftobject":
+            if read is not None:
+                self.syftobject_permissions = read
+            # Discovery files are read-only, so use syftobject_path or provided path
+            if syftobject_file_path:
+                _set_file_permissions_wrapper(str(syftobject_file_path), self.syftobject_permissions)
+            elif self.syftobject:
+                _set_file_permissions_wrapper(self.syftobject, self.syftobject_permissions)
+        else:
+            raise ValueError(f"Invalid file_type: {file_type}. Must be 'mock', 'private', or 'syftobject'.")
 
 
 def _move_file_to_syftbox_location(local_file: Path, syft_url: str, syftbox_client: Optional[SyftBoxClient] = None) -> bool:
@@ -740,18 +744,35 @@ def _copy_file_to_syftbox_location(local_file: Path, syft_url: str, syftbox_clie
         return False
 
 
-def _generate_syftbox_urls(email: str, filename: str, syftbox_client: Optional[SyftBoxClient] = None) -> tuple[str, str]:
+def _generate_syftbox_urls(email: str, filename: str, syftbox_client: Optional[SyftBoxClient] = None, mock_is_public: bool = True) -> tuple[str, str]:
     """Generate proper syft:// URLs for private and mock files"""
     if syftbox_client:
         # Generate URLs that point to actual SyftBox structure
         private_url = f"syft://{email}/private/objects/{filename}"
-        mock_url = f"syft://{email}/public/objects/{filename}"
+        # Mock file location depends on permissions
+        if mock_is_public:
+                mock_url = f"syft://{email}/public/objects/{filename}"
+        else:
+            mock_url = f"syft://{email}/private/objects/{filename}"
     else:
         # Fallback to generic URLs
         private_url = f"syft://{email}/SyftBox/datasites/{email}/private/objects/{filename}"
-        mock_url = f"syft://{email}/SyftBox/datasites/{email}/public/objects/{filename}"
+        if mock_is_public:
+                mock_url = f"syft://{email}/SyftBox/datasites/{email}/public/objects/{filename}"
+        else:
+            mock_url = f"syft://{email}/SyftBox/datasites/{email}/private/objects/{filename}"
     
     return private_url, mock_url
+
+
+def _generate_syftobject_url(email: str, filename: str, syftbox_client: Optional[SyftBoxClient] = None) -> str:
+    """Generate proper syft:// URL for syftobject.yaml file"""
+    if syftbox_client:
+        # Generate URL that points to actual SyftBox structure
+        return f"syft://{email}/public/objects/{filename}"
+    else:
+        # Fallback to generic URL
+        return f"syft://{email}/SyftBox/datasites/{email}/public/objects/{filename}"
 
 
 def syobj(
@@ -982,9 +1003,21 @@ def syobj(
         created_files.append(mock_file_path)
         mock_source_path = mock_file_path
     
+    # === PERMISSION HANDLING ===
+    final_discovery_read = discovery_read or ["public"]
+    final_mock_read = mock_read or ["public"]
+    final_mock_write = mock_write or []
+    final_private_read = private_read or [email]
+    final_private_write = private_write or [email]
+    
     # === GENERATE SYFT:// URLS ===
-    final_private_path, _ = _generate_syftbox_urls(email, private_filename, syftbox_client)
-    final_mock_path, _ = _generate_syftbox_urls(email, mock_filename, syftbox_client)
+    # Determine if mock is public based on permissions
+    mock_is_public = any(x in ("public", "*") for x in final_mock_read)
+    final_private_path, final_mock_path = _generate_syftbox_urls(email, private_filename, syftbox_client, mock_is_public=mock_is_public)
+    
+    # Generate syftobject URL
+    syftobj_filename = f"{name.lower().replace(' ', '_').replace('-', '_')}_{uid_short}.syftobject.yaml"
+    final_syftobject_path = _generate_syftobject_url(email, syftobj_filename, syftbox_client)
     
     # === MOVE FILES TO SYFTBOX LOCATIONS ===
     if move_files_to_syftbox and syftbox_client:
@@ -1016,13 +1049,6 @@ def syobj(
             if _move_file_to_syftbox_location(mock_source_path, final_mock_path, syftbox_client):
                 files_moved_to_syftbox.append(f"{mock_source_path} → {final_mock_path}")
     
-    # === PERMISSION HANDLING ===
-    final_discovery_read = discovery_read or ["public"]
-    final_mock_read = mock_read or ["public"]
-    final_mock_write = mock_write or []
-    final_private_read = private_read or [email]
-    final_private_write = private_write or [email]
-    
     # === AUTO-GENERATE DESCRIPTION ===
     if description is None:
         if mock_contents or private_contents:
@@ -1037,6 +1063,7 @@ def syobj(
         uid=uid,  # Use the pre-generated UID
         private=final_private_path,
         mock=final_mock_path,
+        syftobject=final_syftobject_path,
         name=name,
         description=description,
         updated_at=_utcnow(),
@@ -1106,60 +1133,6 @@ def syobj(
 
 
 # === UTILITY FUNCTIONS ===
-def check_permission(user_email: str, allowed_users: list[str]) -> bool:
-    """
-    Check if a user has permission to access a resource
-    
-    Args:
-        user_email: The email of the user requesting access
-        allowed_users: List of users/groups allowed to access the resource
-                      "public" means everyone can access
-    
-    Returns:
-        bool: True if user has permission, False otherwise
-    """
-    if not allowed_users:  # Empty list means no access
-        return False
-    
-    if "public" in allowed_users:  # Public access
-        return True
-    
-    if user_email in allowed_users:  # User explicitly allowed
-        return True
-    
-    # Could extend this to handle groups, wildcards, etc.
-    return False
-
-
-def filter_objects_by_permission(objects: list[SyftObject], user_email: str, 
-                                permission_type: str = "syftobject") -> list[SyftObject]:
-    """
-    Filter syft objects based on user permissions
-    
-    Args:
-        objects: List of SyftObject instances
-        user_email: Email of the user requesting access
-        permission_type: Type of permission to check ("syftobject", "mock", "private")
-    
-    Returns:
-        List of objects the user has permission to access
-    """
-    filtered = []
-    
-    for obj in objects:
-        if permission_type == "syftobject":
-            permissions = obj.syftobject_permissions
-        elif permission_type == "mock":
-            permissions = obj.mock_permissions
-        elif permission_type == "private":
-            permissions = obj.private_permissions
-        else:
-            raise ValueError(f"Invalid permission type: {permission_type}")
-        
-        if check_permission(user_email, permissions):
-            filtered.append(obj)
-    
-    return filtered
 
 
 def scan_for_syft_objects(directory: str | Path, recursive: bool = True) -> list[Path]:
@@ -1207,16 +1180,6 @@ def load_syft_objects_from_directory(directory: str | Path, recursive: bool = Tr
     
     return objects
 
-
-def create_syftbox_permissions_for_existing_object(syftobject_file_path: str | Path) -> None:
-    """
-    Create SyftBox permission files for an existing .syftobject.yaml file
-    
-    Args:
-        syftobject_file_path: Path to the existing .syftobject.yaml file
-    """
-    obj = SyftObject.load_yaml(syftobject_file_path)
-    obj._create_syftbox_permissions(Path(syftobject_file_path))
 
 
 # === OBJECTS COLLECTION ===
@@ -1341,8 +1304,8 @@ class ObjectsCollection:
 
     def filter_by_email(self, email_pattern):
         """Filter objects by email pattern
-
-        Args:
+    
+    Args:
             email_pattern: Pattern to match in email (case insensitive)
 
         Returns:
@@ -1846,7 +1809,12 @@ objects = [syo.objects[i] for i in [${{indicesStr}}]]`;
 objects = ObjectsCollection()
 
 # Export classes and instance
-__all__ = ["SyftObject", "syobj", "objects", "ObjectsCollection"]
+__all__ = [
+    "SyftObject", 
+    "syobj", 
+    "objects", 
+    "ObjectsCollection"
+]
 
 
 def _check_syftbox_status():

@@ -4,10 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "syft-objects"
-version = "0.3.0"
+version = "0.3.1"
 description = "Share files with explicit mock vs private control"
 readme = "README.md"
-license = {text = "Apache-2.0"}
 authors = [
     {name = "OpenMined", email = "contact@openmined.org"}
 ]
@@ -35,6 +34,7 @@ requires-python = ">=3.8"
 dependencies = [
     "pydantic>=2.0.0",
     "pyyaml>=6.0",
+    "syft-perm>=0.1.0",
 ]
 
 [project.optional-dependencies]
@@ -62,8 +62,7 @@ Repository = "https://github.com/OpenMined/syft-objects"
 "Bug Tracker" = "https://github.com/OpenMined/syft-objects/issues"
 "Discussions" = "https://github.com/OpenMined/syft-objects/discussions"
 
-[project.scripts]
-syft-objects = "syft_objects.cli:main"
+# No CLI scripts currently
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/syft_objects"]
