@@ -12,6 +12,8 @@ import hashlib
 
 from pydantic import BaseModel, Field
 
+__version__ = "0.2.0"
+
 # Try to import SyftBox client for proper file management
 try:
     from syft_core import Client as SyftBoxClient
@@ -1810,7 +1812,6 @@ def _check_syftbox_status():
         except Exception as e:
             print(f"❌ SyftBox filesystem not accessible: {e}")
             print("    Make sure SyftBox is properly installed")
-            return
 
         # Check 2: Verify SyftBox app is running
         try:
