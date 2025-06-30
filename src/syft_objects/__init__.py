@@ -12,7 +12,7 @@ import hashlib
 
 from pydantic import BaseModel, Field
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 # Try to import SyftBox client for proper file management
 try:
@@ -1305,10 +1305,10 @@ class ObjectsCollection:
         self._load_objects()
 
     def search(self, keyword):
-        """Search for objects containing the keyword in name or email
+        """Search for objects containing the keyword in name, email, description, created, updated, or metadata
 
         Args:
-            keyword: Search term to look for in object name or email
+            keyword: Search term to look for in object name, email, description, created, updated, or metadata
 
         Returns:
             ObjectsCollection: New collection with filtered objects
@@ -1320,7 +1320,20 @@ class ObjectsCollection:
         for syft_obj in self._objects:
             email = self._get_object_email(syft_obj)
             name = syft_obj.name or ""
-            if keyword in name.lower() or keyword in email.lower():
+            desc = syft_obj.description or ""
+            created_str = syft_obj.created_at.strftime("%Y-%m-%d %H:%M") if getattr(syft_obj, 'created_at', None) else ""
+            updated_str = syft_obj.updated_at.strftime("%Y-%m-%d %H:%M") if getattr(syft_obj, 'updated_at', None) else ""
+            # Search metadata values (excluding system keys)
+            system_keys = {"_file_operations"}
+            meta_values = [str(v).lower() for k, v in syft_obj.metadata.items() if k not in system_keys]
+            if (
+                keyword in name.lower()
+                or keyword in email.lower()
+                or keyword in desc.lower()
+                or keyword in created_str.lower()
+                or keyword in updated_str.lower()
+                or any(keyword in v for v in meta_values)
+            ):
                 filtered_objects.append(syft_obj)
 
         search_info = f"Search results for '{keyword}'"
@@ -1517,7 +1530,7 @@ Example Usage:
             width: 100%;
             font-size: 11px;
             margin: 0;
-            min-width: 800px;
+            min-width: 1400px;
         }}
         .syft-objects-table th {{
             background-color: #f8f9fa;
@@ -1558,6 +1571,30 @@ Example Usage:
             color: #6c757d;
             min-width: 200px;
             word-break: break-all;
+        }}
+        .syft-objects-metadata {{
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 9px;
+            color: #8b5cf6;
+            min-width: 180px;
+            max-width: 320px;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }}
+        .syft-objects-desc {{
+            font-size: 10px;
+            color: #374151;
+            min-width: 180px;
+            max-width: 320px;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }}
+        .syft-objects-date {{
+            font-size: 10px;
+            color: #64748b;
+            min-width: 120px;
+            max-width: 160px;
+            word-break: break-word;
         }}
         .syft-objects-index {{
             text-align: center;
@@ -1611,6 +1648,10 @@ Example Usage:
                             <th style="min-width: 150px;">Object Name</th>
                             <th style="min-width: 200px;">Private URL</th>
                             <th style="min-width: 200px;">Mock URL</th>
+                            <th style="min-width: 120px;">Created</th>
+                            <th style="min-width: 120px;">Updated</th>
+                            <th style="min-width: 180px;">Description</th>
+                            <th style="min-width: 180px;">Metadata</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1619,8 +1660,15 @@ Example Usage:
         for i, syft_obj in enumerate(self._objects):
             email = self._get_object_email(syft_obj)
             name = syft_obj.name or "Unnamed Object"
+            # Compact metadata string (excluding system keys)
+            system_keys = {"_file_operations"}
+            meta_items = [f"{k}={v}" for k, v in syft_obj.metadata.items() if k not in system_keys]
+            meta_str = ", ".join(meta_items) if meta_items else ""
+            created_str = syft_obj.created_at.strftime("%Y-%m-%d %H:%M") if getattr(syft_obj, 'created_at', None) else ""
+            updated_str = syft_obj.updated_at.strftime("%Y-%m-%d %H:%M") if getattr(syft_obj, 'updated_at', None) else ""
+            desc_str = syft_obj.description or ""
             html += f"""
-            <tr data-email="{email.lower()}" data-name="{name.lower()}" data-index="{i}">
+            <tr data-email="{email.lower()}" data-name="{name.lower()}" data-index="{i}" data-meta="{meta_str.lower()}" data-desc="{desc_str.lower()}" data-created="{created_str.lower()}" data-updated="{updated_str.lower()}">
                 <td class="syft-objects-checkbox">
                     <input type="checkbox" onchange="updateSyftObjectsSelection('{container_id}')">
                 </td>
@@ -1629,6 +1677,10 @@ Example Usage:
                 <td class="syft-objects-name">{name}</td>
                 <td class="syft-objects-url">{syft_obj.private}</td>
                 <td class="syft-objects-url">{syft_obj.mock}</td>
+                <td class="syft-objects-date">{created_str}</td>
+                <td class="syft-objects-date">{updated_str}</td>
+                <td class="syft-objects-desc">{desc_str}</td>
+                <td class="syft-objects-metadata">{meta_str}</td>
             </tr>
             """
 
@@ -1655,7 +1707,11 @@ Example Usage:
             rows.forEach(row => {{
                 const email = row.dataset.email || '';
                 const name = row.dataset.name || '';
-                const isVisible = email.includes(searchTerm) || name.includes(searchTerm);
+                const meta = row.dataset.meta || '';
+                const desc = row.dataset.desc || '';
+                const created = row.dataset.created || '';
+                const updated = row.dataset.updated || '';
+                const isVisible = email.includes(searchTerm) || name.includes(searchTerm) || meta.includes(searchTerm) || desc.includes(searchTerm) || created.includes(searchTerm) || updated.includes(searchTerm);
                 row.style.display = isVisible ? '' : 'none';
                 if (isVisible) visibleCount++;
             }});
