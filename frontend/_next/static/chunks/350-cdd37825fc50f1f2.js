@@ -649,16 +649,16 @@
                       
                       const modal = document.createElement('div');
                       modal.id = 'new-object-modal';
-                      modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-2 z-50';
+                      modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50';
                       modal.innerHTML = `
-                        <div class="bg-white rounded-lg max-w-2xl w-full mx-auto my-8" style="max-height: calc(100vh - 4rem);">
-                          <div class="bg-white border-b px-4 py-3">
+                        <div class="bg-white rounded-lg max-w-2xl w-full max-h-screen overflow-hidden">
+                          <div class="px-4 py-3 border-b bg-white">
                             <div class="flex items-center justify-between">
                               <h2 class="text-lg font-semibold text-gray-900">Create New SyftObject</h2>
                               <button id="close-modal" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
                             </div>
                           </div>
-                          <div class="overflow-y-auto p-4" style="max-height: calc(100vh - 12rem);">
+                          <div class="overflow-y-auto p-4 max-h-96">
                             <form id="new-object-form" class="space-y-3">
                               <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Object Name *</label>
@@ -692,7 +692,7 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Metadata (JSON format)</label>
                                 <textarea name="metadata" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm" placeholder='{"key": "value", "category": "dataset"}'></textarea>
                               </div>
-                              <div>
+                              <div class="mb-4">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Permissions</label>
                                 <div class="grid grid-cols-2 gap-3 text-sm">
                                   <div>
@@ -719,9 +719,11 @@
                               </div>
                             </form>
                           </div>
-                          <div class="bg-gray-50 px-4 py-3 flex justify-end space-x-2 border-t" style="position: sticky; bottom: 0;">
-                            <button id="cancel-btn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
-                            <button id="create-btn" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">Create Object</button>
+                          <div class="px-4 py-4 border-t bg-gray-50">
+                            <div class="flex justify-end gap-3">
+                              <button id="cancel-btn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
+                              <button id="create-btn" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">Create Object</button>
+                            </div>
                           </div>
                         </div>
                       `;
