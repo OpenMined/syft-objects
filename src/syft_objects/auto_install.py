@@ -209,13 +209,16 @@ def is_syftbox_running() -> bool:
         return False
 
 
-def ensure_syftbox_app_installed() -> bool:
+def ensure_syftbox_app_installed(silent=True) -> bool:
     """Ensure syft-objects app is installed in SyftBox (but don't auto-start server).
     
     This function only ensures the app is INSTALLED, not running.
     The server should be started manually by running './run.sh' to avoid recursive loops.
     This prevents the import->start server->import->start server cycle.
     
+    Args:
+        silent: If True, only print messages for installation actions
+        
     Returns:
         True if app is installed and available
     """
@@ -227,20 +230,23 @@ def ensure_syftbox_app_installed() -> bool:
     
     # Require SyftBox to be running
     if not is_syftbox_running():
-        print("❌ SyftBox is not running. Please start SyftBox before using syft-objects.")
-        print("    Make sure SyftBox is installed and running, then try again.")
+        if not silent:
+            print("❌ SyftBox is not running. Please start SyftBox before using syft-objects.")
+            print("    Make sure SyftBox is installed and running, then try again.")
         return False
     
     app_installed = is_syftbox_app_installed()
     
     # If app is not installed, clone it (but don't start it)
     if not app_installed:
-        print("SyftBox detected but syft-objects app not found. Attempting auto-installation...")
+        if not silent:
+            print("SyftBox detected but syft-objects app not found. Attempting auto-installation...")
         if not clone_syftbox_app():
             return False
         
-        print("✅ Syft-objects app installed successfully")
-        print("📝 To start the server, run './run.sh' from the app directory")
+        if not silent:
+            print("✅ Syft-objects app installed successfully")
+            print("📝 To start the server, run './run.sh' from the app directory")
         return True
     
     else:

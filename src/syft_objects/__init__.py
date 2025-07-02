@@ -25,8 +25,10 @@ __all__ = [
     "get_syft_objects_url"
 ]
 
-# Check SyftBox status once during import
+# Check SyftBox status and show beautiful startup banner
 check_syftbox_status()
+ensure_syftbox_app_installed(silent=True)
 
-# Ensure syft-objects app is installed in SyftBox (if SyftBox is present)
-ensure_syftbox_app_installed()
+# Import _print_startup_banner here to avoid circular imports
+from .client import _print_startup_banner
+_print_startup_banner()

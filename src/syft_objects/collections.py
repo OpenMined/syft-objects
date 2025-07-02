@@ -103,6 +103,32 @@ class ObjectsCollection:
         """Ensure objects are loaded"""
         if not self._cached:
             self._load_objects()
+            # Show beautiful objects summary on first load
+            self._show_objects_summary()
+
+    def _show_objects_summary(self):
+        """Show a beautiful summary of discovered objects"""
+        count = len(self._objects)
+        if count == 0:
+            print("📭 No syft objects found")
+            print("   Create your first object with: syobj('My Data', 'Description')")
+        else:
+            print("📦 Syft Objects Discovered:")
+            print(f"   📊 Found {count} object{'s' if count != 1 else ''}")
+            
+            # Show breakdown by email
+            emails = {}
+            for obj in self._objects:
+                email = self._get_object_email(obj)
+                emails[email] = emails.get(email, 0) + 1
+            
+            if len(emails) <= 3:  # Show details if not too many
+                for email, cnt in emails.items():
+                    print(f"   👤 {email}: {cnt} object{'s' if cnt != 1 else ''}")
+            else:
+                print(f"   👥 From {len(emails)} different users")
+        
+        print()
 
     def search(self, keyword):
         """Search for objects containing the keyword"""
