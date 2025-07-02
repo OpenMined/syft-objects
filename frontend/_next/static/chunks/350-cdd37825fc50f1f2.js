@@ -578,7 +578,7 @@
         }, [W]), (0, l.useEffect)(() => {
           O > 0 && ea(Math.ceil(O / ee))
         }, [O, ee]), s) ? (0, a.jsx)("div", {
-          className: "flex items-center justify-center min-h-[200px] p-4",
+          className: "flex items-center justify-center min-h-screen p-4",
           children: (0, a.jsxs)("div", {
             className: "text-center space-y-4",
             children: [(0, a.jsx)(j, {
@@ -586,7 +586,7 @@
               isLoading: !0
             }), (0, a.jsx)("p", {
               className: "text-sm text-muted-foreground",
-              children: "Loading syft objects..."
+              children: "the internet of private data"
             })]
           })
         }) : (0, a.jsxs)("div", {
