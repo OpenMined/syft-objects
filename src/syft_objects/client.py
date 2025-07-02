@@ -98,40 +98,22 @@ def check_syftbox_status():
 
 
 def _print_startup_banner():
-    """Print a beautiful, polished startup banner for syft-objects"""
+    """Print a clean, minimal startup message for syft-objects"""
     from . import __version__
     
-    # Beautiful header
-    print("╭─────────────────────────────────────────────────────────────╮")
-    print("│                     🔐 SYFT OBJECTS                        │")
-    print("│              Distributed Data Discovery & Sharing          │")
-    print(f"│                        Version {__version__}                        │")
-    print("╰─────────────────────────────────────────────────────────────╯")
-    print()
-    
-    # SyftBox connection status
+    # Quick status line with carriage return
     if _syftbox_status.get('client_connected'):
-        print("🌐 SyftBox Connection:")
-        print(f"   ✅ Connected as: {_syftbox_status['user_email']}")
-        if _syftbox_status.get('app_running'):
-            print(f"   ✅ SyftBox app running")
-        else:
-            print(f"   ⚠️  SyftBox app not responding")
-    elif _syftbox_status.get('error'):
-        print("🌐 SyftBox Connection:")
-        if "not available" in _syftbox_status['error']:
-            print("   ℹ️  SyftBox not installed (optional)")
-        else:
-            print(f"   ⚠️  {_syftbox_status['error']}")
+        user = _syftbox_status['user_email']
+        port = get_syft_objects_port()
+        print(f"\r🔐 Syft Objects v{__version__} | Connected: {user} | Server: localhost:{port}")
+    elif _syftbox_status.get('error') and "not available" in _syftbox_status['error']:
+        port = get_syft_objects_port()
+        print(f"\r🔐 Syft Objects v{__version__} | Local mode | Server: localhost:{port}")
+    else:
+        port = get_syft_objects_port()
+        print(f"\r🔐 Syft Objects v{__version__} | Server: localhost:{port}")
     
-    # Server connection status  
-    port = get_syft_objects_port()
-    print()
-    print("🚀 Syft Objects Server:")
-    print(f"   📡 Port: {port}")
-    print(f"   🌐 URL: http://localhost:{port}")
-    
-    print()
+    print()  # Single line break
 
 
 # Global variable to store SyftBox status
