@@ -43,11 +43,11 @@ echo "$SYFTBOX_ASSIGNED_PORT" > ~/.syftbox/syft_objects.config
 echo "🌐 Starting Pure Python Syft Objects UI on port $SYFTBOX_ASSIGNED_PORT..."
 echo "🚀 Starting 100% Python FastAPI server with integrated HTML generation..."
 
-# Pure Python FastAPI server startup with optimizations
+# Pure Python FastAPI server startup with optimizations and hot reload
 uv run uvicorn backend.fast_main:app \
     --host 0.0.0.0 \
     --port $SYFTBOX_ASSIGNED_PORT \
-    --workers 1 \
+    --reload \
     --loop uvloop \
     --http httptools \
     --access-log \

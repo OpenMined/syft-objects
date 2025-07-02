@@ -147,11 +147,47 @@ async def get_objects(
             except:
                 pass
             
+            # Infer type from file extension
+            file_type = "unknown"
+            try:
+                # Try to extract file extension from private URL first, then mock URL
+                for url in [obj.private, obj.mock]:
+                    if url and "." in url:
+                        ext = url.split(".")[-1].lower()
+                        if ext in ["csv", "tsv"]:
+                            file_type = "csv"
+                        elif ext in ["json", "jsonl"]:
+                            file_type = "json"
+                        elif ext in ["txt", "text"]:
+                            file_type = "text"
+                        elif ext in ["xlsx", "xls"]:
+                            file_type = "excel"
+                        elif ext in ["parquet"]:
+                            file_type = "parquet"
+                        elif ext in ["pdf"]:
+                            file_type = "pdf"
+                        elif ext in ["png", "jpg", "jpeg", "gif", "bmp"]:
+                            file_type = "image"
+                        elif ext in ["py", "python"]:
+                            file_type = "python"
+                        elif ext in ["sql"]:
+                            file_type = "sql"
+                        elif ext in ["html", "htm"]:
+                            file_type = "html"
+                        elif ext in ["md", "markdown"]:
+                            file_type = "markdown"
+                        else:
+                            file_type = ext
+                        break
+            except:
+                file_type = "unknown"
+                
             obj_data = {
                 "index": actual_index,
                 "uid": str(obj.uid),
                 "name": obj.name or "Unnamed Object",
                 "description": obj.description or "",
+                "type": file_type,
                 "email": email,
                 "private_url": obj.private,
                 "mock_url": obj.mock,
