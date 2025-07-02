@@ -207,14 +207,14 @@ yarn-error.log*
 
 # Next.js build artifacts
 .next/
-out/
+# out/  # Commented out - we need frontend/out/ for FastAPI
 *.tsbuildinfo
 next-env.d.ts
 
-# Frontend build and cache directories
+# Frontend build and cache directories (keep frontend/out/ for FastAPI serving)
 frontend/node_modules/
 frontend/.next/
-frontend/out/
+# frontend/out/  # Keep this - FastAPI serves pre-built Next.js files
 frontend/dist/
 frontend/build/
 frontend/.cache/
