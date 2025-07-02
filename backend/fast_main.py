@@ -204,6 +204,40 @@ async def refresh_objects() -> Dict[str, Any]:
         logger.error(f"Error refreshing objects: {e}")
         raise HTTPException(status_code=500, detail=f"Error refreshing objects: {str(e)}")
 
+@app.post("/api/syftbox/reinstall")
+async def reinstall_syftbox_app() -> Dict[str, Any]:
+    """Reinstall syft-objects app in SyftBox by removing and re-cloning."""
+    try:
+        # Import the reinstall function
+        from syft_objects.auto_install import reinstall_syftbox_app
+        
+        logger.info("Starting SyftBox app reinstallation")
+        
+        # Call the reinstall function
+        success = reinstall_syftbox_app(silent=False)
+        
+        if success:
+            logger.info("SyftBox app reinstallation completed successfully")
+            return {
+                "success": True,
+                "message": "Syft-objects app reinstalled successfully",
+                "timestamp": datetime.now()
+            }
+        else:
+            logger.error("SyftBox app reinstallation failed")
+            return {
+                "success": False,
+                "message": "Failed to reinstall syft-objects app",
+                "timestamp": datetime.now()
+            }
+    
+    except Exception as e:
+        logger.error(f"Error during SyftBox app reinstallation: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error reinstalling SyftBox app: {str(e)}"
+        )
+
 @app.get("/api/objects/{object_uid}")
 async def get_object_details(object_uid: str) -> Dict[str, Any]:
     """Get detailed information about a specific object."""

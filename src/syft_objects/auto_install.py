@@ -1,6 +1,7 @@
 """Auto-installation utilities for SyftBox integration."""
 
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -202,6 +203,55 @@ def is_syftbox_running() -> bool:
             return False
             
     except Exception:
+        return False
+
+
+def reinstall_syftbox_app(silent=False) -> bool:
+    """Reinstall syft-objects app in SyftBox by removing and re-cloning.
+    
+    Args:
+        silent: If True, suppress non-error messages
+        
+    Returns:
+        True if reinstallation was successful, False otherwise
+    """
+    # Check if SyftBox exists
+    apps_path = get_syftbox_apps_path()
+    if not apps_path:
+        if not silent:
+            print("❌ SyftBox directory not found. Cannot reinstall syft-objects app.")
+        return False
+    
+    # Check if SyftBox is running
+    if not is_syftbox_running():
+        if not silent:
+            print("❌ SyftBox is not running. Please start SyftBox before reinstalling.")
+        return False
+    
+    syft_objects_app_path = apps_path / "syft-objects"
+    
+    try:
+        # Remove existing app directory if it exists
+        if syft_objects_app_path.exists():
+            if not silent:
+                print(f"🗑️  Removing existing syft-objects app from {syft_objects_app_path}")
+            shutil.rmtree(syft_objects_app_path)
+        
+        # Clone fresh copy
+        if not silent:
+            print("🔄 Reinstalling syft-objects app...")
+        
+        success = clone_syftbox_app()
+        
+        if success and not silent:
+            print("✅ Syft-objects app reinstalled successfully")
+            print("📝 The app will automatically restart with the updated version")
+        
+        return success
+        
+    except Exception as e:
+        if not silent:
+            print(f"❌ Error during reinstallation: {e}")
         return False
 
 
