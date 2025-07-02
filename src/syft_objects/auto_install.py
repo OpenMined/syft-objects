@@ -210,16 +210,14 @@ def is_syftbox_running() -> bool:
 
 
 def ensure_syftbox_app_installed() -> bool:
-    """Ensure syft-objects app is installed in SyftBox and started if needed.
+    """Ensure syft-objects app is installed in SyftBox (but don't auto-start server).
     
-    Requires SyftBox to be running before proceeding.
-    Checks if the app exists, and if not, attempts to clone it.
-    Starts the app if it's not already running.
-    Does NOT wait for server to be available - that happens on first use.
-    This function is designed to be called during package import.
+    This function only ensures the app is INSTALLED, not running.
+    The server should be started manually by running './run.sh' to avoid recursive loops.
+    This prevents the import->start server->import->start server cycle.
     
     Returns:
-        True if app is available (installed and started)
+        True if app is installed and available
     """
     # Check if SyftBox exists
     apps_path = get_syftbox_apps_path()
@@ -234,40 +232,20 @@ def ensure_syftbox_app_installed() -> bool:
         return False
     
     app_installed = is_syftbox_app_installed()
-    app_path = apps_path / "syft-objects"
     
-    # If app is not installed, clone it
+    # If app is not installed, clone it (but don't start it)
     if not app_installed:
         print("SyftBox detected but syft-objects app not found. Attempting auto-installation...")
         if not clone_syftbox_app():
             return False
         
-        # Start the app after installation
-        return start_syftbox_app(app_path)
+        print("✅ Syft-objects app installed successfully")
+        print("📝 To start the server, run './run.sh' from the app directory")
+        return True
     
     else:
-        # App is installed, check if server is already running
-        try:
-            config_file = Path.home() / ".syftbox" / "syft_objects.config"
-            if config_file.exists():
-                port_str = config_file.read_text().strip()
-                if port_str.isdigit() and requests:
-                    port = int(port_str)
-                    try:
-                        response = requests.get(f"http://localhost:{port}/health", timeout=1)
-                        if response.status_code == 200:
-                            # Server is already running
-                            return True
-                    except requests.exceptions.RequestException:
-                        pass
-        except Exception:
-            pass
-        
-        # Server not running, start it
-        print("🚀 Starting syft-objects server...")
-        return start_syftbox_app(app_path)
-    
-    return True
+        # App is already installed - that's all we need for import
+        return True
 
 
 if __name__ == "__main__":
