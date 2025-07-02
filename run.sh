@@ -29,8 +29,8 @@ uv sync
 # NO FRONTEND BUILD NEEDED - Pure Python serves HTML directly!
 echo "✅ Pure Python implementation - No frontend build required!"
 
-# Determine the port to use
-SYFTBOX_ASSIGNED_PORT=${SYFTBOX_ASSIGNED_PORT:-8003}
+# Determine the port to use (FastAPI backend default)
+SYFTBOX_ASSIGNED_PORT=${SYFTBOX_ASSIGNED_PORT:-8004}
 
 # Create .syftbox directory if it doesn't exist
 mkdir -p ~/.syftbox
@@ -46,7 +46,7 @@ echo "🚀 Starting 100% Python FastAPI server with integrated HTML generation..
 # Pure Python FastAPI server startup with optimizations
 uv run uvicorn backend.fast_main:app \
     --host 0.0.0.0 \
-    --port 8004 \
+    --port $SYFTBOX_ASSIGNED_PORT \
     --workers 1 \
     --loop uvloop \
     --http httptools \

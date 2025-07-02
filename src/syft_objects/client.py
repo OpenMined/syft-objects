@@ -97,8 +97,8 @@ def get_syft_objects_port():
     except Exception:
         pass
     
-    # Default fallback port
-    return 8003
+    # Default fallback port (FastAPI backend)
+    return 8004
 
 
 def get_syft_objects_url(endpoint=""):
