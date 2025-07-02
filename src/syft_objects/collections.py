@@ -470,6 +470,7 @@ Example Usage:
                 <button class="syft-objects-btn" onclick="selectAllSyftObjects('{container_id}')">Select All</button>
                 <button class="syft-objects-btn syft-objects-btn-secondary" onclick="clearAllSyftObjects('{container_id}')">Clear</button>
                 <button class="syft-objects-btn" onclick="generateSyftObjectsCode('{container_id}')">Generate Code</button>
+                <button class="syft-objects-btn" onclick="createNewSyftObject('{container_id}')">New</button>
             </div>
             <div class="syft-objects-table-container">
                 <table class="syft-objects-table">
@@ -640,6 +641,48 @@ objects = [syo.objects[i] for i in [${{indicesStr}}]]`;
             
             output.textContent = code;
             output.style.display = 'block';
+        }}
+        
+        function createNewSyftObject(containerId) {{
+            // Show confirmation message and provide template code
+            const output = document.querySelector(`#${{containerId}}-output`);
+            const code = `# Create a new SyftObject:
+import syft as sy
+
+# Example: Create a new object with your data
+new_object = sy.SyftObject(
+    name="My New Object",
+    description="Description of my object",
+    # Add your data and configuration here
+)
+
+# Upload to your datasite
+# client.upload(new_object)`;
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(code).then(() => {{
+                // Update button text to show success
+                const button = document.querySelector(`#${{containerId}} button[onclick="createNewSyftObject('${{containerId}}')"]`);
+                const originalText = button.textContent;
+                button.textContent = '✅ Template Copied!';
+                button.style.backgroundColor = '#28a745';
+                
+                // Reset button after 2 seconds
+                setTimeout(() => {{
+                    button.textContent = originalText;
+                    button.style.backgroundColor = '#007bff';
+                }}, 2000);
+            }}).catch(err => {{
+                console.warn('Could not copy to clipboard:', err);
+                // Fallback: still show the code for manual copying
+            }});
+            
+            output.textContent = code;
+            output.style.display = 'block';
+            
+            // Update status to show what happened
+            const status = document.querySelector(`#${{containerId}}-status`);
+            status.textContent = 'New object template generated • Copy the code above to create a new SyftObject';
         }}
         </script>
         """
