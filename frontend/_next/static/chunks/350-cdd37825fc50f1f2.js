@@ -292,10 +292,10 @@
           }
         }, eC = () => {
           X(1)
-        }, e_ = (e, t) => {
+        },         e_ = (e, t) => {
           if (!t) return !0;
           let s = t.toLowerCase(),
-            a = [e.name, e.description, e.email, e.uid, e.private_url, e.mock_url, e.syftobject_url, e.index.toString()];
+            a = [e.name, e.description, e.type, e.email, e.uid, e.private_url, e.mock_url, e.syftobject_url, e.index.toString()];
           return [...a, ...[e.created_at, e.updated_at].filter(Boolean).map(e => {
             if (!e) return "";
             try {
@@ -832,6 +832,19 @@
                             }))]
                           })
                         }), (0, a.jsx)("th", {
+                          className: "text-left px-0 py-1.5 font-medium cursor-pointer hover:bg-muted/75 select-none w-10",
+                          onClick: () => eT("type"),
+                          children: (0, a.jsxs)("div", {
+                            className: "flex items-center space-x-1",
+                            children: [(0, a.jsx)("span", {
+                              children: "Type"
+                            }), "type" === F && ("desc" === M ? (0, a.jsx)(r.Z, {
+                              className: "h-2 w-2"
+                            }) : (0, a.jsx)(o.Z, {
+                              className: "h-2 w-2"
+                            }))]
+                          })
+                        }), (0, a.jsx)("th", {
                           className: "text-left px-1 py-1.5 font-medium w-20",
                           children: "Files"
                         }), (0, a.jsx)("th", {
@@ -842,7 +855,7 @@
                     }), (0, a.jsx)("tbody", {
                       children: 0 === I.length ? (0, a.jsx)("tr", {
                         children: (0, a.jsx)("td", {
-                          colSpan: 9,
+                          colSpan: 10,
                           className: "px-2 py-4 text-center text-muted-foreground",
                           children: s ? "Loading..." : "No syft objects found"
                         })
@@ -930,6 +943,15 @@
                               className: "truncate text-xs",
                               children: eB(e.created_at)
                             })]
+                          })
+                        }), (0, a.jsx)("td", {
+                          className: "px-0 py-1.5 w-10",
+                          children: (0, a.jsx)("div", {
+                            className: "truncate text-xs",
+                            children: (0, a.jsx)("span", {
+                              className: "inline-flex items-center px-1 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800",
+                              children: e.type || "unknown"
+                            })
                           })
                         }), (0, a.jsx)("td", {
                           className: "px-1 py-1.5 w-20",
