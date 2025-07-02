@@ -4,21 +4,15 @@ No Node.js dependencies - serves HTML directly from Python
 """
 
 import os
-import sys
-import json
-import logging
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from pathlib import Path as PathLib
 
-from fastapi import FastAPI, Depends, HTTPException, Body, Path, Request, Form, BackgroundTasks
+from fastapi import FastAPI, Depends, HTTPException, Body, Path, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse, PlainTextResponse, RedirectResponse, FileResponse
 from loguru import logger
 from fastapi.staticfiles import StaticFiles
-from starlette.responses import Response
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.exceptions import HTTPException as StarletteHTTPException
 
 try:
     from syft_objects import objects, ObjectsCollection
@@ -564,95 +558,6 @@ async def update_object_permissions(
     except Exception as e:
         logger.error(f"Error updating permissions for object {object_uid}: {e}")
         raise HTTPException(status_code=500, detail=f"Error updating permissions: {str(e)}")
-
-@app.post("/api/objects")
-async def create_object(
-    name: str = Form(...),
-    description: str = Form(""),
-    mock_contents: str = Form(""),
-    private_contents: str = Form(""),
-    mock_file: str = Form(""),
-    private_file: str = Form(""),
-    discovery_read: str = Form("public"),
-    mock_read: str = Form("public"),
-    mock_write: str = Form(""),
-    private_read: str = Form(""),
-    private_write: str = Form("")
-) -> Dict[str, Any]:
-    """Create a new syft object."""
-    if not SYFTBOX_AVAILABLE:
-        raise HTTPException(status_code=503, detail="SyftBox not available")
-    
-    try:
-        from syft_objects.factory import syobj
-        
-        # Build permissions lists
-        discovery_read_list = ["public"] if discovery_read == "public" else [discovery_read] if discovery_read else []
-        mock_read_list = ["public"] if mock_read == "public" else [mock_read] if mock_read else []
-        mock_write_list = [mock_write] if mock_write else []
-        private_read_list = [private_read] if private_read else []
-        private_write_list = [private_write] if private_write else []
-        
-        # Handle file paths vs contents
-        mock_data = None
-        private_data = None
-        
-        if mock_file:
-            # Use file path
-            mock_file_path = mock_file.replace("~", os.path.expanduser("~"))
-            if os.path.exists(mock_file_path):
-                with open(mock_file_path, 'r') as f:
-                    mock_data = f.read()
-            else:
-                mock_data = mock_file  # Use as literal path even if doesn't exist
-        elif mock_contents:
-            # Use direct contents
-            mock_data = mock_contents
-            
-        if private_file:
-            # Use file path
-            private_file_path = private_file.replace("~", os.path.expanduser("~"))
-            if os.path.exists(private_file_path):
-                with open(private_file_path, 'r') as f:
-                    private_data = f.read()
-            else:
-                private_data = private_file  # Use as literal path even if doesn't exist
-        elif private_contents:
-            # Use direct contents
-            private_data = private_contents
-            
-        # Try to parse as JSON if possible
-        try:
-            if mock_data:
-                parsed_mock = json.loads(mock_data)
-                mock_data = parsed_mock
-        except:
-            pass  # Keep as string if not valid JSON
-            
-        try:
-            if private_data:
-                parsed_private = json.loads(private_data)
-                private_data = parsed_private
-        except:
-            pass  # Keep as string if not valid JSON
-        
-        # Create the syft object
-        obj = syobj(
-            name=name,
-            description=description,
-            mock=mock_data,
-            private=private_data,
-            discovery_read=discovery_read_list,
-            mock_read=mock_read_list,
-            mock_write=mock_write_list,
-            private_read=private_read_list,
-            private_write=private_write_list
-        )
-        
-        return {"status": "success", "uid": obj.uid}
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create object: {str(e)}")
 
 @app.delete("/api/objects/{object_uid}")
 async def delete_object(object_uid: str) -> Dict[str, Any]:
