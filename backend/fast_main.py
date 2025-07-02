@@ -24,8 +24,8 @@ try:
     from syft_objects import objects, ObjectsCollection
     from syft_objects.models import SyftObject
     from syft_objects.client import get_syftbox_client, SYFTBOX_AVAILABLE
-except ImportError:
-    logger.error("syft-objects not available")
+except ImportError as e:
+    logger.error(f"syft-objects not available: {e}")
     objects = None
     ObjectsCollection = None
     SyftObject = None
@@ -114,6 +114,13 @@ async def get_objects(
     """Get syft objects with optional filtering and pagination."""
     if not objects:
         raise HTTPException(status_code=503, detail="Syft objects not available")
+    
+    # Ensure SyftBox is ready on first API call
+    try:
+        from syft_objects import _ensure_syftbox_ready
+        _ensure_syftbox_ready()
+    except Exception:
+        pass  # Silently continue if initialization fails
     
     try:
         # Start with all objects
