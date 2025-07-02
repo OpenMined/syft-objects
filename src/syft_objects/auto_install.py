@@ -155,6 +155,33 @@ def wait_for_syft_objects_server(timeout_minutes: int = 5) -> bool:
     return False
 
 
+def start_syftbox_app(app_path: Path) -> bool:
+    """Start the syft-objects app in SyftBox.
+    
+    Args:
+        app_path: Path to the syft-objects app directory
+        
+    Returns:
+        True if app started successfully
+    """
+    run_script = app_path / "run.sh"
+    if not run_script.exists():
+        print(f"❌ run.sh not found in {app_path}")
+        return False
+    
+    try:
+        print("🚀 Starting syft-objects server...")
+        # Start the server in the background
+        subprocess.Popen(
+            ["bash", str(run_script)],
+            cwd=str(app_path),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        return True
+    except Exception as e:
+        print(f"❌ Failed to start syft-objects app: {e}")
+        return False
 
 
 def is_syftbox_running() -> bool:
@@ -183,15 +210,16 @@ def is_syftbox_running() -> bool:
 
 
 def ensure_syftbox_app_installed() -> bool:
-    """Ensure syft-objects app is installed in SyftBox and server is available.
+    """Ensure syft-objects app is installed in SyftBox and started if needed.
     
     Requires SyftBox to be running before proceeding.
     Checks if the app exists, and if not, attempts to clone it.
-    Then waits for the server to be available.
+    Starts the app if it's not already running.
+    Does NOT wait for server to be available - that happens on first use.
     This function is designed to be called during package import.
     
     Returns:
-        True if app is available and server is running
+        True if app is available (installed and started)
     """
     # Check if SyftBox exists
     apps_path = get_syftbox_apps_path()
@@ -214,8 +242,8 @@ def ensure_syftbox_app_installed() -> bool:
         if not clone_syftbox_app():
             return False
         
-        # Wait for server to be available
-        return wait_for_syft_objects_server()
+        # Start the app after installation
+        return start_syftbox_app(app_path)
     
     else:
         # App is installed, check if server is already running
@@ -235,8 +263,9 @@ def ensure_syftbox_app_installed() -> bool:
         except Exception:
             pass
         
-        # Wait for server to be available
-        return wait_for_syft_objects_server()
+        # Server not running, start it
+        print("🚀 Starting syft-objects server...")
+        return start_syftbox_app(app_path)
     
     return True
 

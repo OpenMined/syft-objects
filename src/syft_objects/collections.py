@@ -16,10 +16,26 @@ class ObjectsCollection:
             self._objects = []
             self._search_info = None
             self._cached = False
+            self._server_ready = False  # Track server readiness
         else:
             self._objects = objects
             self._search_info = search_info
             self._cached = True
+            self._server_ready = False
+
+    def _ensure_server_ready(self):
+        """Ensure syft-objects server is ready before UI operations"""
+        if self._server_ready:
+            return
+        
+        try:
+            from .auto_install import wait_for_syft_objects_server
+            if wait_for_syft_objects_server():
+                self._server_ready = True
+            else:
+                print("⚠️  Server not available - some features may not work")
+        except Exception as e:
+            print(f"⚠️  Could not check server status: {e}")
 
     def _get_object_email(self, syft_obj: 'SyftObject'):
         """Extract email from syft:// URL"""
@@ -263,10 +279,12 @@ Example Usage:
 
     def _repr_html_(self):
         """HTML representation for Jupyter notebooks - now shows widget iframe"""
+        self._ensure_server_ready()
         return self.widget()
 
     def widget(self, width="100%", height="600px", url=None):
         """Display the syft-objects widget in an iframe"""
+        self._ensure_server_ready()
         if url is None:
             url = get_syft_objects_url("widget")
         
