@@ -29,8 +29,8 @@ class ObjectsCollection:
             return
         
         try:
-            from .auto_install import wait_for_syft_objects_server
-            if wait_for_syft_objects_server():
+            from .auto_install import ensure_server_healthy
+            if ensure_server_healthy():
                 self._server_ready = True
             else:
                 print("⚠️  Server not available - some features may not work")

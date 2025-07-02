@@ -99,10 +99,100 @@ def clone_syftbox_app() -> bool:
         return False
 
 
+def ensure_server_healthy(timeout_minutes: int = 5) -> bool:
+    """Ensure syft-objects server is healthy by checking /health endpoint.
+    
+    This is the main function that implements the robust startup flow:
+    1. Always check /health endpoint first
+    2. If /health fails, check if syft-objects is installed in SyftBox
+    3. If not installed, automatically reinstall it
+    4. Wait until /health endpoint is available
+    5. Then render the widget
+    
+    Args:
+        timeout_minutes: Maximum time to wait in minutes
+        
+    Returns:
+        True if server becomes healthy, False if timeout or critical failure
+    """
+    if not requests:
+        print("❌ Cannot check server health - requests library not available")
+        return False
+    
+    # Step 1: Always check /health endpoint first
+    if _check_health_endpoint():
+        return True
+    
+    # Step 2: /health failed - check if SyftBox app is installed
+    if not get_syftbox_apps_path():
+        print("❌ SyftBox not found - syft-objects requires SyftBox to run")
+        return False
+    
+    if not is_syftbox_running():
+        print("❌ SyftBox is not running - please start SyftBox first")
+        return False
+    
+    # Step 3: If app not installed, automatically reinstall
+    if not is_syftbox_app_installed():
+        print("🔺 Loading widget... (installing syft-objects app)")
+        if not reinstall_syftbox_app(silent=True):
+            print("❌ Failed to install syft-objects app")
+            return False
+        print("✅ Syft-objects app installed")
+    
+    # Step 4: Wait until /health endpoint is available
+    print("🔺 Loading widget...")
+    return _wait_for_health_endpoint(timeout_minutes)
+
+
+def _check_health_endpoint() -> bool:
+    """Quick check of the /health endpoint"""
+    try:
+        port = _get_server_port()
+        if port:
+            response = requests.get(f"http://localhost:{port}/health", timeout=1)
+            return response.status_code == 200
+    except Exception:
+        pass
+    return False
+
+
+def _get_server_port() -> Optional[int]:
+    """Get the server port from config file"""
+    try:
+        config_file = Path.home() / ".syftbox" / "syft_objects.config"
+        if config_file.exists():
+            port_str = config_file.read_text().strip()
+            if port_str.isdigit():
+                return int(port_str)
+    except Exception:
+        pass
+    return None
+
+
+def _wait_for_health_endpoint(timeout_minutes: int) -> bool:
+    """Wait for the /health endpoint to become available"""
+    timeout_seconds = timeout_minutes * 60
+    start_time = time.time()
+    
+    while time.time() - start_time < timeout_seconds:
+        if _check_health_endpoint():
+            port = _get_server_port() or 8004
+            print(f"✅ Widget ready at localhost:{port}")
+            return True
+        
+        # Wait before checking again
+        time.sleep(0.5)
+    
+    print(f"⏰ Server health check timeout after {timeout_minutes} minutes")
+    return False
+
+
 def wait_for_syft_objects_server(timeout_minutes: int = 5) -> bool:
     """Wait for syft-objects server to be available.
     
-    Repeatedly checks the port config file and tries to connect to the server.
+    DEPRECATED: Use ensure_server_healthy() instead.
+    This function is kept for backward compatibility.
     
     Args:
         timeout_minutes: Maximum time to wait in minutes
@@ -110,46 +200,7 @@ def wait_for_syft_objects_server(timeout_minutes: int = 5) -> bool:
     Returns:
         True if server becomes available, False if timeout
     """
-    if not requests:
-        return False
-        
-    timeout_seconds = timeout_minutes * 60
-    start_time = time.time()
-    waiting_message_shown = False
-    
-    while time.time() - start_time < timeout_seconds:
-        try:
-            # Read port from config file
-            config_file = Path.home() / ".syftbox" / "syft_objects.config"
-            
-            if config_file.exists():
-                port_str = config_file.read_text().strip()
-                if port_str.isdigit():
-                    port = int(port_str)
-                    
-                    # Try to connect to the server health endpoint (fast check)
-                    try:
-                        response = requests.get(f"http://localhost:{port}/health", timeout=1)
-                        if response.status_code == 200:
-                            # Only show success message if we had to wait
-                            if waiting_message_shown:
-                                print(f"✅ Server ready at localhost:{port}")
-                            return True
-                    except requests.exceptions.RequestException:
-                        # Server not ready yet - show waiting message only after first failure
-                        if not waiting_message_shown:
-                            print("🔺 Loading widget...")
-                            waiting_message_shown = True
-            
-            # Wait a bit before checking again
-            time.sleep(0.2)
-            
-        except Exception:
-            time.sleep(1)
-    
-    if waiting_message_shown:
-        print(f"⏰ Server startup timeout after {timeout_minutes} minutes")
-    return False
+    return ensure_server_healthy(timeout_minutes)
 
 
 def start_syftbox_app(app_path: Path) -> bool:
