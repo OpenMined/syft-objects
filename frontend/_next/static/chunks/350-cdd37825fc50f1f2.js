@@ -578,7 +578,7 @@
         }, [W]), (0, l.useEffect)(() => {
           O > 0 && ea(Math.ceil(O / ee))
         }, [O, ee]), s) ? (0, a.jsx)("div", {
-          className: "flex items-center justify-center min-h-[200px] p-4",
+          className: "flex items-center justify-center min-h-screen p-4",
           children: (0, a.jsxs)("div", {
             className: "text-center space-y-4",
             children: [(0, a.jsx)(j, {
@@ -586,7 +586,7 @@
               isLoading: !0
             }), (0, a.jsx)("p", {
               className: "text-sm text-muted-foreground",
-              children: "Loading syft objects..."
+              children: "the internet of private data"
             })]
           })
         }) : (0, a.jsxs)("div", {
@@ -1150,7 +1150,7 @@
                             className: "truncate text-xs",
                             children: (0, a.jsx)("span", {
                               className: "inline-flex items-center px-1 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800",
-                              children: e.type || "unknown"
+                              children: e.type || "—"
                             })
                           })
                         }), (0, a.jsx)("td", {

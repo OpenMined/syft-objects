@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 from uuid import UUID, uuid4
 import yaml
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from .client import get_syftbox_client, extract_local_path_from_syft_url
 from .permissions import set_file_permissions_wrapper
@@ -83,6 +83,58 @@ class SyftObject(BaseModel):
         if syftobject_yaml_path:
             return syftobject_yaml_path
         return ""
+    
+    @property
+    def file_type(self) -> str:
+        """Get the file extension from mock/private URLs"""
+        try:
+            # Try to extract file extension from private URL first, then mock URL
+            for url in [self.private, self.mock]:
+                if not url:
+                    continue
+                
+                # Get just the filename from the URL
+                filename = url.split("/")[-1]
+                
+                # Check if filename has an extension (dot not at start)
+                if "." in filename and not filename.startswith("."):
+                    parts = filename.split(".")
+                    if len(parts) > 1 and parts[-1]:  # Ensure there's an actual extension
+                        return f".{parts[-1].lower()}"
+            return ""
+        except:
+            return ""
+    
+    @model_validator(mode='after')
+    def validate_file_extensions(self):
+        """Validate that mock and private files have matching extensions"""
+        def extract_extension(url: str) -> str:
+            """Extract file extension from a URL filename"""
+            if not url:
+                return ""
+            
+            # Get just the filename from the URL
+            filename = url.split("/")[-1]
+            
+            # Check if filename has an extension (dot not at start)
+            if "." in filename and not filename.startswith("."):
+                parts = filename.split(".")
+                if len(parts) > 1 and parts[-1]:  # Ensure there's an actual extension
+                    return parts[-1].lower()
+            return ""
+        
+        mock_ext = extract_extension(self.mock)
+        private_ext = extract_extension(self.private)
+        
+        # Only validate if BOTH files have extensions - they must match
+        if mock_ext and private_ext and mock_ext != private_ext:
+            raise ValueError(
+                f"Mock and private files must have matching extensions. "
+                f"Mock file has '.{mock_ext}' but private file has '.{private_ext}'. "
+                f"Mock: {self.mock}, Private: {self.private}"
+            )
+        
+        return self
     
     class Config:
         arbitrary_types_allowed = True
