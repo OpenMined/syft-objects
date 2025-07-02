@@ -35,6 +35,9 @@ dependencies = [
     "pydantic>=2.0.0",
     "pyyaml>=6.0",
     "syft-perm>=0.1.0",
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "loguru>=0.7.0",
 ]
 
 [project.optional-dependencies]
