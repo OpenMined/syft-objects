@@ -5,7 +5,7 @@
 
 set -e
 
-echo "🔐 Building syft-objects v0.3.0..."
+echo "🔐 Building syft-objects v0.3.4..."
 
 # Clean previous builds
 echo "🧹 Cleaning previous builds..."

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "syft-objects"
-version = "0.3.3"
+version = "0.3.4"
 description = "Share files with explicit mock vs private control"
 readme = "README.md"
 authors = [
@@ -150,6 +150,8 @@ addopts = [
 
 [dependency-groups]
 dev = [
+    "build>=1.2.2.post1",
     "pytest>=8.4.1",
     "pytest-cov>=6.2.1",
+    "twine>=6.1.0",
 ]
