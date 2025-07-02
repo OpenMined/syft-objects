@@ -110,14 +110,11 @@ def wait_for_syft_objects_server(timeout_minutes: int = 5) -> bool:
         True if server becomes available, False if timeout
     """
     if not requests:
-        print("❌ Cannot check server availability - requests library not available")
         return False
         
     timeout_seconds = timeout_minutes * 60
     start_time = time.time()
-    last_port = None
-    
-    print("⏳ Waiting for syft-objects server to start... (this might take a minute and only happens the first time)")
+    waiting_message_shown = False
     
     while time.time() - start_time < timeout_seconds:
         try:
@@ -129,29 +126,28 @@ def wait_for_syft_objects_server(timeout_minutes: int = 5) -> bool:
                 if port_str.isdigit():
                     port = int(port_str)
                     
-                    # Only log port changes to avoid spam
-                    if port != last_port:
-                        print(f"🔍 Found port {port} in config...")
-                        last_port = port
-                    
                     # Try to connect to the server health endpoint (fast check)
                     try:
                         response = requests.get(f"http://localhost:{port}/health", timeout=1)
                         if response.status_code == 200:
-                            print(f"✅ Syft-objects server is now available at http://localhost:{port}")
+                            # Only show success message if we had to wait
+                            if waiting_message_shown:
+                                print(f"✅ Server ready at localhost:{port}")
                             return True
                     except requests.exceptions.RequestException:
-                        # Server not ready yet, continue waiting
-                        pass
+                        # Server not ready yet - show waiting message only after first failure
+                        if not waiting_message_shown:
+                            print("⏳ Starting server...")
+                            waiting_message_shown = True
             
             # Wait a bit before checking again
-            time.sleep(0.1)
+            time.sleep(0.2)
             
-        except Exception as e:
-            print(f"⚠️  Error while waiting for server: {e}")
+        except Exception:
             time.sleep(1)
     
-    print(f"⏰ Timeout after {timeout_minutes} minutes waiting for syft-objects server")
+    if waiting_message_shown:
+        print(f"⏰ Server startup timeout after {timeout_minutes} minutes")
     return False
 
 

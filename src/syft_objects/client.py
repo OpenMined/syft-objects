@@ -97,11 +97,29 @@ def check_syftbox_status():
         _syftbox_status['error'] = f"Could not find SyftBox client: {e}"
 
 
-def _print_startup_banner():
-    """Print a clean, minimal startup message for syft-objects"""
+def _print_startup_banner(only_if_needed=False):
+    """Print a clean, minimal startup message for syft-objects
+    
+    Args:
+        only_if_needed: If True, only print if there are issues or the user needs to know something
+    """
     from . import __version__
     
-    # Quick status line with carriage return
+    # If only_if_needed=True, only print when there are actual issues
+    if only_if_needed:
+        # Only print if there's an error or missing component
+        if _syftbox_status.get('error'):
+            if "not available" in _syftbox_status['error']:
+                port = get_syft_objects_port()
+                print(f"🔐 Syft Objects v{__version__} | Local mode | Server: localhost:{port}")
+            else:
+                port = get_syft_objects_port()
+                print(f"⚠️  Syft Objects v{__version__} | {_syftbox_status['error']} | Server: localhost:{port}")
+            print()  # Single line break
+        # Otherwise, completely silent for normal operations
+        return
+    
+    # Original behavior for explicit calls (not during import)
     if _syftbox_status.get('client_connected'):
         user = _syftbox_status['user_email']
         port = get_syft_objects_port()
