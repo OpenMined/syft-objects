@@ -25,11 +25,13 @@ class ObjectsCollection:
 
     def _ensure_server_ready(self):
         """Ensure syft-objects server is ready before UI operations"""
-        if self._server_ready:
-            return
         
         try:
-            from .auto_install import ensure_server_healthy
+            # ALWAYS check and install syft-objects app in SyftBox (same as import does)
+            from .auto_install import ensure_syftbox_app_installed, ensure_server_healthy
+            ensure_syftbox_app_installed(silent=True)
+            
+            # Then ensure server health
             if ensure_server_healthy():
                 self._server_ready = True
             else:
@@ -284,6 +286,7 @@ Example Usage:
 
     def widget(self, width="100%", height="600px", url=None):
         """Display the syft-objects widget in an iframe"""
+        
         self._ensure_server_ready()
         if url is None:
             url = get_syft_objects_url("widget")

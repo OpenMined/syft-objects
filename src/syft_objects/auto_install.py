@@ -66,9 +66,6 @@ def clone_syftbox_app() -> bool:
         # Check if git is available
         subprocess.run(["git", "--version"], capture_output=True, check=True)
         
-        print(f"Installing syft-objects app to SyftBox...")
-        print(f"Cloning {repo_url} to {target_path}")
-        
         # Clone the repository
         result = subprocess.run(
             ["git", "clone", repo_url, str(target_path)],
@@ -78,7 +75,6 @@ def clone_syftbox_app() -> bool:
         )
         
         if result.returncode == 0:
-            print(f"✅ Successfully installed syft-objects app to {target_path}")
             return True
         else:
             print(f"❌ Failed to clone repository:", file=sys.stderr)
@@ -134,14 +130,14 @@ def ensure_server_healthy(timeout_minutes: int = 5) -> bool:
     
     # Step 3: If app not installed, automatically reinstall
     if not is_syftbox_app_installed():
-        print("🔺 Loading widget... (installing syft-objects app)")
+        
         if not reinstall_syftbox_app(silent=True):
             print("❌ Failed to install syft-objects app")
             return False
         print("✅ Syft-objects app installed")
     
     # Step 4: Wait until /health endpoint is available
-    print("🔺 Loading widget...")
+    
     return _wait_for_health_endpoint(timeout_minutes)
 
 
@@ -178,7 +174,6 @@ def _wait_for_health_endpoint(timeout_minutes: int) -> bool:
     while time.time() - start_time < timeout_seconds:
         if _check_health_endpoint():
             port = _get_server_port() or 8004
-            print(f"✅ Widget ready at localhost:{port}")
             return True
         
         # Wait before checking again
