@@ -114,6 +114,32 @@ For SyftBox integration:
 pip install syft-objects[syftbox]
 ```
 
+### 🚀 SyftBox Auto-Installation
+
+When you import `syft-objects`, it automatically checks if you have SyftBox installed locally and sets up the syft-objects app for you:
+
+```python
+import syft_objects as syo  # Auto-installs to SyftBox if detected
+```
+
+**What happens automatically:**
+- ✅ **Detects SyftBox**: Checks for `~/SyftBox/` directory
+- ✅ **Verifies app**: Looks for existing `~/SyftBox/apps/syft-objects/`  
+- ✅ **Auto-clones**: If missing, runs `git clone https://github.com/OpenMined/syft-objects.git`
+- ✅ **Silent operation**: Only shows messages during installation
+- ✅ **Graceful fallback**: Works fine without SyftBox too
+
+**Requirements for auto-installation:**
+- SyftBox installed locally (creates `~/SyftBox/` directory)
+- Git available in your system PATH
+- Internet connection for cloning
+
+**Manual installation** (if needed):
+```bash
+cd ~/SyftBox/apps/
+git clone https://github.com/OpenMined/syft-objects.git
+```
+
 ## Key Features
 
 - **🎯 One function**: `syo.syobj()` - simple and clean
@@ -153,3 +179,82 @@ syo.objects.refresh()                  # Refresh collection
 ## License
 
 Apache License 2.0
+
+## Syft Objects
+
+A distributed file discovery and addressing system for SyftBox.
+
+Syft Objects allows you to discover, share, and access data objects across the SyftBox network through a simple Python interface and web UI.
+
+## Features
+
+- **🔍 Object Discovery**: Automatically find and catalog distributed syft objects
+- **🌐 Web Interface**: Modern, responsive UI for browsing and managing objects
+- **🐍 Python API**: Simple and intuitive Python interface
+- **🔒 Privacy-First**: Respects SyftBox privacy and permission models
+- **⚡ Real-time**: Live updates and synchronization
+- **📱 Mobile-Friendly**: Works seamlessly on all devices
+
+## Installation
+
+### Option 1: Direct Installation
+
+```bash
+pip install syft-objects
+```
+
+### Option 2: Auto-Installation via SyftBox
+
+If you have SyftBox installed, syft-objects will automatically install itself as a SyftBox app when you first import it:
+
+```python
+import syft_objects  # This triggers auto-installation if SyftBox is present
+```
+
+#### Auto-Installation Details
+
+When you import syft-objects, it will:
+
+1. **Check for SyftBox**: Detect if SyftBox is installed on your system
+2. **Locate Apps Directory**: Find your `~/SyftBox/apps/` directory
+3. **Auto-Clone**: Automatically clone the syft-objects repository if not present
+4. **Graceful Fallback**: Work normally even if SyftBox is not available
+
+**Requirements for Auto-Installation:**
+- SyftBox must be installed and configured
+- Git must be available in your system PATH
+- Internet connection for cloning the repository
+
+**Manual Installation (if auto-install fails):**
+```bash
+cd ~/SyftBox/apps/
+git clone https://github.com/OpenMined/syft-objects.git
+```
+
+The auto-installation feature makes it seamless to get started with syft-objects in SyftBox environments while maintaining compatibility with standalone usage.
+
+## Port Discovery
+
+When syft-objects runs as a SyftBox app, it uses dynamic port assignment via the `SYFTBOX_ASSIGNED_PORT` environment variable. The system automatically:
+
+1. **Port Assignment**: SyftBox assigns a port via `SYFTBOX_ASSIGNED_PORT` 
+2. **Port Persistence**: The `run.sh` script saves the assigned port to a `.port` file
+3. **Dynamic Discovery**: The Python API automatically discovers the port by checking:
+   - Current working directory: `./.port`
+   - SyftBox apps directory: `~/SyftBox/apps/syft-objects/.port`
+   - Package directory: `<package_path>/.port`
+4. **Fallback**: Uses port 8003 if no port file is found
+
+This ensures the widget and API calls always connect to the correct server instance.
+
+**Usage:**
+```python
+import syft_objects as syo
+
+# Widget automatically uses the correct port
+syo.objects.widget()  # Uses dynamic port discovery
+
+# Manual port/URL access
+port = syo.get_syft_objects_port()  # Get current port
+url = syo.get_syft_objects_url("api/objects")  # Get API URL
+```

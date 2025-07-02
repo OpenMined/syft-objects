@@ -2,6 +2,7 @@
 
 from typing import Optional
 from pathlib import Path
+import os
 
 
 # Global variables for client state
@@ -81,6 +82,40 @@ def check_syftbox_status():
     except Exception as e:
         print(f"⚠️  Could not find SyftBox client: {e}")
         print("    Make sure SyftBox is installed and you're logged in")
+
+
+def get_syft_objects_port():
+    """Get the port where syft-objects server is running"""
+    # Try to find the .port file in various possible locations
+    possible_locations = [
+        # Current working directory
+        Path.cwd() / ".port",
+        # SyftBox apps directory
+        Path.home() / "SyftBox" / "apps" / "syft-objects" / ".port",
+        # Package directory (for development)
+        Path(__file__).parent.parent.parent / ".port",
+    ]
+    
+    for port_file in possible_locations:
+        try:
+            if port_file.exists():
+                port = port_file.read_text().strip()
+                if port.isdigit():
+                    return int(port)
+        except Exception:
+            continue
+    
+    # Default fallback port
+    return 8003
+
+
+def get_syft_objects_url(endpoint=""):
+    """Get the full URL for syft-objects server endpoints"""
+    port = get_syft_objects_port()
+    base_url = f"http://localhost:{port}"
+    if endpoint:
+        return f"{base_url}/{endpoint.lstrip('/')}"
+    return base_url
 
 
 # Initialize SyftBox on module import

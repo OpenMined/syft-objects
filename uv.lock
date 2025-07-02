@@ -1934,6 +1934,12 @@ docs = [
     { name = "mkdocs-material" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-cov" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
@@ -1953,6 +1959,12 @@ requires-dist = [
     { name = "syft-core", specifier = ">=0.2.5" },
     { name = "syft-perm", specifier = ">=0.1.0" },
     { name = "uvicorn", specifier = ">=0.24.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=8.4.1" },
+    { name = "pytest-cov", specifier = ">=6.2.1" },
 ]
 
 [[package]]

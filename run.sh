@@ -48,9 +48,15 @@ fi
 
 echo "✅ Frontend built successfully"
 
-# Start the backend API server
-echo "🌐 Starting Syft Objects UI on port ${SYFTBOX_ASSIGNED_PORT:-8003}..."
+# Determine the port to use
 SYFTBOX_ASSIGNED_PORT=${SYFTBOX_ASSIGNED_PORT:-8003}
+
+# Save the port to a file for the Python API to discover
+echo "💾 Saving port $SYFTBOX_ASSIGNED_PORT to .port file..."
+echo "$SYFTBOX_ASSIGNED_PORT" > .port
+
+# Start the backend API server
+echo "🌐 Starting Syft Objects UI on port $SYFTBOX_ASSIGNED_PORT..."
 
 # For development, serve the built frontend through FastAPI
 echo "🚀 Starting combined backend and frontend server..."

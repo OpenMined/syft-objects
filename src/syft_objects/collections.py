@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, List, Optional
 if TYPE_CHECKING:
     from .models import SyftObject
 
-from .client import get_syftbox_client, SYFTBOX_AVAILABLE
+from .client import get_syftbox_client, SYFTBOX_AVAILABLE, get_syft_objects_url
 
 
 class ObjectsCollection:
@@ -265,15 +265,18 @@ Example Usage:
         """HTML representation for Jupyter notebooks - now shows widget iframe"""
         return self.widget()
 
-    def widget(self, width="100%", height="600px", url="http://localhost:8003/widget"):
+    def widget(self, width="100%", height="600px", url=None):
         """Display the syft-objects widget in an iframe"""
+        if url is None:
+            url = get_syft_objects_url("widget")
+        
         return f"""
         <iframe 
             src="{url}" 
             width="{width}" 
             height="{height}"
             frameborder="0"
-            style="border: 1px solid #cfcfcf; border-radius: 2px; margin: 0.5em 0; padding: 0; display: block; background-color: #fff;"
+            style="border: none;"
             title="SyftObjects Widget">
         </iframe>
         """
