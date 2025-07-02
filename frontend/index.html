@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SyftObjects Widget</title>
+  <meta name="description" content="SyftObjects Widget for Jupyter notebooks">
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+    #widget-frame {
+      width: 100%;
+      height: 100vh;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Simple iframe wrapper that loads the actual widget -->
+  <iframe id="widget-frame" src="/widget/" title="SyftObjects Widget Interface"></iframe>
+</body>
+</html>

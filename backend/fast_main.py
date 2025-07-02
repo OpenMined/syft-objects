@@ -57,7 +57,7 @@ from fastapi.staticfiles import StaticFiles
 
 # Mount the Next.js build directory to serve static assets
 try:
-    app.mount("/_next", StaticFiles(directory="frontend/out/_next"), name="nextjs_static")
+    app.mount("/_next", StaticFiles(directory="frontend/_next"), name="nextjs_static")
     logger.info("✅ Next.js static files mounted successfully")
 except Exception as e:
     logger.warning(f"Could not mount Next.js static files: {e}")
@@ -628,7 +628,7 @@ async def widget_redirect():
 @app.get("/widget/")
 async def widget_page():
     """Serve the Next.js widget page."""
-    widget_file = PathLib(__file__).parent.parent / "frontend" / "out" / "widget" / "index.html"
+    widget_file = PathLib(__file__).parent.parent / "frontend" / "widget" / "index.html"
     if widget_file.exists():
         return FileResponse(widget_file, media_type="text/html")
     else:
@@ -638,7 +638,7 @@ async def widget_page():
 @app.get("/", response_class=HTMLResponse)
 async def root():
     """Serve the main Next.js page."""
-    main_file = PathLib(__file__).parent.parent / "frontend" / "out" / "index.html"
+    main_file = PathLib(__file__).parent.parent / "frontend" / "index.html"
     if main_file.exists():
         return FileResponse(main_file, media_type="text/html")
     else:

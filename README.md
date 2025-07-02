@@ -195,6 +195,36 @@ Syft Objects allows you to discover, share, and access data objects across the S
 - **⚡ Real-time**: Live updates and synchronization
 - **📱 Mobile-Friendly**: Works seamlessly on all devices
 
+## Web Interface
+
+The syft-objects package includes a modern web UI for browsing and managing objects:
+
+### Features
+- **Browse Objects**: View all syft objects in a clean table format
+- **Search & Filter**: Search by keywords and filter by email addresses
+- **Object Details**: View detailed information including metadata, permissions, and file previews
+- **Real-time Status**: Monitor SyftBox connection status
+- **Refresh**: Manually refresh the objects collection
+
+### Running the Web UI
+
+Launch the integrated web interface using the provided script:
+
+```bash
+./run.sh
+```
+
+This will start a combined backend/frontend server. The UI will be available at `http://localhost:8003` (or the port specified by `SYFTBOX_ASSIGNED_PORT`).
+
+### API Endpoints
+
+The backend provides a REST API:
+- `GET /api/status` - Get application and SyftBox status
+- `GET /api/objects` - List objects with search/filter support
+- `GET /api/objects/{uid}` - Get detailed object information  
+- `GET /api/objects/refresh` - Refresh the objects collection
+- `GET /api/metadata/emails` - Get unique email addresses
+
 ## Installation
 
 ### Option 1: Direct Installation

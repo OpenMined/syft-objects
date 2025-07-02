@@ -458,67 +458,6 @@ Example Usage:
             font-size: 10px;
             color: #6c757d;
         }}
-        .syft-objects-modal-overlay {{
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-        }}
-        .syft-objects-modal {{
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-            min-width: 400px;
-            max-width: 80vw;
-            max-height: 80vh;
-            overflow-y: auto;
-            z-index: 1001;
-        }}
-        .syft-objects-modal-header {{
-            padding: 20px 24px 0 24px;
-            border-bottom: 1px solid #e9ecef;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }}
-        .syft-objects-modal-title {{
-            font-size: 18px;
-            font-weight: 600;
-            color: #333;
-            margin: 0;
-        }}
-        .syft-objects-modal-close {{
-            background: none;
-            border: none;
-            font-size: 24px;
-            color: #666;
-            cursor: pointer;
-            padding: 0;
-            line-height: 1;
-        }}
-        .syft-objects-modal-close:hover {{
-            color: #333;
-        }}
-        .syft-objects-modal-body {{
-            padding: 24px;
-        }}
-        .syft-objects-btn-plus {{
-            background-color: #28a745;
-            min-width: 40px;
-            font-weight: bold;
-            font-size: 16px;
-        }}
-        .syft-objects-btn-plus:hover {{
-            background-color: #218838;
-        }}
         </style>
         <div class="syft-objects-container" id="{container_id}">
             <div class="syft-objects-header">
@@ -531,7 +470,6 @@ Example Usage:
                 <button class="syft-objects-btn" onclick="selectAllSyftObjects('{container_id}')">Select All</button>
                 <button class="syft-objects-btn syft-objects-btn-secondary" onclick="clearAllSyftObjects('{container_id}')">Clear</button>
                 <button class="syft-objects-btn" onclick="generateSyftObjectsCode('{container_id}')">Generate Code</button>
-                <button class="syft-objects-btn syft-objects-btn-plus" onclick="openSyftObjectsModal('{container_id}')">+</button>
             </div>
             <div class="syft-objects-table-container">
                 <table class="syft-objects-table">
@@ -588,19 +526,6 @@ Example Usage:
             </div>
             <div class="syft-objects-output" id="{container_id}-output" style="display: none;">
                 # Copy this code to your notebook:
-            </div>
-        </div>
-        
-        <!-- Modal -->
-        <div class="syft-objects-modal-overlay" id="{container_id}-modal-overlay" onclick="closeSyftObjectsModal('{container_id}')">
-            <div class="syft-objects-modal" onclick="event.stopPropagation()">
-                <div class="syft-objects-modal-header">
-                    <h3 class="syft-objects-modal-title">Add New Object</h3>
-                    <button class="syft-objects-modal-close" onclick="closeSyftObjectsModal('{container_id}')">&times;</button>
-                </div>
-                <div class="syft-objects-modal-body">
-                    <p>Modal content will be added here.</p>
-                </div>
             </div>
         </div>
         
@@ -715,16 +640,6 @@ objects = [syo.objects[i] for i in [${{indicesStr}}]]`;
             
             output.textContent = code;
             output.style.display = 'block';
-        }}
-        
-        function openSyftObjectsModal(containerId) {{
-            const modal = document.querySelector(`#${{containerId}}-modal-overlay`);
-            modal.style.display = 'block';
-        }}
-        
-        function closeSyftObjectsModal(containerId) {{
-            const modal = document.querySelector(`#${{containerId}}-modal-overlay`);
-            modal.style.display = 'none';
         }}
         </script>
         """
