@@ -950,7 +950,7 @@
                             className: "truncate text-xs",
                             children: (0, a.jsx)("span", {
                               className: "inline-flex items-center px-1 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800",
-                              children: e.type || "unknown"
+                              children: e.type || "—"
                             })
                           })
                         }), (0, a.jsx)("td", {
