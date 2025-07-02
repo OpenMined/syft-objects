@@ -639,6 +639,204 @@
                     },
                     className: "px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs hover:bg-secondary/90",
                     children: "Clear"
+                  }), (0, a.jsx)("button", {
+                    onClick: () => {
+                      // Create and show comprehensive new object modal
+                      let existingModal = document.getElementById('new-object-modal');
+                      if (existingModal) {
+                        existingModal.remove();
+                      }
+                      
+                      const modal = document.createElement('div');
+                      modal.id = 'new-object-modal';
+                      modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-2 z-50';
+                      modal.innerHTML = `
+                        <div class="bg-white rounded-lg max-w-2xl w-full mx-auto my-8" style="max-height: calc(100vh - 4rem);">
+                          <div class="bg-white border-b px-4 py-3">
+                            <div class="flex items-center justify-between">
+                              <h2 class="text-lg font-semibold text-gray-900">Create New SyftObject</h2>
+                              <button id="close-modal" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+                            </div>
+                          </div>
+                          <div class="overflow-y-auto p-4" style="max-height: calc(100vh - 12rem);">
+                            <form id="new-object-form" class="space-y-3">
+                              <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Object Name *</label>
+                                <input type="text" name="name" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="My New Object">
+                              </div>
+                              <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                <textarea name="description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Description of the object"></textarea>
+                              </div>
+                              <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Admin Email</label>
+                                <input type="email" name="email" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="admin@example.com">
+                              </div>
+                              <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">File Content</label>
+                                <div class="border border-gray-300 rounded-md">
+                                  <div class="flex border-b border-gray-300">
+                                    <button type="button" id="upload-tab" class="px-4 py-2 text-sm font-medium text-blue-600 border-b-2 border-blue-600">Upload File</button>
+                                    <button type="button" id="paste-tab" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Paste Content</button>
+                                  </div>
+                                  <div id="upload-content" class="p-3">
+                                    <input type="file" name="file" id="file-upload" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                    <p class="text-xs text-gray-500 mt-1">Upload any file type (CSV, JSON, Python, etc.)</p>
+                                  </div>
+                                  <div id="paste-content" class="p-3 hidden">
+                                    <textarea name="fileContent" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Paste your file content here..."></textarea>
+                                  </div>
+                                </div>
+                              </div>
+                              <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Metadata (JSON format)</label>
+                                <textarea name="metadata" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm" placeholder='{"key": "value", "category": "dataset"}'></textarea>
+                              </div>
+                              <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Permissions</label>
+                                <div class="grid grid-cols-2 gap-3 text-sm">
+                                  <div>
+                                    <label class="block text-xs font-medium text-green-700 mb-1">Private Read</label>
+                                    <input type="text" name="private_read" class="w-full px-2 py-1 border border-gray-300 rounded text-xs" placeholder="email1@example.com, email2@example.com">
+                                  </div>
+                                  <div>
+                                    <label class="block text-xs font-medium text-green-700 mb-1">Private Write</label>
+                                    <input type="text" name="private_write" class="w-full px-2 py-1 border border-gray-300 rounded text-xs" placeholder="email1@example.com">
+                                  </div>
+                                  <div>
+                                    <label class="block text-xs font-medium text-blue-700 mb-1">Mock Read</label>
+                                    <input type="text" name="mock_read" class="w-full px-2 py-1 border border-gray-300 rounded text-xs" placeholder="email1@example.com, email2@example.com">
+                                  </div>
+                                  <div>
+                                    <label class="block text-xs font-medium text-blue-700 mb-1">Mock Write</label>
+                                    <input type="text" name="mock_write" class="w-full px-2 py-1 border border-gray-300 rounded text-xs" placeholder="email1@example.com">
+                                  </div>
+                                  <div class="col-span-2">
+                                    <label class="block text-xs font-medium text-purple-700 mb-1">SyftObject Access</label>
+                                    <input type="text" name="syftobject" class="w-full px-2 py-1 border border-gray-300 rounded text-xs" placeholder="email1@example.com, email2@example.com">
+                                  </div>
+                                </div>
+                              </div>
+                            </form>
+                          </div>
+                          <div class="bg-gray-50 px-4 py-3 flex justify-end space-x-2 border-t" style="position: sticky; bottom: 0;">
+                            <button id="cancel-btn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
+                            <button id="create-btn" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">Create Object</button>
+                          </div>
+                        </div>
+                      `;
+                      
+                      document.body.appendChild(modal);
+                      
+                      // Add event listeners
+                      document.getElementById('close-modal').onclick = () => modal.remove();
+                      document.getElementById('cancel-btn').onclick = () => modal.remove();
+                      modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+                      
+                      // Tab switching
+                      document.getElementById('upload-tab').onclick = function() {
+                        this.className = 'px-4 py-2 text-sm font-medium text-blue-600 border-b-2 border-blue-600';
+                        document.getElementById('paste-tab').className = 'px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700';
+                        document.getElementById('upload-content').classList.remove('hidden');
+                        document.getElementById('paste-content').classList.add('hidden');
+                      };
+                      document.getElementById('paste-tab').onclick = function() {
+                        this.className = 'px-4 py-2 text-sm font-medium text-blue-600 border-b-2 border-blue-600';
+                        document.getElementById('upload-tab').className = 'px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700';
+                        document.getElementById('paste-content').classList.remove('hidden');
+                        document.getElementById('upload-content').classList.add('hidden');
+                      };
+                      
+                      // File upload handler
+                      document.getElementById('file-upload').onchange = function(e) {
+                        const file = e.target.files[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = function(e) {
+                            const form = document.getElementById('new-object-form');
+                            let fileContentField = form.querySelector('[name="fileContent"]');
+                            if (fileContentField) {
+                              fileContentField.value = e.target.result;
+                            }
+                            // Auto-switch to paste tab to show the content
+                            document.getElementById('paste-tab').click();
+                          };
+                          reader.readAsText(file);
+                        }
+                      };
+                      
+                      // Form submission
+                      document.getElementById('create-btn').onclick = async function() {
+                        const form = document.getElementById('new-object-form');
+                        const formData = new FormData(form);
+                        const data = Object.fromEntries(formData.entries());
+                        
+                        // Validate required fields
+                        if (!data.name) {
+                          alert('Object name is required');
+                          return;
+                        }
+                        
+                        // Process permissions
+                        const permissions = {
+                          private_read: data.private_read ? data.private_read.split(',').map(e => e.trim()).filter(e => e) : [],
+                          private_write: data.private_write ? data.private_write.split(',').map(e => e.trim()).filter(e => e) : [],
+                          mock_read: data.mock_read ? data.mock_read.split(',').map(e => e.trim()).filter(e => e) : [],
+                          mock_write: data.mock_write ? data.mock_write.split(',').map(e => e.trim()).filter(e => e) : [],
+                          syftobject: data.syftobject ? data.syftobject.split(',').map(e => e.trim()).filter(e => e) : []
+                        };
+                        
+                        // Parse metadata
+                        let metadata = {};
+                        if (data.metadata) {
+                          try {
+                            metadata = JSON.parse(data.metadata);
+                          } catch (e) {
+                            alert('Invalid JSON in metadata field');
+                            return;
+                          }
+                        }
+                        
+                        const objData = {
+                          name: data.name,
+                          description: data.description || '',
+                          email: data.email || '',
+                          file_content: data.fileContent || '',
+                          metadata: metadata,
+                          permissions: permissions
+                        };
+                        
+                        try {
+                          this.textContent = 'Creating...';
+                          this.disabled = true;
+                          
+                          const response = await fetch('/api/objects', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(objData)
+                          });
+                          
+                          if (response.ok) {
+                            modal.remove();
+                            // Refresh the objects list
+                            ek();
+                            eN('SyftObject created successfully!');
+                          } else {
+                            const error = await response.text();
+                            alert('Error creating object: ' + error);
+                          }
+                        } catch (error) {
+                          alert('Error creating object: ' + error.message);
+                        } finally {
+                          this.textContent = 'Create Object';
+                          this.disabled = false;
+                        }
+                      };
+                    },
+                    className: "px-2 py-1 bg-green-100 text-green-800 rounded text-xs hover:bg-green-200",
+                    children: "New"
                   }), V.size > 0 && (0, a.jsx)(a.Fragment, {
                     children: [(0, a.jsxs)("button", {
                       onClick: () => {
