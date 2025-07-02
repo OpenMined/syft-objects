@@ -138,7 +138,7 @@ def wait_for_syft_objects_server(timeout_minutes: int = 5) -> bool:
                     except requests.exceptions.RequestException:
                         # Server not ready yet - show waiting message only after first failure
                         if not waiting_message_shown:
-                            print("⏳ Starting server...")
+                            print("🔺 Loading widget...")
                             waiting_message_shown = True
             
             # Wait a bit before checking again
