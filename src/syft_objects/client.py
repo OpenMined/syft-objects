@@ -86,24 +86,16 @@ def check_syftbox_status():
 
 def get_syft_objects_port():
     """Get the port where syft-objects server is running"""
-    # Try to find the .port file in various possible locations
-    possible_locations = [
-        # Current working directory
-        Path.cwd() / ".port",
-        # SyftBox apps directory
-        Path.home() / "SyftBox" / "apps" / "syft-objects" / ".port",
-        # Package directory (for development)
-        Path(__file__).parent.parent.parent / ".port",
-    ]
+    # Look for the port in the static config file
+    config_file = Path.home() / ".syftbox" / "syft_objects.config"
     
-    for port_file in possible_locations:
-        try:
-            if port_file.exists():
-                port = port_file.read_text().strip()
-                if port.isdigit():
-                    return int(port)
-        except Exception:
-            continue
+    try:
+        if config_file.exists():
+            port = config_file.read_text().strip()
+            if port.isdigit():
+                return int(port)
+    except Exception:
+        pass
     
     # Default fallback port
     return 8003

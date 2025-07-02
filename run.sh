@@ -51,9 +51,12 @@ echo "✅ Frontend built successfully"
 # Determine the port to use
 SYFTBOX_ASSIGNED_PORT=${SYFTBOX_ASSIGNED_PORT:-8003}
 
-# Save the port to a file for the Python API to discover
-echo "💾 Saving port $SYFTBOX_ASSIGNED_PORT to .port file..."
-echo "$SYFTBOX_ASSIGNED_PORT" > .port
+# Create .syftbox directory if it doesn't exist
+mkdir -p ~/.syftbox
+
+# Save the port to a static config file for the Python API to discover
+echo "💾 Saving port $SYFTBOX_ASSIGNED_PORT to ~/.syftbox/syft_objects.config..."
+echo "$SYFTBOX_ASSIGNED_PORT" > ~/.syftbox/syft_objects.config
 
 # Start the backend API server
 echo "🌐 Starting Syft Objects UI on port $SYFTBOX_ASSIGNED_PORT..."
