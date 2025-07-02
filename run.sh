@@ -40,6 +40,14 @@ cd frontend
 npm run build
 cd ..
 
+# Verify frontend build exists
+if [ ! -d "frontend/out" ]; then
+    echo "❌ Frontend build failed - no 'out' directory found"
+    exit 1
+fi
+
+echo "✅ Frontend built successfully"
+
 # Start the backend API server
 echo "🌐 Starting Syft Objects UI on port ${SYFTBOX_ASSIGNED_PORT:-8003}..."
 SYFTBOX_ASSIGNED_PORT=${SYFTBOX_ASSIGNED_PORT:-8003}

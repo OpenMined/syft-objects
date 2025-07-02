@@ -10,7 +10,7 @@ from pathlib import Path as PathLib
 from fastapi import FastAPI, Depends, HTTPException, Body, Path, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, PlainTextResponse
 from loguru import logger
 
 try:
@@ -109,8 +109,10 @@ async def get_objects(
         if email_filter:
             collection = collection.filter_by_email(email_filter)
         
-        # Convert to list for pagination
+        # Convert to list and sort by creation date (newest first for proper indexing)
         all_objects = collection.to_list()
+        # Sort by created_at (newest first) to get consistent indexing by creation order
+        all_objects.sort(key=lambda x: x.created_at or datetime.min, reverse=True)
         total_count = len(all_objects)
         
         # Apply pagination
@@ -120,7 +122,9 @@ async def get_objects(
         
         # Convert objects to dict format
         objects_data = []
-        for i, obj in enumerate(paginated_objects, start=offset):
+        for page_idx, obj in enumerate(paginated_objects):
+            # Calculate the actual index in the full collection (1-based, ordered by creation)
+            actual_index = start_idx + page_idx + 1
             # Extract email from private URL
             email = "unknown@example.com"
             try:
@@ -132,7 +136,7 @@ async def get_objects(
                 pass
             
             obj_data = {
-                "index": i,
+                "index": actual_index,
                 "uid": str(obj.uid),
                 "name": obj.name or "Unnamed Object",
                 "description": obj.description or "",
@@ -309,51 +313,312 @@ async def get_unique_names() -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Error retrieving names: {str(e)}")
 
 
-# Serve the frontend static files
-try:
-    frontend_build_path = PathLib(__file__).parent.parent / "frontend" / "out"
-    if frontend_build_path.exists():
-        app.mount("/", StaticFiles(directory=str(frontend_build_path), html=True), name="static")
-    else:
+@app.get("/api/file")
+async def get_file_content(syft_url: str) -> PlainTextResponse:
+    """Serve file content from syft:// URLs."""
+    if not objects:
+        raise HTTPException(status_code=503, detail="Syft objects not available")
+    
+    try:
+        # Convert syft:// URL to local file path
+        if not syft_url.startswith("syft://"):
+            raise HTTPException(status_code=400, detail="Invalid syft:// URL")
+        
+        # Find the object that has this URL
+        target_obj = None
+        is_private = False
+        is_mock = False
+        
+        for obj in objects:
+            if obj.private == syft_url:
+                target_obj = obj
+                is_private = True
+                break
+            elif obj.mock == syft_url:
+                target_obj = obj
+                is_mock = True
+                break
+        
+        if not target_obj:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Get the file path
+        if is_private:
+            file_path = target_obj.private_path
+        elif is_mock:
+            file_path = target_obj.mock_path
+        else:
+            raise HTTPException(status_code=400, detail="Invalid file type")
+        
+        # Check if file exists
+        if not file_path or not PathLib(file_path).exists():
+            raise HTTPException(status_code=404, detail="File not found on disk")
+        
+        # Read and return file content
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+        except UnicodeDecodeError:
+            # Try reading as binary if UTF-8 fails
+            with open(file_path, 'rb') as f:
+                content = f.read().decode('utf-8', errors='replace')
+        
+        return PlainTextResponse(content=content)
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error serving file {syft_url}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
+
+
+@app.put("/api/objects/{object_uid}/file/{file_type}")
+async def save_file_content(
+    object_uid: str,
+    file_type: str,
+    request: Request
+) -> Dict[str, Any]:
+    """Save file content for a syft object."""
+    if not objects:
+        raise HTTPException(status_code=503, detail="Syft objects not available")
+    
+    if file_type not in ['private', 'mock']:
+        raise HTTPException(status_code=400, detail="Invalid file type. Must be 'private' or 'mock'")
+    
+    try:
+        # Get the file content from request body
+        content = await request.body()
+        content_str = content.decode('utf-8')
+        
+        # Find the object by UID
+        target_obj = None
+        for obj in objects:
+            if str(obj.uid) == object_uid:
+                target_obj = obj
+                break
+        
+        if not target_obj:
+            raise HTTPException(status_code=404, detail="Object not found")
+        
+        # Get the file path
+        if file_type == 'private':
+            file_path = target_obj.private_path
+        else:  # mock
+            file_path = target_obj.mock_path
+        
+        if not file_path:
+            raise HTTPException(status_code=400, detail=f"No {file_type} file path found for this object")
+        
+        # Ensure the directory exists
+        PathLib(file_path).parent.mkdir(parents=True, exist_ok=True)
+        
+        # Write the content to the file
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(content_str)
+        
+        # Refresh the objects collection to reflect any changes
+        objects.refresh()
+        
+        return {
+            "message": f"File {file_type} saved successfully",
+            "object_uid": object_uid,
+            "file_type": file_type,
+            "file_path": str(file_path),
+            "content_length": len(content_str),
+            "timestamp": datetime.now()
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error saving {file_type} file for object {object_uid}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error saving file: {str(e)}")
+
+
+@app.put("/api/objects/{object_uid}/permissions")
+async def update_object_permissions(
+    object_uid: str,
+    permissions: Dict[str, List[str]] = Body(...)
+) -> Dict[str, Any]:
+    """Update permissions for a syft object."""
+    if not objects:
+        raise HTTPException(status_code=503, detail="Syft objects not available")
+    
+    try:
+        # Find the object by UID
+        target_obj = None
+        for obj in objects:
+            if str(obj.uid) == object_uid:
+                target_obj = obj
+                break
+        
+        if not target_obj:
+            raise HTTPException(status_code=404, detail="Object not found")
+        
+        # Log the current and new permissions for debugging
+        logger.info(f"Updating permissions for object {object_uid}")
+        logger.info(f"Current permissions: {target_obj.__dict__}")
+        logger.info(f"New permissions: {permissions}")
+        
+        # Update the object's permissions
+        updated_fields = []
+        if 'private_read' in permissions:
+            target_obj.private_permissions = permissions['private_read']
+            updated_fields.append('private_read')
+        if 'private_write' in permissions:
+            target_obj.private_write_permissions = permissions['private_write']
+            updated_fields.append('private_write')
+        if 'mock_read' in permissions:
+            target_obj.mock_permissions = permissions['mock_read']
+            updated_fields.append('mock_read')
+        if 'mock_write' in permissions:
+            target_obj.mock_write_permissions = permissions['mock_write']
+            updated_fields.append('mock_write')
+        if 'syftobject' in permissions:
+            target_obj.syftobject_permissions = permissions['syftobject']
+            updated_fields.append('syftobject')
+        
+        logger.info(f"Updated fields: {updated_fields}")
+        logger.info(f"Updated object permissions: {target_obj.__dict__}")
+        
+        # Update the updated_at timestamp
+        target_obj.updated_at = datetime.now()
+        
+        # Save the object to its .syftobject.yaml file
+        try:
+            if hasattr(target_obj, 'save_yaml') and target_obj.syftobject_path:
+                target_obj.save_yaml(target_obj.syftobject_path, create_syftbox_permissions=True)
+                logger.info(f"Object saved to {target_obj.syftobject_path} using .save_yaml() method")
+            elif hasattr(target_obj, 'save_yaml') and hasattr(target_obj, 'syftobject'):
+                # Try to derive the local path from the syft:// URL
+                local_path = target_obj._get_local_file_path(target_obj.syftobject)
+                if local_path:
+                    target_obj.save_yaml(local_path, create_syftbox_permissions=True)
+                    logger.info(f"Object saved to {local_path} using .save_yaml() method")
+                else:
+                    logger.warning("Could not determine local path for syftobject file")
+            else:
+                logger.warning("Object does not have save_yaml method or syftobject_path")
+        except Exception as save_error:
+            logger.error(f"Error saving object to yaml: {save_error}")
+            raise HTTPException(status_code=500, detail=f"Error saving permissions: {save_error}")
+        
+        # Refresh the collection to reflect changes
+        objects.refresh()
+        logger.info("Objects collection refreshed")
+        
+        return {
+            "message": f"Permissions updated successfully for object {object_uid}",
+            "object_uid": object_uid,
+            "updated_permissions": permissions,
+            "timestamp": datetime.now()
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating permissions for object {object_uid}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error updating permissions: {str(e)}")
+
+
+@app.delete("/api/objects/{object_uid}")
+async def delete_object(object_uid: str) -> Dict[str, Any]:
+    """Delete a syft object by UID."""
+    if not objects:
+        raise HTTPException(status_code=503, detail="Syft objects not available")
+    
+    try:
+        # Find the object by UID
+        target_obj = None
+        for obj in objects:
+            if str(obj.uid) == object_uid:
+                target_obj = obj
+                break
+        
+        if not target_obj:
+            raise HTTPException(status_code=404, detail="Object not found")
+        
+        # Delete the object files
+        deleted_files = []
+        
+        # Delete private file if it exists
+        if target_obj.private_path and PathLib(target_obj.private_path).exists():
+            try:
+                PathLib(target_obj.private_path).unlink()
+                deleted_files.append("private")
+            except Exception as e:
+                logger.warning(f"Failed to delete private file: {e}")
+        
+        # Delete mock file if it exists
+        if target_obj.mock_path and PathLib(target_obj.mock_path).exists():
+            try:
+                PathLib(target_obj.mock_path).unlink()
+                deleted_files.append("mock")
+            except Exception as e:
+                logger.warning(f"Failed to delete mock file: {e}")
+        
+        # Delete syftobject file if it exists
+        if target_obj.syftobject_path and PathLib(target_obj.syftobject_path).exists():
+            try:
+                PathLib(target_obj.syftobject_path).unlink()
+                deleted_files.append("syftobject")
+            except Exception as e:
+                logger.warning(f"Failed to delete syftobject file: {e}")
+        
+        # Refresh the objects collection to reflect the deletion
+        objects.refresh()
+        
+        return {
+            "message": f"Object {object_uid} deleted successfully",
+            "deleted_files": deleted_files,
+            "timestamp": datetime.now()
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting object {object_uid}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error deleting object: {str(e)}")
+
+
+# Check if frontend is built and mount static files
+# This must be done AFTER all API routes are defined to avoid conflicts
+frontend_build_path = PathLib(__file__).parent.parent / "frontend" / "out"
+if frontend_build_path.exists():
+    logger.info(f"✅ Frontend build found, serving from: {frontend_build_path}")
+    # Mount static files at root, FastAPI will prioritize explicitly defined routes over static files
+    try:
+        app.mount("/", StaticFiles(directory=str(frontend_build_path), html=True), name="frontend")
+        logger.info("✅ Frontend static files mounted successfully")
+    except Exception as e:
+        logger.error(f"❌ Failed to mount static files: {e}")
+        
         @app.get("/", response_class=HTMLResponse)
-        async def root():
-            """Serve the frontend application fallback."""
-            return HTMLResponse(content="""
+        async def fallback_root():
+            return HTMLResponse(content=f"""
             <!DOCTYPE html>
             <html>
-            <head>
-                <title>Syft Objects UI</title>
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-            </head>
+            <head><title>Syft Objects UI</title></head>
             <body>
-                <div id="root">
-                    <h1>🔐 Syft Objects UI</h1>
-                    <p>Loading frontend...</p>
-                    <p>Frontend not built yet. Run the build process first.</p>
-                    <p>The API is available at <a href="/docs">/docs</a></p>
-                </div>
+                
+                <p>Static file serving error: {e}</p>
+                <p>API available at <a href="/docs">/docs</a></p>
             </body>
             </html>
             """)
-except Exception as e:
-    logger.warning(f"Could not setup static file serving: {e}")
+else:
+    logger.warning(f"❌ Frontend build directory not found: {frontend_build_path}")
     
     @app.get("/", response_class=HTMLResponse)
     async def root():
-        """Serve the frontend application fallback."""
         return HTMLResponse(content="""
         <!DOCTYPE html>
         <html>
-        <head>
-            <title>Syft Objects UI</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-        </head>
+        <head><title>Syft Objects UI</title></head>
         <body>
-            <div id="root">
-                <h1>🔐 Syft Objects UI</h1>
-                <p>Loading frontend...</p>
-                <p>Frontend static serving error. The API is available at <a href="/docs">/docs</a></p>
-            </div>
+            
+            <p>Frontend not built yet. Please run the build process.</p>
+            <p>API available at <a href="/docs">/docs</a></p>
         </body>
         </html>
         """)
