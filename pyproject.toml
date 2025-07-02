@@ -32,12 +32,12 @@ classifiers = [
 requires-python = ">=3.9"
 dependencies = [
     "pydantic>=2.0.0",
-    "PyYAML>=6.0.0",
+    "pyyaml>=6.0",
+    "syft-perm>=0.1.0",
     "fastapi>=0.104.0",
     "uvicorn[standard]>=0.24.0",
-    "python-multipart>=0.0.6",
     "loguru>=0.7.0",
-    "syft-perm>=0.1.0",
+    "syft-core>=0.2.5",
     "requests>=2.32.4",
     "uvloop>=0.17.0; sys_platform != 'win32'",
     "httptools>=0.6.0",
