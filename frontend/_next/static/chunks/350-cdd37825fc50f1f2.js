@@ -1765,19 +1765,43 @@
                   }), (0, a.jsxs)("div", {
                     className: "flex items-center space-x-2",
                     children: [(0, a.jsx)("button", {
-                      onClick: () => {
-                        let url = "";
-                        if (el.fileType === "private") {
-                          let obj = I.find(obj => obj.uid === el.objectUid);
-                          url = obj ? obj.private_url : "";
-                        } else if (el.fileType === "mock") {
-                          let obj = I.find(obj => obj.uid === el.objectUid);
-                          url = obj ? obj.mock_url : "";
+                      onClick: async () => {
+                        let obj = I.find(obj => obj.uid === el.objectUid);
+                        if (obj) {
+                          let path = "";
+                          try {
+                            // Try to get the actual file path from the API
+                            let response = await fetch("".concat("", "/api/objects/").concat(obj.uid));
+                            if (response.ok) {
+                              let data = await response.json();
+                              if (el.fileType === "mock" && data.file_paths && data.file_paths.mock) {
+                                path = data.file_paths.mock;
+                              } else if (el.fileType === "private" && data.file_paths && data.file_paths.private) {
+                                path = data.file_paths.private;
+                              }
+                            }
+                            
+                            // Fallback to constructing from URL if API doesn't have file_paths
+                            if (!path) {
+                              let url = el.fileType === "mock" ? obj.mock_url : obj.private_url;
+                              if (url) {
+                                let cleanUrl = url.replace("syft://", "");
+                                let email = cleanUrl.split("/")[0];
+                                let filePath = "/" + cleanUrl.split("/").slice(1).join("/");
+                                path = "~/SyftBox/datasites/".concat(email).concat(filePath);
+                              }
+                            }
+                            
+                            if (path) await eA(path);
+                            else throw Error("Could not determine local path");
+                          } catch (error) {
+                            let fallbackUrl = el.fileType === "mock" ? obj.mock_url : obj.private_url;
+                            await eA(fallbackUrl || "Path not available");
+                          }
                         }
-                        if (url) eA(url);
                       },
                       className: "px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:bg-blue-200",
-                      children: "Copy URL"
+                      children: "Copy Local Path"
                     }), (0, a.jsx)("button", {
                       onClick: () => {
                         if (el.content) eA(el.content);
