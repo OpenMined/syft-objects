@@ -673,7 +673,7 @@
                       modal.id = 'new-object-modal';
                                               modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-2 z-50';
                         modal.innerHTML = `
-                          <div class="bg-white rounded-lg w-full max-w-md" style="max-height: 90%; height: 90%; position: relative;">
+                          <div class="bg-white rounded-lg w-full max-w-6xl" style="max-height: 90%; height: 90%; position: relative;">
                             <div class="px-3 py-2 border-b bg-white flex-shrink-0">
                               <div class="flex items-center justify-between">
                                 <h2 class="text-sm font-semibold text-gray-900">Create New SyftObject</h2>
