@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 from pathlib import Path as PathLib
 
-from fastapi import FastAPI, Depends, HTTPException, Body, Path, Request, UploadFile, File, Form
+from fastapi import FastAPI, Depends, HTTPException, Body, Path, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse, PlainTextResponse, RedirectResponse, FileResponse
 from loguru import logger
@@ -219,27 +219,21 @@ async def get_objects(
 
 @app.post("/api/objects")
 async def create_object(
-    name: str = Form(""),
-    description: str = Form(""),
-    email: str = Form(""),
-    file_content: str = Form(""),
-    metadata: str = Form("{}"),
-    private_read: str = Form(""),
-    private_write: str = Form(""),
-    mock_read: str = Form("public"),
-    mock_write: str = Form(""),
-    syftobject: str = Form("public"),
-    file: UploadFile = File(None)
+    name: str = Body(...),
+    description: str = Body(""),
+    email: str = Body(""),
+    file_content: str = Body(""),
+    filename: str = Body(""),
+    metadata: Dict[str, Any] = Body({}),
+    permissions: Dict[str, List[str]] = Body({})
 ) -> Dict[str, Any]:
-    """Create a new syft object with optional file upload."""
+    """Create a new syft object."""
     if not objects:
         raise HTTPException(status_code=503, detail="Syft objects not available")
     
     try:
         # Import the syobj factory function
         from syft_objects.factory import syobj
-        import tempfile
-        import os
         
         # Get the current SyftBox client to get user info
         client = None
@@ -252,21 +246,15 @@ async def create_object(
         # Use provided email or fallback to client email
         user_email = email or (client.email if client else "admin@example.com")
         
-        # Parse metadata
-        try:
-            metadata_dict = eval(metadata) if metadata.strip() else {}
-        except:
-            metadata_dict = {}
-        
-        # Process permissions (split comma-separated emails)
-        mock_read_list = [email.strip() for email in mock_read.split(",") if email.strip()] or ["public"]
-        mock_write_list = [email.strip() for email in mock_write.split(",") if email.strip()]
-        private_read_list = [email.strip() for email in private_read.split(",") if email.strip()] or [user_email]
-        private_write_list = [email.strip() for email in private_write.split(",") if email.strip()] or [user_email]
-        discovery_read_list = [email.strip() for email in syftobject.split(",") if email.strip()] or ["public"]
+        # Extract permissions from the permissions dict
+        mock_read = permissions.get("mock_read", ["public"])
+        mock_write = permissions.get("mock_write", [])
+        private_read = permissions.get("private_read", [user_email])
+        private_write = permissions.get("private_write", [user_email])
+        discovery_read = permissions.get("syftobject", ["public"])
         
         # Prepare metadata with system settings
-        extended_metadata = metadata_dict.copy()
+        extended_metadata = metadata.copy()
         extended_metadata.update({
             "description": description,
             "email": user_email,
@@ -275,56 +263,56 @@ async def create_object(
             "create_syftbox_permissions": True
         })
         
-        # Handle file upload or content
-        private_file_path = None
-        if file and file.filename:
-            # Save uploaded file to temporary location
+        # Handle file creation - preserve filename if uploaded
+        import tempfile
+        from pathlib import Path as PathLib
+        
+        if filename and file_content:
+            # Create temporary files with original filename
             temp_dir = PathLib("tmp")
             temp_dir.mkdir(exist_ok=True)
-            private_file_path = temp_dir / file.filename
             
-            with open(private_file_path, "wb") as buffer:
-                content = await file.read()
-                buffer.write(content)
+            # Create private file with original filename
+            private_file_path = temp_dir / filename
+            private_file_path.write_text(file_content)
             
-            # Use the actual filename for object name if not provided
-            if not name.strip():
-                name = PathLib(file.filename).stem.replace("_", " ").title()
-        
-        # Create the object using the syobj factory function
-        if private_file_path:
-            # Use file-based creation
+            # Create mock file with original filename (add _mock before extension)
+            name_parts = filename.rsplit('.', 1)
+            if len(name_parts) == 2:
+                mock_filename = f"{name_parts[0]}_mock.{name_parts[1]}"
+            else:
+                mock_filename = f"{filename}_mock"
+            mock_file_path = temp_dir / mock_filename
+            
+            # Create truncated mock content
+            mock_content = file_content[:200] + "..." if len(file_content) > 200 else file_content
+            mock_file_path.write_text(f"[DEMO DATA] {mock_content}")
+            
+            # Create the object using file paths to preserve filenames
             new_object = syobj(
-                name=name or "Syft Object",
+                name=name,
                 private_file=str(private_file_path),
-                mock_contents=f"[DEMO] Mock content for {name or 'uploaded file'}",
-                mock_read=mock_read_list,
-                mock_write=mock_write_list,
-                private_read=private_read_list,
-                private_write=private_write_list,
-                discovery_read=discovery_read_list,
+                mock_file=str(mock_file_path),
+                mock_read=mock_read,
+                mock_write=mock_write,
+                private_read=private_read,
+                private_write=private_write,
+                discovery_read=discovery_read,
                 metadata=extended_metadata
             )
         else:
-            # Use content-based creation
+            # Create the object using content (original behavior)
             new_object = syobj(
-                name=name or "Syft Object",
-                private_contents=file_content or f"Content for {name or 'Syft Object'}",
-                mock_contents=f"[DEMO] Mock content for {name or 'Syft Object'}",
-                mock_read=mock_read_list,
-                mock_write=mock_write_list,
-                private_read=private_read_list,
-                private_write=private_write_list,
-                discovery_read=discovery_read_list,
+                name=name,
+                private_contents=file_content or f"Content for {name}",
+                mock_contents=f"[DEMO] Mock content for {name}",
+                mock_read=mock_read,
+                mock_write=mock_write,
+                private_read=private_read,
+                private_write=private_write,
+                discovery_read=discovery_read,
                 metadata=extended_metadata
             )
-        
-        # Clean up temporary file
-        if private_file_path and private_file_path.exists():
-            try:
-                os.remove(private_file_path)
-            except:
-                pass
         
         # Refresh the collection to pick up the new object from filesystem
         objects.refresh()
