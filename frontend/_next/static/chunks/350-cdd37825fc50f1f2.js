@@ -1601,7 +1601,7 @@
                           className: "px-1 py-1.5 w-32",
                           children: (0, a.jsx)("div", {
                             className: "truncate text-xs text-muted-foreground",
-                            children: e.description || "—"
+                            children: e.description ? (e.description.length > 42 ? e.description.substring(0, 42) + "..." : e.description) : "—"
                           })
                         }), (0, a.jsx)("td", {
                           className: "px-1 py-1.5 w-32",
