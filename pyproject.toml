@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "syft-objects"
-version = "0.3.6"
+version = "0.3.7"
 description = "Share files with explicit mock vs private control"
 readme = "README.md"
 authors = [
@@ -42,6 +42,8 @@ dependencies = [
     "uvloop>=0.17.0; sys_platform != 'win32'",
     "httptools>=0.6.0",
     "python-multipart>=0.0.20",
+    "build>=1.2.2.post1",
+    "twine>=6.1.0",
 ]
 
 [project.optional-dependencies]

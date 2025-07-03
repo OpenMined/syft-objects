@@ -1,6 +1,6 @@
 # syft-objects - Distributed file discovery and addressing system 
 
-__version__ = "0.3.6"
+__version__ = "0.3.7"
 
 # Core imports
 from .models import SyftObject
