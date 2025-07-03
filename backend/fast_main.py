@@ -184,8 +184,8 @@ async def get_objects(
                 "description": obj.description or "",
                 "type": file_type,
                 "email": email,
-                "private_url": obj.private,
-                "mock_url": obj.mock,
+                "private_url": obj.private_url,
+                "mock_url": obj.mock_url,
                 "syftobject_url": obj.syftobject,
                 "created_at": obj.created_at.isoformat() if obj.created_at else None,
                 "updated_at": obj.updated_at.isoformat() if obj.updated_at else None,
@@ -198,8 +198,8 @@ async def get_objects(
                 },
                 "metadata": obj.metadata,
                 "file_exists": {
-                    "private": obj._check_file_exists(obj.private),
-                    "mock": obj._check_file_exists(obj.mock),
+                    "private": obj._check_file_exists(obj.private_url),
+                    "mock": obj._check_file_exists(obj.mock_url),
                 }
             }
             objects_data.append(obj_data)
