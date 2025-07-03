@@ -449,27 +449,39 @@
                 console.error("❌ Final fallback also failed:", e), eN("Failed to copy to clipboard")
               }
             }
-          }, eF = async e => {
-            let t = "";
-            try {
-              if (e.private_url && (await fetch("".concat("", "/api/file?syft_url=").concat(encodeURIComponent(e.private_url)))).ok) {
-                let s = new URL(e.private_url.replace("syft://", "http://")),
-                  a = s.hostname,
-                  l = s.pathname;
-                t = "~/SyftBox/datasites/".concat(a).concat(l)
+          },         eF = async e => {
+          let t = "";
+          try {
+            // Try to get the actual file path from the API
+            let s = await fetch("".concat("", "/api/objects/").concat(e.uid));
+            if (s.ok) {
+              let a = await s.json();
+              if (a.file_paths && a.file_paths.private) {
+                t = a.file_paths.private;
+              } else if (a.file_paths && a.file_paths.mock) {
+                t = a.file_paths.mock;
               }
-              if (!t && e.mock_url) {
-                let s = new URL(e.mock_url.replace("syft://", "http://")),
-                  a = s.hostname,
-                  l = s.pathname;
-                t = "~/SyftBox/datasites/".concat(a).concat(l)
-              }
-              if (t) await eA(t);
-              else throw Error("Could not determine local path")
-            } catch (t) {
-              await eA(e.private_url || e.mock_url || "Path not available")
             }
-          }, eU = e => {
+            
+            // Fallback to constructing from URL if API doesn't have file_paths
+            if (!t && e.private_url) {
+              let s = e.private_url.replace("syft://", ""),
+                a = s.split("/")[0], // This gets "andrew@openmined.org"
+                l = "/" + s.split("/").slice(1).join("/");
+              t = "~/SyftBox/datasites/".concat(a).concat(l)
+            }
+            if (!t && e.mock_url) {
+              let s = e.mock_url.replace("syft://", ""),
+                a = s.split("/")[0], // This gets "andrew@openmined.org"
+                l = "/" + s.split("/").slice(1).join("/");
+              t = "~/SyftBox/datasites/".concat(a).concat(l)
+            }
+            if (t) await eA(t);
+            else throw Error("Could not determine local path")
+          } catch (t) {
+            await eA(e.private_url || e.mock_url || "Path not available")
+          }
+        }, eU = e => {
             if (Z && Z.uid === e) return Z.permissions;
             let t = I.find(t => t.uid === e);
             return (null == t ? void 0 : t.permissions) || null
