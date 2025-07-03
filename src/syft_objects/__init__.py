@@ -10,6 +10,7 @@ from .collections import ObjectsCollection
 from .utils import scan_for_syft_objects, load_syft_objects_from_directory
 from .client import check_syftbox_status, get_syft_objects_port, get_syft_objects_url
 from .auto_install import ensure_syftbox_app_installed
+from .backed import SingleSyftObjBacked, MultiSyftObjBacked
 
 # Create global objects collection instance
 objects = ObjectsCollection()
@@ -24,7 +25,9 @@ __all__ = [
     "scan_for_syft_objects",
     "load_syft_objects_from_directory",
     "get_syft_objects_port",
-    "get_syft_objects_url"
+    "get_syft_objects_url",
+    "SingleSyftObjBacked",
+    "MultiSyftObjBacked"
 ]
 
 # Check SyftBox status - only show banner if there are issues or delays
