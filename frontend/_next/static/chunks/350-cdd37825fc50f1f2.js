@@ -1256,10 +1256,13 @@
                       
                                               // Private file upload handler
                         document.getElementById('private-file-upload').onchange = function(e) {
+                          console.log('🔥 Private file upload triggered');
                           const file = e.target.files[0];
                           if (file) {
+                            console.log('📁 File selected:', file.name, 'Size:', file.size);
                             const reader = new FileReader();
                             reader.onload = function(e) {
+                              console.log('📖 File read complete');
                               const form = document.getElementById('new-object-form');
                               let fileContentField = form.querySelector('[name="privateFileContent"]');
                               let filenameField = form.querySelector('[name="privateFilename"]');
@@ -1272,15 +1275,19 @@
                                 form.appendChild(filenameField);
                               }
                               filenameField.value = file.name;
+                              console.log('💾 Stored filename:', file.name);
                               
                               // Only show first 1000 characters in preview
                               const content = e.target.result;
+                              console.log('📝 File content length:', content.length);
+                              console.log('📝 File content preview:', content.substring(0, 100) + '...');
                               const preview = content.length > 1000 ? 
                                 content.substring(0, 1000) + '\\n... (file truncated for preview, full content will be uploaded)' : 
                                 content;
                               
                               if (fileContentField) {
                                 fileContentField.value = preview;
+                                console.log('👁️ Set preview in visible field');
                                 // Store full content in hidden field
                                 let fullContentField = form.querySelector('[name="fullPrivateFileContent"]');
                                 if (!fullContentField) {
@@ -1288,8 +1295,10 @@
                                   fullContentField.style.display = 'none';
                                   fullContentField.name = 'fullPrivateFileContent';
                                   form.appendChild(fullContentField);
+                                  console.log('🆕 Created hidden field for full content');
                                 }
                                 fullContentField.value = content;
+                                console.log('💾 Stored full content in hidden field, length:', content.length);
                               }
                               // Auto-switch to paste tab to show the content
                               document.getElementById('private-paste-tab').click();
@@ -1300,10 +1309,13 @@
                         
                         // Mock file upload handler
                         document.getElementById('mock-file-upload').onchange = function(e) {
+                          console.log('🔥 Mock file upload triggered');
                           const file = e.target.files[0];
                           if (file) {
+                            console.log('📁 Mock file selected:', file.name, 'Size:', file.size);
                             const reader = new FileReader();
                             reader.onload = function(e) {
+                              console.log('📖 Mock file read complete');
                               const form = document.getElementById('new-object-form');
                               let fileContentField = form.querySelector('[name="mockFileContent"]');
                               let filenameField = form.querySelector('[name="mockFilename"]');
@@ -1316,15 +1328,19 @@
                                 form.appendChild(filenameField);
                               }
                               filenameField.value = file.name;
+                              console.log('💾 Stored mock filename:', file.name);
                               
                               // Only show first 1000 characters in preview
                               const content = e.target.result;
+                              console.log('📝 Mock file content length:', content.length);
+                              console.log('📝 Mock file content preview:', content.substring(0, 100) + '...');
                               const preview = content.length > 1000 ? 
                                 content.substring(0, 1000) + '\\n... (file truncated for preview, full content will be uploaded)' : 
                                 content;
                               
                               if (fileContentField) {
                                 fileContentField.value = preview;
+                                console.log('👁️ Set mock preview in visible field');
                                 // Store full content in hidden field
                                 let fullContentField = form.querySelector('[name="fullMockFileContent"]');
                                 if (!fullContentField) {
@@ -1332,8 +1348,10 @@
                                   fullContentField.style.display = 'none';
                                   fullContentField.name = 'fullMockFileContent';
                                   form.appendChild(fullContentField);
+                                  console.log('🆕 Created hidden field for mock full content');
                                 }
                                 fullContentField.value = content;
+                                console.log('💾 Stored mock full content in hidden field, length:', content.length);
                               }
                               // Auto-switch to paste tab to show the content
                               document.getElementById('mock-paste-tab').click();
@@ -1346,15 +1364,35 @@
                       document.getElementById('create-btn').onclick = async function() {
                         const form = document.getElementById('new-object-form');
                         const formData = new FormData(form);
-                                                  const data = Object.fromEntries(formData.entries());
-                          
-                          // Use full file content if available, otherwise use manually entered content
-                          const privateFileContent = data.fullPrivateFileContent || data.privateFileContent || '';
-                          const privateFilename = data.privateFilename || '';
-                          const mockFileContent = data.fullMockFileContent || data.mockFileContent || '';
-                          const mockFilename = data.mockFilename || '';
-                          
-                          // Note: name is optional - syobj will auto-generate if empty
+                        const data = Object.fromEntries(formData.entries());
+                        
+                        // Get file content from hidden fields or visible fields
+                        const fullPrivateField = form.querySelector('[name="fullPrivateFileContent"]');
+                        const fullMockField = form.querySelector('[name="fullMockFileContent"]');
+                        
+                        const privateFileContent = (fullPrivateField && fullPrivateField.value) || 
+                                                  data.privateFileContent || '';
+                        const privateFilename = (form.querySelector('[name="privateFilename"]') && 
+                                               form.querySelector('[name="privateFilename"]').value) || '';
+                        const mockFileContent = (fullMockField && fullMockField.value) || 
+                                              data.mockFileContent || '';
+                        const mockFilename = (form.querySelector('[name="mockFilename"]') && 
+                                           form.querySelector('[name="mockFilename"]').value) || '';
+                        
+                        console.log('🚀 Form submission debug:', {
+                          privateFileContent: privateFileContent.substring(0, 200) + '...',
+                          privateFilename,
+                          mockFileContent: mockFileContent.substring(0, 200) + '...',
+                          mockFilename,
+                          hasFullPrivateField: !!fullPrivateField,
+                          hasFullMockField: !!fullMockField,
+                          fullPrivateLength: fullPrivateField ? fullPrivateField.value.length : 0,
+                          fullMockLength: fullMockField ? fullMockField.value.length : 0,
+                          visiblePrivateValue: data.privateFileContent ? data.privateFileContent.substring(0, 100) + '...' : 'empty',
+                          visibleMockValue: data.mockFileContent ? data.mockFileContent.substring(0, 100) + '...' : 'empty'
+                        });
+                        
+                        // Note: name is optional - syobj will auto-generate if empty
                         
                         // Process permissions using the new collection system
                         const permissions = collectPermissions();
