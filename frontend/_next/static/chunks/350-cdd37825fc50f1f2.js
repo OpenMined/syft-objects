@@ -577,18 +577,20 @@
           return () => clearInterval(e)
         }, [W]), (0, l.useEffect)(() => {
           O > 0 && ea(Math.ceil(O / ee))
-        }, [O, ee]), s) ? (0, a.jsx)("div", {
+        }, [O, ee]), s) ? (0, a.jsxs)("div", {
           className: "flex items-center justify-center min-h-screen p-4",
-          children: (0, a.jsxs)("div", {
-            className: "text-center space-y-4",
+                    style: {background: "#ffffff"},
+          children: [(0, a.jsxs)("div", {
+                        className: "text-center space-y-32",
             children: [(0, a.jsx)(j, {
-              className: "h-12 w-12 mx-auto",
+              className: "h-48 w-48 mx-auto",
               isLoading: !0
             }), (0, a.jsx)("p", {
-              className: "text-sm text-muted-foreground",
+              className: "text-3xl font-bold tracking-wide text-gray-600",
+              style: {marginTop: "100px"},
               children: "the internet of private data"
             })]
-          })
+          })]
         }) : (0, a.jsxs)("div", {
           className: "h-full bg-background text-foreground flex flex-col overflow-hidden",
           children: [(0, a.jsxs)("div", {
