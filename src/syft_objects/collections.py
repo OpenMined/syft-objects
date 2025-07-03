@@ -42,7 +42,7 @@ class ObjectsCollection:
     def _get_object_email(self, syft_obj: 'SyftObject'):
         """Extract email from syft:// URL"""
         try:
-            private_url = syft_obj.private
+            private_url = syft_obj.private_url
             if private_url.startswith("syft://"):
                 parts = private_url.split("/")
                 if len(parts) >= 3:
@@ -214,7 +214,7 @@ class ObjectsCollection:
             for i, syft_obj in enumerate(self._objects):
                 email = self._get_object_email(syft_obj)
                 name = syft_obj.name or "Unnamed Object"
-                table_data.append([i, email, name, syft_obj.private, syft_obj.mock])
+                table_data.append([i, email, name, syft_obj.private_url, syft_obj.mock_url])
 
             headers = ["Index", "Email", "Object Name", "Private URL", "Mock URL"]
             return tabulate(table_data, headers=headers, tablefmt="grid")
@@ -270,8 +270,8 @@ Example Usage:
   # Access object properties:
   obj = syo.objects[0]
   print(obj.name)           # Object name
-  print(obj.private)        # Private syft:// URL
-  print(obj.mock)           # Mock syft:// URL
+              print(obj.private_url)        # Private syft:// URL
+    print(obj.mock_url)           # Mock syft:// URL
   print(obj.description)    # Object description
   
   # Refresh after creating new objects:
@@ -509,8 +509,8 @@ Example Usage:
                 <td class="syft-objects-index">{i}</td>
                 <td class="syft-objects-email">{email}</td>
                 <td class="syft-objects-name">{name}</td>
-                <td class="syft-objects-url">{syft_obj.private}</td>
-                <td class="syft-objects-url">{syft_obj.mock}</td>
+                <td class="syft-objects-url">{syft_obj.private_url}</td>
+                <td class="syft-objects-url">{syft_obj.mock_url}</td>
                 <td class="syft-objects-date">{created_str}</td>
                 <td class="syft-objects-date">{updated_str}</td>
                 <td class="syft-objects-desc">{desc_str}</td>

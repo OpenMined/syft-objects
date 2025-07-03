@@ -16,8 +16,8 @@ def create_html_display(syft_obj: 'SyftObject') -> str:
     syftobject_yaml_path = file_ops.get("syftobject_yaml_path")
     
     # Check if files exist locally
-    mock_file_exists = syft_obj._check_file_exists(syft_obj.mock)
-    private_file_exists = syft_obj._check_file_exists(syft_obj.private)
+    mock_file_exists = syft_obj._check_file_exists(syft_obj.mock_url)
+    private_file_exists = syft_obj._check_file_exists(syft_obj.private_url)
     
     # Permission badge colors
     def permission_badge(users, perm_type="read"):
@@ -55,7 +55,7 @@ def create_html_display(syft_obj: 'SyftObject') -> str:
     
     private_info = ""
     if private_file_exists:
-        private_path = syft_obj._get_local_file_path(syft_obj.private)
+        private_path = syft_obj._get_local_file_path(syft_obj.private_url)
         if private_path:
             private_info = f'<div class="syft-file-info">Path: {private_path}</div>'
     
@@ -296,18 +296,18 @@ def create_html_template(syft_obj, mock_file_exists, private_file_exists, mock_i
                     <div class="syft-file-card">
                         <div class="syft-file-header">
                             <span class="syft-file-type">🔍 Mock (Demo)</span>
-                            {file_badge(mock_file_exists, syft_obj.mock)}
+                            {file_badge(mock_file_exists, syft_obj.mock_url)}
                         </div>
-                        <div class="syft-file-url">{syft_obj.mock}</div>
+                        <div class="syft-file-url">{syft_obj.mock_url}</div>
                         {mock_info}
                     </div>
                     
                     <div class="syft-file-card">
                         <div class="syft-file-header">
                             <span class="syft-file-type">🔐 Private (Real)</span>
-                            {file_badge(private_file_exists, syft_obj.private)}
+                            {file_badge(private_file_exists, syft_obj.private_url)}
                         </div>
-                        <div class="syft-file-url">{syft_obj.private}</div>
+                        <div class="syft-file-url">{syft_obj.private_url}</div>
                         {private_info}
                     </div>
                     

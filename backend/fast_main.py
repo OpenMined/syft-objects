@@ -167,8 +167,8 @@ async def get_objects(
             # Extract email from private URL
             email = "unknown@example.com"
             try:
-                if obj.private.startswith("syft://"):
-                    parts = obj.private.split("/")
+                if obj.private_url.startswith("syft://"):
+                    parts = obj.private_url.split("/")
                     if len(parts) >= 3:
                         email = parts[2]
             except:
@@ -338,8 +338,8 @@ async def create_object(
                 "description": new_object.description,
                 "email": user_email,
                 "created_at": new_object.created_at.isoformat() if new_object.created_at else None,
-                "private_url": new_object.private,
-                "mock_url": new_object.mock,
+                "private_url": new_object.private_url,
+                "mock_url": new_object.mock_url,
                 "syftobject_url": new_object.syftobject,
             },
             "timestamp": datetime.now()
@@ -439,8 +439,8 @@ async def get_object_details(object_uid: str) -> Dict[str, Any]:
         # Extract email
         email = "unknown@example.com"
         try:
-            if target_obj.private.startswith("syft://"):
-                parts = target_obj.private.split("/")
+            if target_obj.private_url.startswith("syft://"):
+                parts = target_obj.private_url.split("/")
                 if len(parts) >= 3:
                     email = parts[2]
         except:
@@ -451,8 +451,8 @@ async def get_object_details(object_uid: str) -> Dict[str, Any]:
             "name": target_obj.name or "Unnamed Object",
             "description": target_obj.description or "",
             "email": email,
-            "private_url": target_obj.private,
-            "mock_url": target_obj.mock,
+            "private_url": target_obj.private_url,
+            "mock_url": target_obj.mock_url,
             "syftobject_url": target_obj.syftobject,
             "created_at": target_obj.created_at.isoformat() if target_obj.created_at else None,
             "updated_at": target_obj.updated_at.isoformat() if target_obj.updated_at else None,
@@ -474,8 +474,8 @@ async def get_object_details(object_uid: str) -> Dict[str, Any]:
                 "mock": mock_preview,
             },
             "file_exists": {
-                "private": target_obj._check_file_exists(target_obj.private),
-                "mock": target_obj._check_file_exists(target_obj.mock),
+                "private": target_obj._check_file_exists(target_obj.private_url),
+                "mock": target_obj._check_file_exists(target_obj.mock_url),
             }
         }
     
@@ -534,11 +534,11 @@ async def get_file_content(syft_url: str) -> PlainTextResponse:
         is_mock = False
         
         for obj in objects:
-            if obj.private == syft_url:
+            if obj.private_url == syft_url:
                 target_obj = obj
                 is_private = True
                 break
-            elif obj.mock == syft_url:
+            elif obj.mock_url == syft_url:
                 target_obj = obj
                 is_mock = True
                 break
