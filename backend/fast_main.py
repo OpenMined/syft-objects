@@ -133,7 +133,7 @@ async def get_objects(
     offset: Optional[int] = 0
 ) -> Dict[str, Any]:
     """Get syft objects with optional filtering and pagination."""
-    if not objects:
+    if objects is None:
         raise HTTPException(status_code=503, detail="Syft objects not available")
     
     try:
@@ -228,7 +228,7 @@ async def create_object(
     permissions: Dict[str, List[str]] = Body({})
 ) -> Dict[str, Any]:
     """Create a new syft object."""
-    if not objects:
+    if objects is None:
         raise HTTPException(status_code=503, detail="Syft objects not available")
     
     try:
@@ -340,7 +340,7 @@ async def create_object(
 @app.get("/api/objects/refresh")
 async def refresh_objects() -> Dict[str, Any]:
     """Refresh the objects collection."""
-    if not objects:
+    if objects is None:
         raise HTTPException(status_code=503, detail="Syft objects not available")
     
     try:
@@ -392,7 +392,7 @@ async def reinstall_syftbox_app() -> Dict[str, Any]:
 @app.get("/api/objects/{object_uid}")
 async def get_object_details(object_uid: str) -> Dict[str, Any]:
     """Get detailed information about a specific object."""
-    if not objects:
+    if objects is None:
         raise HTTPException(status_code=503, detail="Syft objects not available")
     
     try:
@@ -476,7 +476,7 @@ async def get_object_details(object_uid: str) -> Dict[str, Any]:
 @app.get("/api/metadata/emails")
 async def get_unique_emails() -> Dict[str, Any]:
     """Get list of unique email addresses."""
-    if not objects:
+    if objects is None:
         raise HTTPException(status_code=503, detail="Syft objects not available")
     
     try:
@@ -492,7 +492,7 @@ async def get_unique_emails() -> Dict[str, Any]:
 @app.get("/api/metadata/names")
 async def get_unique_names() -> Dict[str, Any]:
     """Get list of unique object names."""
-    if not objects:
+    if objects is None:
         raise HTTPException(status_code=503, detail="Syft objects not available")
     
     try:
@@ -508,7 +508,7 @@ async def get_unique_names() -> Dict[str, Any]:
 @app.get("/api/file")
 async def get_file_content(syft_url: str) -> PlainTextResponse:
     """Serve file content from syft:// URLs."""
-    if not objects:
+    if objects is None:
         raise HTTPException(status_code=503, detail="Syft objects not available")
     
     try:
@@ -570,7 +570,7 @@ async def save_file_content(
     request: Request
 ) -> Dict[str, Any]:
     """Save file content for a syft object."""
-    if not objects:
+    if objects is None:
         raise HTTPException(status_code=503, detail="Syft objects not available")
     
     if file_type not in ['private', 'mock']:
@@ -631,7 +631,7 @@ async def update_object_permissions(
     permissions: Dict[str, List[str]] = Body(...)
 ) -> Dict[str, Any]:
     """Update permissions for a syft object."""
-    if not objects:
+    if objects is None:
         raise HTTPException(status_code=503, detail="Syft objects not available")
     
     try:
@@ -713,7 +713,7 @@ async def update_object_permissions(
 @app.delete("/api/objects/{object_uid}")
 async def delete_object(object_uid: str) -> Dict[str, Any]:
     """Delete a syft object by UID."""
-    if not objects:
+    if objects is None:
         raise HTTPException(status_code=503, detail="Syft objects not available")
     
     try:
