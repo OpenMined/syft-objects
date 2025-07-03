@@ -597,7 +597,361 @@
           return () => clearInterval(e)
         }, [W]), (0, l.useEffect)(() => {
           O > 0 && ea(Math.ceil(O / ee))
-        }, [O, ee]), s) ? (0, a.jsx)("div", {
+        }, [O, ee]), (0, l.useEffect)(() => {
+          // Drag and drop functionality
+          const handleDragOver = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = 'copy';
+          };
+          
+          const handleDragEnter = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Create magical rainbow overlay
+            let overlay = document.getElementById('drag-overlay');
+            if (!overlay) {
+              overlay = document.createElement('div');
+              overlay.id = 'drag-overlay';
+              overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(45deg, #ff0080, #ff8c00, #40e0d0, #9400d3, #ff1493, #00ff7f, #1e90ff, #ff69b4);
+                background-size: 400% 400%;
+                animation: rainbow-pulse 2s ease-in-out infinite;
+                z-index: 10000;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                backdrop-filter: blur(2px);
+                opacity: 0;
+                transition: opacity 0.3s ease;
+              `;
+              
+              overlay.innerHTML = `
+                <style>
+                  @keyframes rainbow-pulse {
+                    0% { background-position: 0% 50%; }
+                    50% { background-position: 100% 50%; }
+                    100% { background-position: 0% 50%; }
+                  }
+                  @keyframes bounce {
+                    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+                    40% { transform: translateY(-30px); }
+                    60% { transform: translateY(-15px); }
+                  }
+                  @keyframes spin {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                  }
+                  .bounce { animation: bounce 2s infinite; }
+                  .spin { animation: spin 3s linear infinite; }
+                </style>
+                <div style="text-align: center; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
+                  <div class="spin" style="margin-bottom: 20px;">
+                    <svg width="120" height="140" viewBox="0 0 311 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <g clip-path="url(#clip0_drag)">
+                        <path d="M311.414 89.7878L155.518 179.998L-0.378906 89.7878L155.518 -0.422485L311.414 89.7878Z" fill="url(#paint0_linear_drag)"></path>
+                        <path d="M311.414 89.7878V270.208L155.518 360.423V179.998L311.414 89.7878Z" fill="url(#paint1_linear_drag)"></path>
+                        <path d="M155.518 179.998V360.423L-0.378906 270.208V89.7878L155.518 179.998Z" fill="url(#paint2_linear_drag)"></path>
+                      </g>
+                      <defs>
+                        <linearGradient id="paint0_linear_drag" x1="155.518" y1="-0.422485" x2="155.518" y2="179.998" gradientUnits="userSpaceOnUse">
+                          <stop stop-color="#FFFFFF"/>
+                          <stop offset="1" stop-color="#E0E7FF"/>
+                        </linearGradient>
+                        <linearGradient id="paint1_linear_drag" x1="233.466" y1="89.7878" x2="233.466" y2="360.423" gradientUnits="userSpaceOnUse">
+                          <stop stop-color="#C7D2FE"/>
+                          <stop offset="1" stop-color="#A5B4FC"/>
+                        </linearGradient>
+                        <linearGradient id="paint2_linear_drag" x1="77.5696" y1="89.7878" x2="77.5696" y2="360.423" gradientUnits="userSpaceOnUse">
+                          <stop stop-color="#E0E7FF"/>
+                          <stop offset="1" stop-color="#C7D2FE"/>
+                        </linearGradient>
+                        <clipPath id="clip0_drag">
+                          <rect width="311" height="360" fill="white" transform="translate(-0.378906 0.00488281)"/>
+                        </clipPath>
+                      </defs>
+                    </svg>
+                  </div>
+                  <div class="bounce" style="font-size: 48px; margin-bottom: 20px;">
+                    🦄✨🌈
+                  </div>
+                  <h2 style="font-size: 32px; font-weight: bold; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 3px;">
+                    Drop Your File Here!
+                  </h2>
+                  <p style="font-size: 18px; opacity: 0.9;">
+                    🦙 Ready to create magical SyftObjects! 🦙
+                  </p>
+                  <div style="margin-top: 20px; font-size: 24px;">
+                    ✨ 🌟 ⭐ 💫 ⚡ 🌈 ✨
+                  </div>
+                </div>
+              `;
+              
+              document.body.appendChild(overlay);
+            }
+            
+            // Fade in the overlay
+            requestAnimationFrame(() => {
+              overlay.style.opacity = '0.95';
+            });
+          };
+          
+          const handleDragLeave = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Only remove visual feedback if we're actually leaving the document
+            if (e.clientX === 0 && e.clientY === 0) {
+              const overlay = document.getElementById('drag-overlay');
+              if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => {
+                  if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                  }
+                }, 300);
+              }
+            }
+          };
+          
+          const handleDrop = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Remove magical overlay
+            const overlay = document.getElementById('drag-overlay');
+            if (overlay) {
+              overlay.style.opacity = '0';
+              setTimeout(() => {
+                if (overlay.parentNode) {
+                  overlay.parentNode.removeChild(overlay);
+                }
+              }, 300);
+            }
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+              const file = files[0];
+              
+              // Remove any existing modal
+              let existingModal = document.getElementById('new-object-modal');
+              if (existingModal) {
+                existingModal.remove();
+              }
+              
+              // Create the modal (reusing existing modal creation code)
+              const modal = document.createElement('div');
+              modal.id = 'new-object-modal';
+              modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-2 z-50';
+              modal.innerHTML = `
+                <div class="bg-white rounded-lg w-full max-w-6xl" style="max-height: 90%; height: 90%; position: relative;">
+                  <div class="px-3 py-2 border-b bg-white flex-shrink-0">
+                    <div class="flex items-center justify-between">
+                      <h2 class="text-sm font-semibold text-gray-900">Create New SyftObject</h2>
+                      <button id="close-modal" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+                    </div>
+                  </div>
+                  <div class="overflow-y-auto p-3" style="height: calc(100% - 120px); padding-bottom: 20px;">
+                    <form id="new-object-form" class="space-y-2">
+                      <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Object Name</label>
+                        <input type="text" name="name" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" value="${file.name.replace(/\.[^/.]+$/, '')}">
+                      </div>
+                      <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                        <textarea name="description" rows="2" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent">Auto-generated object: ${file.name.replace(/\.[^/.]+$/, '')}</textarea>
+                      </div>
+                      <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Admin Email</label>
+                        <input type="email" name="email" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" value="">
+                      </div>
+                      <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Private File Content</label>
+                        <div class="border border-gray-300 rounded">
+                          <div class="flex border-b border-gray-300">
+                            <button type="button" id="private-upload-tab" class="px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-700">Upload File</button>
+                            <button type="button" id="private-paste-tab" class="px-3 py-1 text-xs font-medium text-green-600 border-b-2 border-green-600">Paste Content</button>
+                          </div>
+                          <div id="private-upload-content" class="p-2 hidden">
+                            <input type="file" name="privateFile" id="private-file-upload" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100">
+                            <p class="text-xs text-gray-500 mt-1">Upload private data file (CSV, JSON, Python, etc.)</p>
+                          </div>
+                          <div id="private-paste-content" class="p-2">
+                            <textarea name="privateFileContent" rows="3" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-green-500 focus:border-transparent">Loading file content...</textarea>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Mock File Content</label>
+                        <div class="border border-gray-300 rounded">
+                          <div class="flex border-b border-gray-300">
+                            <button type="button" id="mock-upload-tab" class="px-3 py-1 text-xs font-medium text-blue-600 border-b-2 border-blue-600">Upload File</button>
+                            <button type="button" id="mock-paste-tab" class="px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-700">Paste Content</button>
+                          </div>
+                          <div id="mock-upload-content" class="p-2">
+                            <input type="file" name="mockFile" id="mock-file-upload" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                            <p class="text-xs text-gray-500 mt-1">Upload mock/synthetic data file (CSV, JSON, Python, etc.)</p>
+                          </div>
+                          <div id="mock-paste-content" class="p-2 hidden">
+                            <textarea name="mockFileContent" rows="3" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent">Auto-generated mock content for ${file.name.replace(/\.[^/.]+$/, '')}</textarea>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Metadata (JSON format)</label>
+                        <textarea name="metadata" rows="2" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent font-mono" placeholder="{}">{}</textarea>
+                      </div>
+                      <div class="mb-2">
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Permissions</label>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <label class="block text-xs font-medium text-green-700 mb-1">Private Read</label>
+                            <input type="text" name="private_read" class="w-full px-1 py-1 border border-gray-300 rounded text-xs" value="">
+                          </div>
+                          <div>
+                            <label class="block text-xs font-medium text-green-700 mb-1">Private Write</label>
+                            <input type="text" name="private_write" class="w-full px-1 py-1 border border-gray-300 rounded text-xs" value="">
+                          </div>
+                          <div>
+                            <label class="block text-xs font-medium text-blue-700 mb-1">Mock Read</label>
+                            <input type="text" name="mock_read" class="w-full px-1 py-1 border border-gray-300 rounded text-xs" value="public">
+                          </div>
+                          <div>
+                            <label class="block text-xs font-medium text-blue-700 mb-1">Mock Write</label>
+                            <input type="text" name="mock_write" class="w-full px-1 py-1 border border-gray-300 rounded text-xs" value="">
+                          </div>
+                          <div class="col-span-2">
+                            <label class="block text-xs font-medium text-purple-700 mb-1">SyftObject Access</label>
+                            <input type="text" name="syftobject" class="w-full px-1 py-1 border border-gray-300 rounded text-xs" value="public">
+                          </div>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                  <div class="px-3 py-2 border-t bg-gray-50 flex-shrink-0" style="position: absolute; bottom: 0; left: 0; right: 0; border-radius: 0 0 8px 8px;">
+                    <div class="flex justify-end gap-2">
+                      <button id="cancel-btn" class="px-3 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50">Cancel</button>
+                      <button id="create-btn" style="background-color: #22c55e; color: white; border: none; padding: 4px 12px; border-radius: 4px; font-weight: 600; font-size: 12px;">Create Object</button>
+                    </div>
+                  </div>
+                </div>
+              `;
+              
+              document.body.appendChild(modal);
+              
+              // Read the file content and populate the textarea
+              const reader = new FileReader();
+              reader.onload = function(e) {
+                const privateContentField = document.querySelector('[name="privateFileContent"]');
+                if (privateContentField) {
+                  privateContentField.value = e.target.result;
+                }
+                
+                // Store the filename for later use
+                const form = document.getElementById('new-object-form');
+                let filenameField = form.querySelector('[name="privateFilename"]');
+                if (!filenameField) {
+                  filenameField = document.createElement('input');
+                  filenameField.type = 'hidden';
+                  filenameField.name = 'privateFilename';
+                  form.appendChild(filenameField);
+                }
+                filenameField.value = file.name;
+              };
+              reader.readAsText(file);
+              
+              // Set up modal event listeners (copied from existing code)
+              setTimeout(() => {
+                // Fetch client info and populate defaults
+                fetch('/api/client-info')
+                  .then(response => response.json())
+                  .then(data => {
+                    const defaults = data.defaults;
+                    const emailField = document.querySelector('[name="email"]');
+                    if (emailField) emailField.value = defaults.admin_email;
+                    const privateReadField = document.querySelector('[name="private_read"]');
+                    if (privateReadField) privateReadField.value = defaults.permissions.private_read;
+                    const privateWriteField = document.querySelector('[name="private_write"]');
+                    if (privateWriteField) privateWriteField.value = defaults.permissions.private_write;
+                    const mockWriteField = document.querySelector('[name="mock_write"]');
+                    if (mockWriteField) mockWriteField.value = defaults.permissions.mock_write;
+                  })
+                  .catch(err => console.log('Could not load client info:', err));
+                
+                // Add event listeners
+                const closeModal = document.getElementById('close-modal');
+                const cancelBtn = document.getElementById('cancel-btn');
+                if (closeModal) closeModal.onclick = () => modal.remove();
+                if (cancelBtn) cancelBtn.onclick = () => modal.remove();
+                modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+                
+                // Tab switching for private file
+                const privateUploadTab = document.getElementById('private-upload-tab');
+                const privatePasteTab = document.getElementById('private-paste-tab');
+                const privateUploadContent = document.getElementById('private-upload-content');
+                const privatePasteContent = document.getElementById('private-paste-content');
+                
+                if (privateUploadTab) {
+                  privateUploadTab.onclick = function() {
+                    this.className = 'px-3 py-1 text-xs font-medium text-green-600 border-b-2 border-green-600';
+                    privatePasteTab.className = 'px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-700';
+                    privateUploadContent.classList.remove('hidden');
+                    privatePasteContent.classList.add('hidden');
+                  };
+                }
+                if (privatePasteTab) {
+                  privatePasteTab.onclick = function() {
+                    this.className = 'px-3 py-1 text-xs font-medium text-green-600 border-b-2 border-green-600';
+                    privateUploadTab.className = 'px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-700';
+                    privatePasteContent.classList.remove('hidden');
+                    privateUploadContent.classList.add('hidden');
+                  };
+                }
+                
+                // Tab switching for mock file
+                const mockUploadTab = document.getElementById('mock-upload-tab');
+                const mockPasteTab = document.getElementById('mock-paste-tab');
+                const mockUploadContent = document.getElementById('mock-upload-content');
+                const mockPasteContent = document.getElementById('mock-paste-content');
+                
+                if (mockUploadTab) {
+                  mockUploadTab.onclick = function() {
+                    this.className = 'px-3 py-1 text-xs font-medium text-blue-600 border-b-2 border-blue-600';
+                    mockPasteTab.className = 'px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-700';
+                    mockUploadContent.classList.remove('hidden');
+                    mockPasteContent.classList.add('hidden');
+                  };
+                }
+                if (mockPasteTab) {
+                  mockPasteTab.onclick = function() {
+                    this.className = 'px-3 py-1 text-xs font-medium text-blue-600 border-b-2 border-blue-600';
+                    mockUploadTab.className = 'px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-700';
+                    mockPasteContent.classList.remove('hidden');
+                    mockUploadContent.classList.add('hidden');
+                  };
+                }
+              }, 100);
+            }
+          };
+          
+          // Add event listeners to document
+          document.addEventListener('dragover', handleDragOver);
+          document.addEventListener('dragenter', handleDragEnter);
+          document.addEventListener('dragleave', handleDragLeave);
+          document.addEventListener('drop', handleDrop);
+          
+          // Cleanup function
+          return () => {
+            document.removeEventListener('dragover', handleDragOver);
+            document.removeEventListener('dragenter', handleDragEnter);
+            document.removeEventListener('dragleave', handleDragLeave);
+            document.removeEventListener('drop', handleDrop);
+          };
+        }, []), s) ? (0, a.jsx)("div", {
           className: "flex items-center justify-center min-h-screen p-4",
           style: {background: "#ffffff"},
           children: (0, a.jsxs)("div", {
