@@ -653,15 +653,15 @@
                       modal.id = 'new-object-modal';
                       modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50';
                       modal.innerHTML = `
-                        <div class="bg-white rounded-lg max-w-2xl w-full max-h-screen overflow-hidden">
-                          <div class="px-4 py-3 border-b bg-white">
+                        <div class="bg-white rounded-lg max-w-lg w-full" style="max-height: 80vh; overflow: hidden;">
+                          <div class="px-3 py-2 border-b bg-white">
                             <div class="flex items-center justify-between">
                               <h2 class="text-lg font-semibold text-gray-900">Create New SyftObject</h2>
                               <button id="close-modal" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
                             </div>
                           </div>
-                          <div class="overflow-y-auto p-4 max-h-96">
-                            <form id="new-object-form" class="space-y-3">
+                          <div class="overflow-y-auto p-3" style="max-height: 50vh;">
+                            <form id="new-object-form" class="space-y-2">
                               <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Object Name</label>
                                 <input type="text" name="name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" value="Syft Object">
@@ -721,7 +721,7 @@
                               </div>
                             </form>
                           </div>
-                          <div class="px-4 py-4 border-t bg-gray-50">
+                          <div class="px-3 py-3 border-t bg-gray-50">
                             <div class="flex justify-end gap-3">
                               <button id="cancel-btn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
                               <button id="create-btn" style="background-color: #22c55e; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 14px;">Create Object</button>
