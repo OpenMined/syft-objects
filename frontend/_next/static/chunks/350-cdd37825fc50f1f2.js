@@ -651,16 +651,16 @@
                       
                       const modal = document.createElement('div');
                       modal.id = 'new-object-modal';
-                      modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50';
+                      modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-2 z-50';
                       modal.innerHTML = `
-                        <div class="bg-white rounded-lg max-w-lg w-full max-h-[80vh] overflow-hidden">
-                          <div class="px-3 py-2 border-b bg-white">
+                        <div class="bg-white rounded-lg w-full max-w-md" style="max-height: 500px; height: 500px; position: relative;">
+                          <div class="px-3 py-2 border-b bg-white flex-shrink-0">
                             <div class="flex items-center justify-between">
-                              <h2 class="text-base font-semibold text-gray-900">Create New SyftObject</h2>
+                              <h2 class="text-sm font-semibold text-gray-900">Create New SyftObject</h2>
                               <button id="close-modal" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>
                             </div>
                           </div>
-                          <div class="overflow-y-auto p-3 max-h-[60vh]">
+                          <div class="overflow-y-auto p-3" style="height: 380px; padding-bottom: 20px;">
                                                           <form id="new-object-form" class="space-y-2">
                                 <div>
                                   <label class="block text-xs font-medium text-gray-700 mb-1">Object Name</label>
@@ -721,7 +721,7 @@
                                 </div>
                             </form>
                           </div>
-                          <div class="px-3 py-2 border-t bg-gray-50">
+                          <div class="px-3 py-2 border-t bg-gray-50 flex-shrink-0" style="position: absolute; bottom: 0; left: 0; right: 0; border-radius: 0 0 8px 8px;">
                             <div class="flex justify-end gap-2">
                               <button id="cancel-btn" class="px-3 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50">Cancel</button>
                               <button id="create-btn" style="background-color: #22c55e; color: white; border: none; padding: 4px 12px; border-radius: 4px; font-weight: 600; font-size: 12px;">Create Object</button>
