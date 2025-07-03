@@ -4,6 +4,7 @@ __version__ = "0.3.5"
 
 # Core imports
 from .models import SyftObject
+from .data_accessor import DataAccessor
 from .factory import syobj
 from .collections import ObjectsCollection
 from .utils import scan_for_syft_objects, load_syft_objects_from_directory
@@ -16,6 +17,7 @@ objects = ObjectsCollection()
 # Export main classes and functions
 __all__ = [
     "SyftObject", 
+    "DataAccessor",
     "syobj", 
     "objects", 
     "ObjectsCollection",

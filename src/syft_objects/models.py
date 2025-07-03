@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, model_validator
 from .client import get_syftbox_client, extract_local_path_from_syft_url
 from .permissions import set_file_permissions_wrapper
 from .display import create_html_display
+from .data_accessor import DataAccessor
 
 
 def utcnow():
@@ -24,8 +25,8 @@ class SyftObject(BaseModel):
     """
     # Mandatory metadata
     uid: UUID = Field(default_factory=uuid4, description="Unique identifier for the object")
-    private: str = Field(description="Syft:// path to the private object")
-    mock: str = Field(description="Syft:// path to the public/mock object")
+    private_url: str = Field(description="Syft:// path to the private object", alias="private")
+    mock_url: str = Field(description="Syft:// path to the public/mock object", alias="mock")
     syftobject: str = Field(description="Syft:// path to the .syftobject.yaml metadata file")
     created_at: datetime = Field(default_factory=utcnow, description="Creation timestamp")
     
@@ -59,16 +60,27 @@ class SyftObject(BaseModel):
     # Arbitrary metadata
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Arbitrary metadata")
     
-    # Convenience properties for local file paths
+    # Data accessor properties
+    @property
+    def private(self) -> DataAccessor:
+        """Get data accessor for private data with .obj, .file, .path, .url properties"""
+        return DataAccessor(self.private_url, self)
+    
+    @property
+    def mock(self) -> DataAccessor:
+        """Get data accessor for mock data with .obj, .file, .path, .url properties"""
+        return DataAccessor(self.mock_url, self)
+    
+    # Convenience properties for backward compatibility
     @property
     def private_path(self) -> str:
         """Get the full local file path for the private object"""
-        return self._get_local_file_path(self.private)
+        return self._get_local_file_path(self.private_url)
     
     @property
     def mock_path(self) -> str:
         """Get the full local file path for the mock object"""
-        return self._get_local_file_path(self.mock)
+        return self._get_local_file_path(self.mock_url)
     
     @property
     def syftobject_path(self) -> str:
@@ -89,7 +101,7 @@ class SyftObject(BaseModel):
         """Get the file extension from mock/private URLs"""
         try:
             # Try to extract file extension from private URL first, then mock URL
-            for url in [self.private, self.mock]:
+            for url in [self.private_url, self.mock_url]:
                 if not url:
                     continue
                 
@@ -123,21 +135,22 @@ class SyftObject(BaseModel):
                     return parts[-1].lower()
             return ""
         
-        mock_ext = extract_extension(self.mock)
-        private_ext = extract_extension(self.private)
+        mock_ext = extract_extension(self.mock_url)
+        private_ext = extract_extension(self.private_url)
         
         # Only validate if BOTH files have extensions - they must match
         if mock_ext and private_ext and mock_ext != private_ext:
             raise ValueError(
                 f"Mock and private files must have matching extensions. "
                 f"Mock file has '.{mock_ext}' but private file has '.{private_ext}'. "
-                f"Mock: {self.mock}, Private: {self.private}"
+                f"Mock: {self.mock_url}, Private: {self.private_url}"
             )
         
         return self
     
     class Config:
         arbitrary_types_allowed = True
+        populate_by_name = True  # Allow using both field name and alias
         json_encoders = {
             datetime: lambda v: v.isoformat(),
             UUID: lambda v: str(v)
@@ -207,6 +220,7 @@ class SyftObject(BaseModel):
         except Exception as e:
             return f"Error reading file: {str(e)}"
 
+
     def save_yaml(self, file_path: str | Path, create_syftbox_permissions: bool = True) -> None:
         """Save the syft object to a YAML file with .syftobject.yaml extension and create SyftBox permission files"""
         file_path = Path(file_path)
@@ -256,8 +270,8 @@ class SyftObject(BaseModel):
         set_file_permissions_wrapper(str(syftobject_file_path), self.syftobject_permissions)
         
         # Create permissions for mock and private files
-        set_file_permissions_wrapper(self.mock, self.mock_permissions, self.mock_write_permissions)
-        set_file_permissions_wrapper(self.private, self.private_permissions, self.private_write_permissions)
+        set_file_permissions_wrapper(self.mock_url, self.mock_permissions, self.mock_write_permissions)
+        set_file_permissions_wrapper(self.private_url, self.private_permissions, self.private_write_permissions)
 
     def set_permissions(self, file_type: str, read: list[str] = None, write: list[str] = None, syftobject_file_path: str | Path = None) -> None:
         """
@@ -270,14 +284,14 @@ class SyftObject(BaseModel):
             if write is not None:
                 self.mock_write_permissions = write
             # Update syft.pub.yaml if possible
-            set_file_permissions_wrapper(self.mock, self.mock_permissions, self.mock_write_permissions)
+            set_file_permissions_wrapper(self.mock_url, self.mock_permissions, self.mock_write_permissions)
         elif file_type == "private":
             if read is not None:
                 self.private_permissions = read
             if write is not None:
                 self.private_write_permissions = write
             # Update syft.pub.yaml if possible
-            set_file_permissions_wrapper(self.private, self.private_permissions, self.private_write_permissions)
+            set_file_permissions_wrapper(self.private_url, self.private_permissions, self.private_write_permissions)
         elif file_type == "syftobject":
             if read is not None:
                 self.syftobject_permissions = read

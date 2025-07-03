@@ -248,8 +248,8 @@ def syobj(
     # === CREATE SYFT OBJECT ===
     syft_obj = SyftObject(
         uid=uid,
-        private=final_private_path,
-        mock=final_mock_path,
+        private_url=final_private_path,
+        mock_url=final_mock_path,
         syftobject=final_syftobject_path,
         name=name,
         description=description,

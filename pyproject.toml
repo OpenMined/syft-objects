@@ -57,6 +57,12 @@ docs = [
     "mkdocs-material>=9.0.0",
     "mkdocs-jupyter>=0.24.0",
 ]
+data = [
+    "pandas>=2.0.0",
+    "openpyxl>=3.0.0",  # For Excel support
+    "pyarrow>=10.0.0",  # For Parquet support
+    "numpy>=1.20.0",    # For NumPy array support
+]
 
 [project.urls]
 Homepage = "https://github.com/OpenMined/syft-objects"
