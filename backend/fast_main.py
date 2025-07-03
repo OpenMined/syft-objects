@@ -858,10 +858,147 @@ async def widget_redirect():
 
 @app.get("/widget/")
 async def widget_page():
-    """Serve the Next.js widget page."""
+    """Serve the Next.js widget page with custom Big/Small button injected."""
     widget_file = PathLib(__file__).parent.parent / "frontend" / "widget" / "index.html"
     if widget_file.exists():
-        return FileResponse(widget_file, media_type="text/html")
+        # Read the HTML file
+        with open(widget_file, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        
+        # Inject the Big/Small button and its functionality
+        custom_script = """
+        <script>
+        // Wait for the page to load
+        window.addEventListener('load', function() {
+            // Add Big/Small button functionality
+            let isSmall = false;
+            let originalHeight = null;
+            
+            function createBigSmallButton() {
+                // Find the button container (look for existing buttons in the widget)
+                const buttonContainer = document.querySelector('.flex.items-center.space-x-2') || 
+                                       document.querySelector('.flex.items-center.gap-2') ||
+                                       document.querySelector('[class*="flex"][class*="items-center"]');
+                
+                if (buttonContainer) {
+                    const bigSmallButton = document.createElement('button');
+                    bigSmallButton.textContent = 'Big/Small';
+                    bigSmallButton.className = 'px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs hover:bg-purple-200';
+                    bigSmallButton.title = 'Toggle widget height';
+                    bigSmallButton.style.marginLeft = '8px';
+                    
+                    bigSmallButton.addEventListener('click', function() {
+                        toggleWidgetHeight();
+                    });
+                    
+                    buttonContainer.appendChild(bigSmallButton);
+                } else {
+                    // Fallback: create a floating button if we can't find the button container
+                    const floatingButton = document.createElement('button');
+                    floatingButton.textContent = 'Big/Small';
+                    floatingButton.style.cssText = `
+                        position: fixed;
+                        top: 10px;
+                        right: 10px;
+                        z-index: 9999;
+                        background: #f3e8ff;
+                        color: #6b46c1;
+                        border: none;
+                        border-radius: 4px;
+                        padding: 6px 12px;
+                        font-size: 11px;
+                        cursor: pointer;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    `;
+                    floatingButton.title = 'Toggle widget height';
+                    
+                    floatingButton.addEventListener('click', function() {
+                        toggleWidgetHeight();
+                    });
+                    
+                    floatingButton.addEventListener('mouseenter', function() {
+                        this.style.background = '#e9d5ff';
+                    });
+                    
+                    floatingButton.addEventListener('mouseleave', function() {
+                        this.style.background = '#f3e8ff';
+                    });
+                    
+                    document.body.appendChild(floatingButton);
+                }
+            }
+            
+            function toggleWidgetHeight() {
+                const mainContainer = document.querySelector('.fixed.inset-0') || 
+                                    document.querySelector('.min-h-screen') ||
+                                    document.body;
+                
+                if (!isSmall) {
+                    // Store original height and make it small
+                    originalHeight = mainContainer.style.height || '100vh';
+                    mainContainer.style.height = '300px';
+                    mainContainer.style.maxHeight = '300px';
+                    mainContainer.style.overflow = 'hidden';
+                    isSmall = true;
+                    
+                    // Try to resize parent iframe if in iframe context
+                    tryResizeParentIframe('300px');
+                } else {
+                    // Restore original height
+                    mainContainer.style.height = originalHeight || '100vh';
+                    mainContainer.style.maxHeight = '';
+                    mainContainer.style.overflow = '';
+                    isSmall = false;
+                    
+                    // Try to resize parent iframe if in iframe context
+                    tryResizeParentIframe('600px');
+                }
+            }
+            
+            function tryResizeParentIframe(height) {
+                try {
+                    // Check if we're in an iframe
+                    if (window.parent && window.parent !== window) {
+                        // Try to communicate with parent to resize iframe
+                        window.parent.postMessage({
+                            type: 'resize-iframe',
+                            height: height
+                        }, '*');
+                        
+                        // Also try direct iframe manipulation if accessible
+                        if (window.parent.document) {
+                            const iframes = window.parent.document.querySelectorAll('iframe');
+                            for (let iframe of iframes) {
+                                if (iframe.contentWindow === window) {
+                                    iframe.style.height = height;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // Cross-origin restrictions might prevent this
+                    console.log('Cannot resize parent iframe due to cross-origin restrictions');
+                }
+            }
+            
+            // Wait a bit more for the widget to fully load, then add the button
+            setTimeout(createBigSmallButton, 1000);
+        });
+        
+        // Listen for messages from parent (in case parent wants to control the size)
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'toggle-widget-height') {
+                toggleWidgetHeight();
+            }
+        });
+        </script>
+        """
+        
+        # Inject the script before the closing body tag
+        html_content = html_content.replace('</body>', custom_script + '\n</body>')
+        
+        return HTMLResponse(content=html_content, media_type="text/html")
     else:
         raise HTTPException(status_code=404, detail="Widget page not found")
 
