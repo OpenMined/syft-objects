@@ -1685,7 +1685,7 @@
               canWrite: !1
             }),
             children: (0, a.jsxs)("div", {
-              className: "bg-background rounded-lg max-w-[95vw] max-h-[95vh] overflow-hidden w-full flex flex-col",
+              className: "bg-background rounded-lg max-w-[95vw] max-h-[98vh] overflow-hidden w-full flex flex-col",
               onClick: e => e.stopPropagation(),
               children: [(0, a.jsx)("div", {
                 className: "bg-background border-b px-4 py-2 flex-shrink-0",
