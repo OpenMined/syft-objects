@@ -1685,7 +1685,7 @@
               canWrite: !1
             }),
             children: (0, a.jsxs)("div", {
-              className: "bg-background rounded-lg max-w-4xl max-h-[95vh] overflow-hidden w-full flex flex-col",
+              className: "bg-background rounded-lg max-w-[95vw] max-h-[95vh] overflow-hidden w-full flex flex-col",
               onClick: e => e.stopPropagation(),
               children: [(0, a.jsx)("div", {
                 className: "bg-background border-b px-4 py-2 flex-shrink-0",
@@ -1694,20 +1694,43 @@
                   children: [(0, a.jsx)("h2", {
                     className: "text-lg font-semibold",
                     children: el.title
-                  }), (0, a.jsx)("button", {
-                    onClick: () => en({
-                      isOpen: !1,
-                      title: "",
-                      content: "",
-                      editedContent: "",
-                      loading: !1,
-                      saving: !1,
-                      fileType: null,
-                      objectUid: null,
-                      canWrite: !1
-                    }),
-                    className: "text-muted-foreground hover:text-foreground",
-                    children: "✕"
+                  }), (0, a.jsxs)("div", {
+                    className: "flex items-center space-x-2",
+                    children: [(0, a.jsx)("button", {
+                      onClick: () => {
+                        let url = "";
+                        if (el.fileType === "private") {
+                          let obj = I.find(obj => obj.uid === el.objectUid);
+                          url = obj ? obj.private_url : "";
+                        } else if (el.fileType === "mock") {
+                          let obj = I.find(obj => obj.uid === el.objectUid);
+                          url = obj ? obj.mock_url : "";
+                        }
+                        if (url) eA(url);
+                      },
+                      className: "px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:bg-blue-200",
+                      children: "Copy URL"
+                    }), (0, a.jsx)("button", {
+                      onClick: () => {
+                        if (el.content) eA(el.content);
+                      },
+                      className: "px-2 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200",
+                      children: "Copy File"
+                    }), (0, a.jsx)("button", {
+                      onClick: () => en({
+                        isOpen: !1,
+                        title: "",
+                        content: "",
+                        editedContent: "",
+                        loading: !1,
+                        saving: !1,
+                        fileType: null,
+                        objectUid: null,
+                        canWrite: !1
+                      }),
+                      className: "text-muted-foreground hover:text-foreground",
+                      children: "✕"
+                    })]
                   })]
                 })
               }), (0, a.jsx)("div", {
