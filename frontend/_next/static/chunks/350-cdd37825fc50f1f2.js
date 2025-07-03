@@ -1025,102 +1025,165 @@
                       
                       const modal = document.createElement('div');
                       modal.id = 'new-object-modal';
-                                              modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-2 z-50';
+                                              modal.className = 'fixed inset-0 flex items-center justify-center p-2 z-50';
+                      modal.style.paddingTop = '0';
+                      modal.style.paddingBottom = '30px';
+                      modal.style.paddingLeft = '25px';
+                      modal.style.paddingRight = '25px';
                         modal.innerHTML = `
-                          <div class="bg-white rounded-lg w-full max-w-6xl" style="max-height: 90%; height: 90%; position: relative;">
-                            <div class="px-3 py-2 border-b bg-white flex-shrink-0">
+                          <div class="bg-white rounded-xl w-full" style="max-width: 1142px; max-height: 90%; height: 90%; position: relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0;">
+                            <div class="px-6 py-4 border-b flex-shrink-0 rounded-t-xl bg-gradient-to-r from-slate-50 to-gray-50">
                               <div class="flex items-center justify-between">
-                                <h2 class="text-sm font-semibold text-gray-900">Create New SyftObject</h2>
-                                <button id="close-modal" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+                                <h2 class="text-xl font-semibold text-gray-800">✨ Create New SyftObject</h2>
+                                <button id="close-modal" class="text-gray-400 hover:text-gray-600 text-xl font-bold rounded-full w-8 h-8 flex items-center justify-center hover:bg-gray-100 transition-colors">✕</button>
                               </div>
                             </div>
-                            <div class="overflow-y-auto p-3" style="height: calc(100% - 120px); padding-bottom: 20px;">
-                                                          <form id="new-object-form" class="space-y-2">
-                                <div>
-                                  <label class="block text-xs font-medium text-gray-700 mb-1">Object Name</label>
-                                  <input type="text" name="name" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" value="Syft Object">
+                            <div class="overflow-y-auto p-6" style="height: calc(100% - 140px); padding-bottom: 20px;">
+                              <form id="new-object-form" class="space-y-6">
+                                <!-- Basic Info Section -->
+                                <div class="grid grid-cols-2 gap-6">
+                                  <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">🎯 Object Name</label>
+                                    <input type="text" name="name" class="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-all" value="Syft Object" style="background: #fafbfc;">
+                                  </div>
+                                  <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">📧 Admin Email</label>
+                                    <input type="email" name="email" class="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-all" value="" style="background: #fafbfc;">
+                                  </div>
                                 </div>
+                                
+                                <!-- Description Section -->
                                 <div>
-                                  <label class="block text-xs font-medium text-gray-700 mb-1">Description</label>
-                                  <textarea name="description" rows="2" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent">Auto-generated object: Syft Object</textarea>
+                                  <label class="block text-sm font-medium text-gray-700 mb-1">📝 Description</label>
+                                  <textarea name="description" rows="4" class="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-all" style="background: #fafbfc;">Auto-generated object: Syft Object</textarea>
                                 </div>
-                                <div>
-                                  <label class="block text-xs font-medium text-gray-700 mb-1">Admin Email</label>
-                                  <input type="email" name="email" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" value="">
-                                </div>
-                                                              <div>
-                                  <label class="block text-xs font-medium text-gray-700 mb-1">Private File Content</label>
-                                  <div class="border border-gray-300 rounded">
-                                    <div class="flex border-b border-gray-300">
-                                      <button type="button" id="private-upload-tab" class="px-3 py-1 text-xs font-medium text-green-600 border-b-2 border-green-600">Upload File</button>
-                                      <button type="button" id="private-paste-tab" class="px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-700">Paste Content</button>
+                                                                                              <!-- File Content Section -->
+                                <div class="grid grid-cols-2 gap-6">
+                                  <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">🔒 Private File Content</label>
+                                    <div class="border border-gray-200 rounded-lg bg-green-50/30">
+                                      <div class="flex border-b border-gray-200">
+                                        <button type="button" id="private-upload-tab" class="px-4 py-2 text-sm font-medium text-green-700 border-b-2 border-green-500 bg-green-50 rounded-tl-lg">📁 Upload File</button>
+                                        <button type="button" id="private-paste-tab" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50">✏️ Paste Content</button>
+                                      </div>
+                                      <div id="private-upload-content" class="p-4">
+                                        <input type="file" name="privateFile" id="private-file-upload" class="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100">
+                                        <p class="text-xs text-gray-500 mt-2">📊 Upload private data file (CSV, JSON, Python, etc.)</p>
+                                      </div>
+                                      <div id="private-paste-content" class="p-4 hidden">
+                                        <textarea name="privateFileContent" rows="4" class="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-green-400 transition-all" style="background: #fafbfc;">Auto-generated private content for Syft Object</textarea>
+                                      </div>
                                     </div>
-                                    <div id="private-upload-content" class="p-2">
-                                      <input type="file" name="privateFile" id="private-file-upload" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100">
-                                      <p class="text-xs text-gray-500 mt-1">Upload private data file (CSV, JSON, Python, etc.)</p>
-                                    </div>
-                                    <div id="private-paste-content" class="p-2 hidden">
-                                      <textarea name="privateFileContent" rows="3" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-green-500 focus:border-transparent">Auto-generated private content for Syft Object</textarea>
+                                  </div>
+                                  <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">🎭 Mock File Content</label>
+                                    <div class="border border-gray-200 rounded-lg bg-blue-50/30">
+                                      <div class="flex border-b border-gray-200">
+                                        <button type="button" id="mock-upload-tab" class="px-4 py-2 text-sm font-medium text-blue-700 border-b-2 border-blue-500 bg-blue-50 rounded-tl-lg">📁 Upload File</button>
+                                        <button type="button" id="mock-paste-tab" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50">✏️ Paste Content</button>
+                                      </div>
+                                      <div id="mock-upload-content" class="p-4">
+                                        <input type="file" name="mockFile" id="mock-file-upload" class="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                        <p class="text-xs text-gray-500 mt-2">🎨 Upload mock/synthetic data file (CSV, JSON, Python, etc.)</p>
+                                      </div>
+                                      <div id="mock-paste-content" class="p-4 hidden">
+                                        <textarea name="mockFileContent" rows="4" class="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all" style="background: #fafbfc;">Auto-generated mock content for Syft Object</textarea>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
+                                
+                                <!-- Metadata Section -->
                                 <div>
-                                  <label class="block text-xs font-medium text-gray-700 mb-1">Mock File Content</label>
-                                  <div class="border border-gray-300 rounded">
-                                    <div class="flex border-b border-gray-300">
-                                      <button type="button" id="mock-upload-tab" class="px-3 py-1 text-xs font-medium text-blue-600 border-b-2 border-blue-600">Upload File</button>
-                                      <button type="button" id="mock-paste-tab" class="px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-700">Paste Content</button>
+                                  <label class="block text-sm font-medium text-gray-700 mb-1">⚙️ Metadata (JSON format)</label>
+                                  <textarea name="metadata" rows="3" class="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 font-mono transition-all bg-orange-50/30" placeholder="{}">{}</textarea>
+                                </div>
+                                                                                               <!-- Permissions Section -->
+                                <div>
+                                  <label class="block text-sm font-medium text-gray-700 mb-3">🔐 Permissions</label>
+                                  <div class="bg-purple-50/30 p-4 rounded-lg space-y-4">
+                                    <div class="grid grid-cols-2 gap-6">
+                                      <div class="permission-group" data-permission="private_read">
+                                        <label class="block text-xs font-medium text-gray-700 mb-2">🔒 Private Read</label>
+                                        <div class="permission-emails space-y-2"></div>
+                                        <button type="button" class="add-permission-btn mt-2 px-3 py-1 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-all">+ Add Email</button>
+                                      </div>
+                                      <div class="permission-group" data-permission="private_write">
+                                        <label class="block text-xs font-medium text-gray-700 mb-2">✏️ Private Write</label>
+                                        <div class="permission-emails space-y-2"></div>
+                                        <button type="button" class="add-permission-btn mt-2 px-3 py-1 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-all">+ Add Email</button>
+                                      </div>
                                     </div>
-                                    <div id="mock-upload-content" class="p-2">
-                                      <input type="file" name="mockFile" id="mock-file-upload" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                      <p class="text-xs text-gray-500 mt-1">Upload mock/synthetic data file (CSV, JSON, Python, etc.)</p>
+                                    <div class="grid grid-cols-2 gap-6">
+                                      <div class="permission-group" data-permission="mock_read">
+                                        <label class="block text-xs font-medium text-gray-700 mb-2">👁️ Mock Read</label>
+                                        <div class="permission-emails space-y-2"></div>
+                                        <button type="button" class="add-permission-btn mt-2 px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all">+ Add Email</button>
+                                      </div>
+                                      <div class="permission-group" data-permission="mock_write">
+                                        <label class="block text-xs font-medium text-gray-700 mb-2">📝 Mock Write</label>
+                                        <div class="permission-emails space-y-2"></div>
+                                        <button type="button" class="add-permission-btn mt-2 px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all">+ Add Email</button>
+                                      </div>
                                     </div>
-                                    <div id="mock-paste-content" class="p-2 hidden">
-                                      <textarea name="mockFileContent" rows="3" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent">Auto-generated mock content for Syft Object</textarea>
+                                    <div class="permission-group" data-permission="syftobject">
+                                      <label class="block text-xs font-medium text-gray-700 mb-2">🌟 SyftObject Access</label>
+                                      <div class="permission-emails space-y-2"></div>
+                                      <button type="button" class="add-permission-btn mt-2 px-3 py-1 text-xs bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-all">+ Add Email</button>
                                     </div>
                                   </div>
                                 </div>
-                                                             <div>
-                                 <label class="block text-xs font-medium text-gray-700 mb-1">Metadata (JSON format)</label>
-                                 <textarea name="metadata" rows="2" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent font-mono" placeholder="{}">{}</textarea>
-                               </div>
-                               <div class="mb-2">
-                                 <label class="block text-xs font-medium text-gray-700 mb-1">Permissions</label>
-                                 <div class="grid grid-cols-2 gap-2 text-xs">
-                                                                     <div>
-                                     <label class="block text-xs font-medium text-green-700 mb-1">Private Read</label>
-                                     <input type="text" name="private_read" class="w-full px-1 py-1 border border-gray-300 rounded text-xs" value="">
-                                   </div>
-                                   <div>
-                                     <label class="block text-xs font-medium text-green-700 mb-1">Private Write</label>
-                                     <input type="text" name="private_write" class="w-full px-1 py-1 border border-gray-300 rounded text-xs" value="">
-                                   </div>
-                                   <div>
-                                     <label class="block text-xs font-medium text-blue-700 mb-1">Mock Read</label>
-                                     <input type="text" name="mock_read" class="w-full px-1 py-1 border border-gray-300 rounded text-xs" value="public">
-                                   </div>
-                                   <div>
-                                     <label class="block text-xs font-medium text-blue-700 mb-1">Mock Write</label>
-                                     <input type="text" name="mock_write" class="w-full px-1 py-1 border border-gray-300 rounded text-xs" value="">
-                                   </div>
-                                   <div class="col-span-2">
-                                     <label class="block text-xs font-medium text-purple-700 mb-1">SyftObject Access</label>
-                                     <input type="text" name="syftobject" class="w-full px-1 py-1 border border-gray-300 rounded text-xs" value="public">
-                                   </div>
-                                </div>
-                              </div>
                             </form>
                           </div>
-                                                     <div class="px-3 py-2 border-t bg-gray-50 flex-shrink-0" style="position: absolute; bottom: 0; left: 0; right: 0; border-radius: 0 0 8px 8px;">
-                             <div class="flex justify-end gap-2">
-                               <button id="cancel-btn" class="px-3 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50">Cancel</button>
-                               <button id="create-btn" style="background-color: #22c55e; color: white; border: none; padding: 4px 12px; border-radius: 4px; font-weight: 600; font-size: 12px;">Create Object</button>
+                                                     <div class="px-6 py-4 border-t flex-shrink-0 rounded-b-xl bg-gradient-to-r from-slate-50 to-gray-50" style="position: absolute; bottom: 0; left: 0; right: 0;">
+                             <div class="flex justify-end gap-4">
+                               <button id="cancel-btn" class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all">🚫 Cancel</button>
+                               <button id="create-btn" class="px-6 py-2 text-sm font-bold text-white rounded-lg hover:shadow-lg transform hover:scale-105 transition-all duration-200 shadow-md" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);">✨ Create Object</button>
                              </div>
                            </div>
                         </div>
                       `;
                       
                       document.body.appendChild(modal);
+                      
+                      // Permission management functions
+                      function addEmailToPermission(permissionType, email = '') {
+                        const group = document.querySelector(`[data-permission="${permissionType}"]`);
+                        const emailsContainer = group.querySelector('.permission-emails');
+                        
+                        const emailDiv = document.createElement('div');
+                        emailDiv.className = 'flex items-center gap-2';
+                        emailDiv.innerHTML = `
+                          <input type="text" 
+                                 class="flex-1 px-2 py-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 transition-all" 
+                                 style="background: #fafbfc;" 
+                                 value="${email}"
+                                 placeholder="email@example.com or 'public'">
+                          <button type="button" class="remove-email-btn px-2 py-1 text-xs bg-red-100 text-red-600 rounded hover:bg-red-200 transition-all">×</button>
+                        `;
+                        
+                        emailsContainer.appendChild(emailDiv);
+                        
+                        // Add remove functionality
+                        emailDiv.querySelector('.remove-email-btn').onclick = () => emailDiv.remove();
+                        
+                        // Focus the new input
+                        emailDiv.querySelector('input').focus();
+                      }
+                      
+                      function collectPermissions() {
+                        const permissions = {};
+                        document.querySelectorAll('.permission-group').forEach(group => {
+                          const permissionType = group.dataset.permission;
+                          const emails = [];
+                          group.querySelectorAll('.permission-emails input').forEach(input => {
+                            const email = input.value.trim();
+                            if (email) emails.push(email);
+                          });
+                          permissions[permissionType] = emails;
+                        });
+                        return permissions;
+                      }
                       
                       // Fetch client info and populate defaults
                       fetch('/api/client-info')
@@ -1129,10 +1192,13 @@
                           const defaults = data.defaults;
                           // Set admin email
                           document.querySelector('[name="email"]').value = defaults.admin_email;
-                          // Set permission defaults
-                          document.querySelector('[name="private_read"]').value = defaults.permissions.private_read;
-                          document.querySelector('[name="private_write"]').value = defaults.permissions.private_write;
-                          document.querySelector('[name="mock_write"]').value = defaults.permissions.mock_write;
+                          
+                          // Set permission defaults using the new system
+                          addEmailToPermission('private_read', defaults.permissions.private_read);
+                          addEmailToPermission('private_write', defaults.permissions.private_write);
+                          addEmailToPermission('mock_read', 'public');
+                          addEmailToPermission('mock_write', defaults.permissions.mock_write);
+                          addEmailToPermission('syftobject', 'public');
                         })
                         .catch(err => console.log('Could not load client info:', err));
                       
@@ -1140,6 +1206,14 @@
                       document.getElementById('close-modal').onclick = () => modal.remove();
                       document.getElementById('cancel-btn').onclick = () => modal.remove();
                       modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+                      
+                      // Add permission button listeners
+                      document.querySelectorAll('.add-permission-btn').forEach(btn => {
+                        btn.onclick = () => {
+                          const permissionType = btn.closest('.permission-group').dataset.permission;
+                          addEmailToPermission(permissionType);
+                        };
+                      });
                       
                                               // Auto-update description and content when name changes
                         document.querySelector('[name="name"]').oninput = function() {
@@ -1282,14 +1356,8 @@
                           
                           // Note: name is optional - syobj will auto-generate if empty
                         
-                        // Process permissions
-                        const permissions = {
-                          private_read: data.private_read ? data.private_read.split(',').map(e => e.trim()).filter(e => e) : [],
-                          private_write: data.private_write ? data.private_write.split(',').map(e => e.trim()).filter(e => e) : [],
-                          mock_read: data.mock_read ? data.mock_read.split(',').map(e => e.trim()).filter(e => e) : [],
-                          mock_write: data.mock_write ? data.mock_write.split(',').map(e => e.trim()).filter(e => e) : [],
-                          syftobject: data.syftobject ? data.syftobject.split(',').map(e => e.trim()).filter(e => e) : []
-                        };
+                        // Process permissions using the new collection system
+                        const permissions = collectPermissions();
                         
                         // Parse metadata
                         let metadata = {};
@@ -2051,19 +2119,43 @@
                   }), (0, a.jsxs)("div", {
                     className: "flex items-center space-x-2",
                     children: [(0, a.jsx)("button", {
-                      onClick: () => {
-                        let url = "";
-                        if (el.fileType === "private") {
-                          let obj = I.find(obj => obj.uid === el.objectUid);
-                          url = obj ? obj.private_url : "";
-                        } else if (el.fileType === "mock") {
-                          let obj = I.find(obj => obj.uid === el.objectUid);
-                          url = obj ? obj.mock_url : "";
+                      onClick: async () => {
+                        let obj = I.find(obj => obj.uid === el.objectUid);
+                        if (obj) {
+                          let path = "";
+                          try {
+                            // Try to get the actual file path from the API
+                            let response = await fetch("".concat("", "/api/objects/").concat(obj.uid));
+                            if (response.ok) {
+                              let data = await response.json();
+                              if (el.fileType === "mock" && data.file_paths && data.file_paths.mock) {
+                                path = data.file_paths.mock;
+                              } else if (el.fileType === "private" && data.file_paths && data.file_paths.private) {
+                                path = data.file_paths.private;
+                              }
+                            }
+                            
+                            // Fallback to constructing from URL if API doesn't have file_paths
+                            if (!path) {
+                              let url = el.fileType === "mock" ? obj.mock_url : obj.private_url;
+                              if (url) {
+                                let cleanUrl = url.replace("syft://", "");
+                                let email = cleanUrl.split("/")[0];
+                                let filePath = "/" + cleanUrl.split("/").slice(1).join("/");
+                                path = "~/SyftBox/datasites/".concat(email).concat(filePath);
+                              }
+                            }
+                            
+                            if (path) await eA(path);
+                            else throw Error("Could not determine local path");
+                          } catch (error) {
+                            let fallbackUrl = el.fileType === "mock" ? obj.mock_url : obj.private_url;
+                            await eA(fallbackUrl || "Path not available");
+                          }
                         }
-                        if (url) eA(url);
                       },
                       className: "px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:bg-blue-200",
-                      children: "Copy URL"
+                      children: "Copy Local Path"
                     }), (0, a.jsx)("button", {
                       onClick: () => {
                         if (el.content) eA(el.content);
