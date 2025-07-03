@@ -919,7 +919,7 @@
                                               modal.className = 'fixed inset-0 flex items-center justify-center z-50';
                       modal.style.padding = '5vh 5vw';
                         modal.innerHTML = `
-                          <div class="bg-white rounded-xl w-full h-full" style="position: relative; box-shadow: 0 0 0 2px rgba(128, 90, 213, 0.3), 0 0 10px rgba(128, 90, 213, 0.4), 10px 0 20px rgba(236, 72, 153, 0.6), 15px 0 30px rgba(239, 68, 68, 0.5), 0 10px 20px rgba(251, 146, 60, 0.6), 0 15px 30px rgba(34, 197, 94, 0.5), -10px 0 20px rgba(6, 182, 212, 0.6), -15px 0 30px rgba(59, 130, 246, 0.5), -10px -10px 20px rgba(147, 51, 234, 0.6); border: 1px solid #e2e8f0;">
+                          <div class="bg-white rounded-xl w-full h-full" style="position: relative; box-shadow: 0 0 0 2px rgba(128, 90, 213, 0.075), 0 0 10px rgba(128, 90, 213, 0.1), 10px 0 20px rgba(236, 72, 153, 0.15), 15px 0 30px rgba(239, 68, 68, 0.125), 0 10px 20px rgba(251, 146, 60, 0.15), 0 15px 30px rgba(34, 197, 94, 0.125), -10px 0 20px rgba(6, 182, 212, 0.15), -15px 0 30px rgba(59, 130, 246, 0.125), -10px -10px 20px rgba(147, 51, 234, 0.15); border: 1px solid #e2e8f0;">
                             <div class="px-6 py-4 border-b flex-shrink-0 rounded-t-xl bg-gradient-to-r from-slate-50 to-gray-50">
                               <div class="flex items-center justify-between">
                                 <h2 class="text-xl font-semibold text-gray-800">✨ Create New SyftObject</h2>
@@ -1807,15 +1807,15 @@
               onClick: e => e.stopPropagation(),
               style: { 
                 boxShadow: `
-                  0 -8px 16px rgba(168, 85, 247, 0.3),
-                  8px -4px 16px rgba(236, 72, 153, 0.25),
-                  8px 0px 16px rgba(239, 68, 68, 0.2),
-                  8px 8px 16px rgba(245, 158, 11, 0.25),
-                  0 8px 16px rgba(34, 197, 94, 0.3),
-                  -8px 8px 16px rgba(6, 182, 212, 0.25),
-                  -8px 0px 16px rgba(59, 130, 246, 0.2),
-                  -8px -8px 16px rgba(147, 51, 234, 0.25),
-                  0 0 32px rgba(168, 85, 247, 0.1)
+                  0 -8px 16px rgba(168, 85, 247, 0.075),
+                  8px -4px 16px rgba(236, 72, 153, 0.0625),
+                  8px 0px 16px rgba(239, 68, 68, 0.05),
+                  8px 8px 16px rgba(245, 158, 11, 0.0625),
+                  0 8px 16px rgba(34, 197, 94, 0.075),
+                  -8px 8px 16px rgba(6, 182, 212, 0.0625),
+                  -8px 0px 16px rgba(59, 130, 246, 0.05),
+                  -8px -8px 16px rgba(147, 51, 234, 0.0625),
+                  0 0 32px rgba(168, 85, 247, 0.025)
                 `.replace(/\s+/g, ' ').trim()
               },
               children: [(0, a.jsx)("div", {
@@ -2051,15 +2051,15 @@
               className: "bg-background rounded-lg overflow-hidden w-full h-full flex flex-col",
               style: { 
                 boxShadow: `
-                  0 -8px 16px rgba(168, 85, 247, 0.3),
-                  8px -4px 16px rgba(236, 72, 153, 0.25),
-                  8px 0px 16px rgba(239, 68, 68, 0.2),
-                  8px 8px 16px rgba(245, 158, 11, 0.25),
-                  0 8px 16px rgba(34, 197, 94, 0.3),
-                  -8px 8px 16px rgba(6, 182, 212, 0.25),
-                  -8px 0px 16px rgba(59, 130, 246, 0.2),
-                  -8px -8px 16px rgba(147, 51, 234, 0.25),
-                  0 0 32px rgba(168, 85, 247, 0.1)
+                  0 -8px 16px rgba(168, 85, 247, 0.075),
+                  8px -4px 16px rgba(236, 72, 153, 0.0625),
+                  8px 0px 16px rgba(239, 68, 68, 0.05),
+                  8px 8px 16px rgba(245, 158, 11, 0.0625),
+                  0 8px 16px rgba(34, 197, 94, 0.075),
+                  -8px 8px 16px rgba(6, 182, 212, 0.0625),
+                  -8px 0px 16px rgba(59, 130, 246, 0.05),
+                  -8px -8px 16px rgba(147, 51, 234, 0.0625),
+                  0 0 32px rgba(168, 85, 247, 0.025)
                 `.replace(/\s+/g, ' ').trim()
               },
               onClick: e => e.stopPropagation(),
