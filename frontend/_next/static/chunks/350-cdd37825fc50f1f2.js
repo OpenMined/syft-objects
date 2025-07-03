@@ -672,7 +672,10 @@
                       const modal = document.createElement('div');
                       modal.id = 'new-object-modal';
                                               modal.className = 'fixed inset-0 flex items-center justify-center p-2 z-50';
-                      modal.style.paddingTop = '60px';
+                      modal.style.paddingTop = '0';
+                      modal.style.paddingBottom = '30px';
+                      modal.style.paddingLeft = '25px';
+                      modal.style.paddingRight = '25px';
                         modal.innerHTML = `
                           <div class="bg-white rounded-xl w-full" style="max-width: 1142px; max-height: 90%; height: 90%; position: relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0;">
                             <div class="px-6 py-4 border-b flex-shrink-0 rounded-t-xl bg-gradient-to-r from-slate-50 to-gray-50">
