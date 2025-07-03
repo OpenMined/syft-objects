@@ -577,20 +577,18 @@
           return () => clearInterval(e)
         }, [W]), (0, l.useEffect)(() => {
           O > 0 && ea(Math.ceil(O / ee))
-        }, [O, ee]), s) ? (0, a.jsxs)("div", {
+        }, [O, ee]), s) ? (0, a.jsx)("div", {
           className: "flex items-center justify-center min-h-screen p-4",
-                    style: {background: "#ffffff"},
-          children: [(0, a.jsxs)("div", {
-                        className: "text-center space-y-32",
+          children: (0, a.jsxs)("div", {
+            className: "text-center space-y-4",
             children: [(0, a.jsx)(j, {
-              className: "h-48 w-48 mx-auto",
+              className: "h-12 w-12 mx-auto",
               isLoading: !0
             }), (0, a.jsx)("p", {
-              className: "text-3xl font-bold tracking-wide text-gray-600",
-              style: {marginTop: "100px"},
+              className: "text-sm text-muted-foreground",
               children: "the internet of private data"
             })]
-          })]
+          })
         }) : (0, a.jsxs)("div", {
           className: "h-full bg-background text-foreground flex flex-col overflow-hidden",
           children: [(0, a.jsxs)("div", {
@@ -683,10 +681,10 @@
                                   </div>
                                   <div id="upload-content" class="p-3">
                                     <input type="file" name="file" id="file-upload" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                    <p class="text-xs text-gray-500 mt-1">Upload any file type - file will be processed on server (fast!)</p>
+                                    <p class="text-xs text-gray-500 mt-1">Upload any file type (CSV, JSON, Python, etc.)</p>
                                   </div>
                                   <div id="paste-content" class="p-3 hidden">
-                                    <textarea name="file_content" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">Auto-generated content for Syft Object</textarea>
+                                    <textarea name="fileContent" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">Auto-generated content for Syft Object</textarea>
                                   </div>
                                 </div>
                               </div>
@@ -754,12 +752,10 @@
                       // Auto-update description and content when name changes
                       document.querySelector('[name="name"]').oninput = function() {
                         const descField = document.querySelector('[name="description"]');
-                        const contentField = document.querySelector('[name="file_content"]');
+                        const contentField = document.querySelector('[name="fileContent"]');
                         const name = this.value || 'Syft Object';
                         descField.value = `Auto-generated object: ${name}`;
-                        if (contentField) {
-                          contentField.value = `Auto-generated content for ${name}`;
-                        }
+                        contentField.value = `Auto-generated content for ${name}`;
                       };
                       
                       // Tab switching
@@ -776,28 +772,47 @@
                         document.getElementById('upload-content').classList.add('hidden');
                       };
                       
-                      // File upload handler - just show file name, no content reading
+                      // File upload handler
                       document.getElementById('file-upload').onchange = function(e) {
                         const file = e.target.files[0];
                         if (file) {
-                          // Update file info display
-                          const fileInfo = document.createElement('div');
-                          fileInfo.className = 'mt-2 text-sm text-green-600';
-                          fileInfo.textContent = `✓ File selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
-                          
-                          // Remove any existing file info
-                          const existingInfo = this.parentNode.querySelector('.mt-2');
-                          if (existingInfo) existingInfo.remove();
-                          
-                          this.parentNode.appendChild(fileInfo);
-                          
-                          // Auto-populate name if empty
-                          const nameField = document.querySelector('[name="name"]');
-                          if (!nameField.value.trim() || nameField.value === 'Syft Object') {
-                            const fileName = file.name.split('.')[0].replace(/[_-]/g, ' ');
-                            nameField.value = fileName.charAt(0).toUpperCase() + fileName.slice(1);
-                            nameField.dispatchEvent(new Event('input')); // Trigger auto-update
-                          }
+                          const reader = new FileReader();
+                          reader.onload = function(e) {
+                            const form = document.getElementById('new-object-form');
+                            let fileContentField = form.querySelector('[name="fileContent"]');
+                            let filenameField = form.querySelector('[name="filename"]');
+                            
+                            // Store original filename
+                            if (!filenameField) {
+                              filenameField = document.createElement('input');
+                              filenameField.type = 'hidden';
+                              filenameField.name = 'filename';
+                              form.appendChild(filenameField);
+                            }
+                            filenameField.value = file.name;
+                            
+                            // Only show first 1000 characters in preview
+                            const content = e.target.result;
+                            const preview = content.length > 1000 ? 
+                              content.substring(0, 1000) + '\\n... (file truncated for preview, full content will be uploaded)' : 
+                              content;
+                            
+                            if (fileContentField) {
+                              fileContentField.value = preview;
+                              // Store full content in hidden field
+                              let fullContentField = form.querySelector('[name="fullFileContent"]');
+                              if (!fullContentField) {
+                                fullContentField = document.createElement('textarea');
+                                fullContentField.style.display = 'none';
+                                fullContentField.name = 'fullFileContent';
+                                form.appendChild(fullContentField);
+                              }
+                              fullContentField.value = content;
+                            }
+                            // Auto-switch to paste tab to show the content
+                            document.getElementById('paste-tab').click();
+                          };
+                          reader.readAsText(file);
                         }
                       };
                       
@@ -805,21 +820,54 @@
                       document.getElementById('create-btn').onclick = async function() {
                         const form = document.getElementById('new-object-form');
                         const formData = new FormData(form);
+                        const data = Object.fromEntries(formData.entries());
                         
-                        // Add file if selected
-                        const fileInput = document.getElementById('file-upload');
-                        if (fileInput.files.length > 0) {
-                          formData.append('file', fileInput.files[0]);
+                        // Use full file content if available, otherwise use manually entered content
+                        const fileContent = data.fullFileContent || data.fileContent || '';
+                        const filename = data.filename || '';
+                        
+                        // Note: name is optional - syobj will auto-generate if empty
+                        
+                        // Process permissions
+                        const permissions = {
+                          private_read: data.private_read ? data.private_read.split(',').map(e => e.trim()).filter(e => e) : [],
+                          private_write: data.private_write ? data.private_write.split(',').map(e => e.trim()).filter(e => e) : [],
+                          mock_read: data.mock_read ? data.mock_read.split(',').map(e => e.trim()).filter(e => e) : [],
+                          mock_write: data.mock_write ? data.mock_write.split(',').map(e => e.trim()).filter(e => e) : [],
+                          syftobject: data.syftobject ? data.syftobject.split(',').map(e => e.trim()).filter(e => e) : []
+                        };
+                        
+                        // Parse metadata
+                        let metadata = {};
+                        if (data.metadata) {
+                          try {
+                            metadata = JSON.parse(data.metadata);
+                          } catch (e) {
+                            alert('Invalid JSON in metadata field');
+                            return;
+                          }
                         }
+                        
+                        const objData = {
+                          name: data.name,
+                          description: data.description || '',
+                          email: data.email || '',
+                          file_content: fileContent,
+                          filename: filename,
+                          metadata: metadata,
+                          permissions: permissions
+                        };
                         
                         try {
                           this.textContent = 'Creating...';
                           this.disabled = true;
-                          this.style.backgroundColor = '#9ca3af';
                           
                           const response = await fetch('/api/objects', {
                             method: 'POST',
-                            body: formData
+                            headers: {
+                              'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(objData)
                           });
                           
                           if (response.ok) {
@@ -836,7 +884,6 @@
                         } finally {
                           this.textContent = 'Create Object';
                           this.disabled = false;
-                          this.style.backgroundColor = '#22c55e';
                         }
                       };
                     },
