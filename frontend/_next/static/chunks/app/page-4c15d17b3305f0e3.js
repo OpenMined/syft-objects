@@ -137,9 +137,6 @@
             className: "text-center space-y-4",
             children: [(0, r.jsx)(n.Z, {
               className: "h-8 w-8 animate-spin mx-auto text-blue-600"
-            }), (0, r.jsx)("p", {
-              className: "text-muted-foreground",
-              children: "the internet of asdf2 data"
             })]
           })
         }) : (0, r.jsxs)("div", {
