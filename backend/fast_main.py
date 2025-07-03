@@ -868,11 +868,17 @@ async def widget_page():
         # Inject the Big/Small button and its functionality
         custom_script = """
         <script>
-        // Wait for the page to load
-        window.addEventListener('load', function() {
-            // Add Big/Small button functionality
-            let isSmall = false;
-            let originalHeight = null;
+                 // Wait for the page to load
+         window.addEventListener('load', function() {
+             // Add Big/Small button functionality
+             let isSmall = false;
+             let originalHeight = null;
+             
+             // Load saved state from localStorage
+             const savedState = localStorage.getItem('syft-widget-size');
+             if (savedState === 'small') {
+                 isSmall = true;
+             }
             
                          function createBigSmallButton() {
                  // Look for the Select All button specifically and add our button next to it
@@ -954,32 +960,55 @@ async def widget_page():
                  }
              }
             
-            function toggleWidgetHeight() {
-                const mainContainer = document.querySelector('.fixed.inset-0') || 
-                                    document.querySelector('.min-h-screen') ||
-                                    document.body;
-                
-                if (!isSmall) {
-                    // Store original height and make it small
-                    originalHeight = mainContainer.style.height || '100vh';
-                    mainContainer.style.height = '300px';
-                    mainContainer.style.maxHeight = '300px';
-                    mainContainer.style.overflow = 'hidden';
-                    isSmall = true;
-                    
-                    // Try to resize parent iframe if in iframe context
-                    tryResizeParentIframe('300px');
-                } else {
-                    // Restore original height
-                    mainContainer.style.height = originalHeight || '100vh';
-                    mainContainer.style.maxHeight = '';
-                    mainContainer.style.overflow = '';
-                    isSmall = false;
-                    
-                    // Try to resize parent iframe if in iframe context
-                    tryResizeParentIframe('600px');
-                }
-            }
+                         function toggleWidgetHeight() {
+                 const mainContainer = document.querySelector('.fixed.inset-0') || 
+                                     document.querySelector('.min-h-screen') ||
+                                     document.body;
+                 
+                 if (!isSmall) {
+                     // Store original height and make it small
+                     originalHeight = mainContainer.style.height || '100vh';
+                     mainContainer.style.height = '300px';
+                     mainContainer.style.maxHeight = '300px';
+                     mainContainer.style.overflow = 'hidden';
+                     isSmall = true;
+                     
+                     // Save state to localStorage
+                     localStorage.setItem('syft-widget-size', 'small');
+                     
+                     // Try to resize parent iframe if in iframe context
+                     tryResizeParentIframe('300px');
+                 } else {
+                     // Restore original height
+                     mainContainer.style.height = originalHeight || '100vh';
+                     mainContainer.style.maxHeight = '';
+                     mainContainer.style.overflow = '';
+                     isSmall = false;
+                     
+                     // Save state to localStorage
+                     localStorage.setItem('syft-widget-size', 'big');
+                     
+                     // Try to resize parent iframe if in iframe context
+                     tryResizeParentIframe('600px');
+                 }
+             }
+             
+             function applyInitialSize() {
+                 // Apply the saved size state when the widget loads
+                 if (isSmall) {
+                     const mainContainer = document.querySelector('.fixed.inset-0') || 
+                                         document.querySelector('.min-h-screen') ||
+                                         document.body;
+                     
+                     originalHeight = mainContainer.style.height || '100vh';
+                     mainContainer.style.height = '300px';
+                     mainContainer.style.maxHeight = '300px';
+                     mainContainer.style.overflow = 'hidden';
+                     
+                     // Try to resize parent iframe if in iframe context
+                     tryResizeParentIframe('300px');
+                 }
+             }
             
             function tryResizeParentIframe(height) {
                 try {
@@ -1008,8 +1037,11 @@ async def widget_page():
                 }
             }
             
-                         // Wait a bit more for the widget to fully load, then add the button
-             setTimeout(createBigSmallButton, 1500);
+                         // Wait a bit more for the widget to fully load, then add the button and apply saved state
+             setTimeout(function() {
+                 createBigSmallButton();
+                 applyInitialSize();
+             }, 1500);
         });
         
         // Listen for messages from parent (in case parent wants to control the size)
