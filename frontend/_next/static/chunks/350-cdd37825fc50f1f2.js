@@ -661,16 +661,16 @@
                           <div class="overflow-y-auto p-4 max-h-96">
                             <form id="new-object-form" class="space-y-3">
                               <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Object Name *</label>
-                                <input type="text" name="name" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="My New Object">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Object Name</label>
+                                <input type="text" name="name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" value="Syft Object">
                               </div>
                               <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                <textarea name="description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Description of the object"></textarea>
+                                <textarea name="description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">Auto-generated object: Syft Object</textarea>
                               </div>
                               <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Admin Email</label>
-                                <input type="email" name="email" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="admin@example.com">
+                                <input type="email" name="email" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" value="">
                               </div>
                               <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">File Content</label>
@@ -681,39 +681,39 @@
                                   </div>
                                   <div id="upload-content" class="p-3">
                                     <input type="file" name="file" id="file-upload" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                    <p class="text-xs text-gray-500 mt-1">Upload any file type (CSV, JSON, Python, etc.)</p>
+                                    <p class="text-xs text-gray-500 mt-1">Upload any file type - file will be processed on server (fast!)</p>
                                   </div>
                                   <div id="paste-content" class="p-3 hidden">
-                                    <textarea name="fileContent" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Paste your file content here..."></textarea>
+                                    <textarea name="file_content" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">Auto-generated content for Syft Object</textarea>
                                   </div>
                                 </div>
                               </div>
                               <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Metadata (JSON format)</label>
-                                <textarea name="metadata" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm" placeholder='{"key": "value", "category": "dataset"}'></textarea>
+                                <textarea name="metadata" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm" placeholder="{}">{}</textarea>
                               </div>
                               <div class="mb-4">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Permissions</label>
                                 <div class="grid grid-cols-2 gap-3 text-sm">
                                   <div>
                                     <label class="block text-xs font-medium text-green-700 mb-1">Private Read</label>
-                                    <input type="text" name="private_read" class="w-full px-2 py-1 border border-gray-300 rounded text-xs" placeholder="email1@example.com, email2@example.com">
+                                    <input type="text" name="private_read" class="w-full px-2 py-1 border border-gray-300 rounded text-xs" value="">
                                   </div>
                                   <div>
                                     <label class="block text-xs font-medium text-green-700 mb-1">Private Write</label>
-                                    <input type="text" name="private_write" class="w-full px-2 py-1 border border-gray-300 rounded text-xs" placeholder="email1@example.com">
+                                    <input type="text" name="private_write" class="w-full px-2 py-1 border border-gray-300 rounded text-xs" value="">
                                   </div>
                                   <div>
                                     <label class="block text-xs font-medium text-blue-700 mb-1">Mock Read</label>
-                                    <input type="text" name="mock_read" class="w-full px-2 py-1 border border-gray-300 rounded text-xs" placeholder="email1@example.com, email2@example.com">
+                                    <input type="text" name="mock_read" class="w-full px-2 py-1 border border-gray-300 rounded text-xs" value="public">
                                   </div>
                                   <div>
                                     <label class="block text-xs font-medium text-blue-700 mb-1">Mock Write</label>
-                                    <input type="text" name="mock_write" class="w-full px-2 py-1 border border-gray-300 rounded text-xs" placeholder="email1@example.com">
+                                    <input type="text" name="mock_write" class="w-full px-2 py-1 border border-gray-300 rounded text-xs" value="">
                                   </div>
                                   <div class="col-span-2">
                                     <label class="block text-xs font-medium text-purple-700 mb-1">SyftObject Access</label>
-                                    <input type="text" name="syftobject" class="w-full px-2 py-1 border border-gray-300 rounded text-xs" placeholder="email1@example.com, email2@example.com">
+                                    <input type="text" name="syftobject" class="w-full px-2 py-1 border border-gray-300 rounded text-xs" value="public">
                                   </div>
                                 </div>
                               </div>
@@ -722,7 +722,7 @@
                           <div class="px-4 py-4 border-t bg-gray-50">
                             <div class="flex justify-end gap-3">
                               <button id="cancel-btn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
-                              <button id="create-btn" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">Create Object</button>
+                              <button id="create-btn" style="background-color: #22c55e; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 14px;">Create Object</button>
                             </div>
                           </div>
                         </div>
@@ -730,10 +730,35 @@
                       
                       document.body.appendChild(modal);
                       
+                      // Fetch client info and populate defaults
+                      fetch('/api/client-info')
+                        .then(response => response.json())
+                        .then(data => {
+                          const defaults = data.defaults;
+                          // Set admin email
+                          document.querySelector('[name="email"]').value = defaults.admin_email;
+                          // Set permission defaults
+                          document.querySelector('[name="private_read"]').value = defaults.permissions.private_read;
+                          document.querySelector('[name="private_write"]').value = defaults.permissions.private_write;
+                          document.querySelector('[name="mock_write"]').value = defaults.permissions.mock_write;
+                        })
+                        .catch(err => console.log('Could not load client info:', err));
+                      
                       // Add event listeners
                       document.getElementById('close-modal').onclick = () => modal.remove();
                       document.getElementById('cancel-btn').onclick = () => modal.remove();
                       modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+                      
+                      // Auto-update description and content when name changes
+                      document.querySelector('[name="name"]').oninput = function() {
+                        const descField = document.querySelector('[name="description"]');
+                        const contentField = document.querySelector('[name="file_content"]');
+                        const name = this.value || 'Syft Object';
+                        descField.value = `Auto-generated object: ${name}`;
+                        if (contentField) {
+                          contentField.value = `Auto-generated content for ${name}`;
+                        }
+                      };
                       
                       // Tab switching
                       document.getElementById('upload-tab').onclick = function() {
@@ -749,21 +774,28 @@
                         document.getElementById('upload-content').classList.add('hidden');
                       };
                       
-                      // File upload handler
+                      // File upload handler - just show file name, no content reading
                       document.getElementById('file-upload').onchange = function(e) {
                         const file = e.target.files[0];
                         if (file) {
-                          const reader = new FileReader();
-                          reader.onload = function(e) {
-                            const form = document.getElementById('new-object-form');
-                            let fileContentField = form.querySelector('[name="fileContent"]');
-                            if (fileContentField) {
-                              fileContentField.value = e.target.result;
-                            }
-                            // Auto-switch to paste tab to show the content
-                            document.getElementById('paste-tab').click();
-                          };
-                          reader.readAsText(file);
+                          // Update file info display
+                          const fileInfo = document.createElement('div');
+                          fileInfo.className = 'mt-2 text-sm text-green-600';
+                          fileInfo.textContent = `✓ File selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+                          
+                          // Remove any existing file info
+                          const existingInfo = this.parentNode.querySelector('.mt-2');
+                          if (existingInfo) existingInfo.remove();
+                          
+                          this.parentNode.appendChild(fileInfo);
+                          
+                          // Auto-populate name if empty
+                          const nameField = document.querySelector('[name="name"]');
+                          if (!nameField.value.trim() || nameField.value === 'Syft Object') {
+                            const fileName = file.name.split('.')[0].replace(/[_-]/g, ' ');
+                            nameField.value = fileName.charAt(0).toUpperCase() + fileName.slice(1);
+                            nameField.dispatchEvent(new Event('input')); // Trigger auto-update
+                          }
                         }
                       };
                       
@@ -771,53 +803,21 @@
                       document.getElementById('create-btn').onclick = async function() {
                         const form = document.getElementById('new-object-form');
                         const formData = new FormData(form);
-                        const data = Object.fromEntries(formData.entries());
                         
-                        // Validate required fields
-                        if (!data.name) {
-                          alert('Object name is required');
-                          return;
+                        // Add file if selected
+                        const fileInput = document.getElementById('file-upload');
+                        if (fileInput.files.length > 0) {
+                          formData.append('file', fileInput.files[0]);
                         }
-                        
-                        // Process permissions
-                        const permissions = {
-                          private_read: data.private_read ? data.private_read.split(',').map(e => e.trim()).filter(e => e) : [],
-                          private_write: data.private_write ? data.private_write.split(',').map(e => e.trim()).filter(e => e) : [],
-                          mock_read: data.mock_read ? data.mock_read.split(',').map(e => e.trim()).filter(e => e) : [],
-                          mock_write: data.mock_write ? data.mock_write.split(',').map(e => e.trim()).filter(e => e) : [],
-                          syftobject: data.syftobject ? data.syftobject.split(',').map(e => e.trim()).filter(e => e) : []
-                        };
-                        
-                        // Parse metadata
-                        let metadata = {};
-                        if (data.metadata) {
-                          try {
-                            metadata = JSON.parse(data.metadata);
-                          } catch (e) {
-                            alert('Invalid JSON in metadata field');
-                            return;
-                          }
-                        }
-                        
-                        const objData = {
-                          name: data.name,
-                          description: data.description || '',
-                          email: data.email || '',
-                          file_content: data.fileContent || '',
-                          metadata: metadata,
-                          permissions: permissions
-                        };
                         
                         try {
                           this.textContent = 'Creating...';
                           this.disabled = true;
+                          this.style.backgroundColor = '#9ca3af';
                           
                           const response = await fetch('/api/objects', {
                             method: 'POST',
-                            headers: {
-                              'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(objData)
+                            body: formData
                           });
                           
                           if (response.ok) {
@@ -834,6 +834,7 @@
                         } finally {
                           this.textContent = 'Create Object';
                           this.disabled = false;
+                          this.style.backgroundColor = '#22c55e';
                         }
                       };
                     },

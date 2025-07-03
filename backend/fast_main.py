@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 from pathlib import Path as PathLib
 
-from fastapi import FastAPI, Depends, HTTPException, Body, Path, Request
+from fastapi import FastAPI, Depends, HTTPException, Body, Path, Request, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse, PlainTextResponse, RedirectResponse, FileResponse
 from loguru import logger
@@ -95,6 +95,33 @@ async def get_status() -> Dict[str, Any]:
         "components": {
             "backend": "running",
             "objects_collection": "available" if objects else "unavailable"
+        }
+    }
+
+@app.get("/api/client-info")
+async def get_client_info() -> Dict[str, Any]:
+    """Get SyftBox client information for form defaults."""
+    user_email = "admin@example.com"  # fallback
+    
+    if SYFTBOX_AVAILABLE:
+        try:
+            client = get_syftbox_client()
+            if client:
+                user_email = getattr(client, 'email', 'admin@example.com')
+        except Exception:
+            pass
+    
+    return {
+        "user_email": user_email,
+        "defaults": {
+            "admin_email": user_email,
+            "permissions": {
+                "private_read": user_email,
+                "private_write": user_email,
+                "mock_read": "public",
+                "mock_write": user_email,
+                "syftobject": "public"
+            }
         }
     }
 
@@ -189,6 +216,138 @@ async def get_objects(
     except Exception as e:
         logger.error(f"Error getting objects: {e}")
         raise HTTPException(status_code=500, detail=f"Error retrieving objects: {str(e)}")
+
+@app.post("/api/objects")
+async def create_object(
+    name: str = Form(""),
+    description: str = Form(""),
+    email: str = Form(""),
+    file_content: str = Form(""),
+    metadata: str = Form("{}"),
+    private_read: str = Form(""),
+    private_write: str = Form(""),
+    mock_read: str = Form("public"),
+    mock_write: str = Form(""),
+    syftobject: str = Form("public"),
+    file: UploadFile = File(None)
+) -> Dict[str, Any]:
+    """Create a new syft object with optional file upload."""
+    if not objects:
+        raise HTTPException(status_code=503, detail="Syft objects not available")
+    
+    try:
+        # Import the syobj factory function
+        from syft_objects.factory import syobj
+        import tempfile
+        import os
+        
+        # Get the current SyftBox client to get user info
+        client = None
+        if SYFTBOX_AVAILABLE:
+            try:
+                client = get_syftbox_client()
+            except Exception:
+                pass
+        
+        # Use provided email or fallback to client email
+        user_email = email or (client.email if client else "admin@example.com")
+        
+        # Parse metadata
+        try:
+            metadata_dict = eval(metadata) if metadata.strip() else {}
+        except:
+            metadata_dict = {}
+        
+        # Process permissions (split comma-separated emails)
+        mock_read_list = [email.strip() for email in mock_read.split(",") if email.strip()] or ["public"]
+        mock_write_list = [email.strip() for email in mock_write.split(",") if email.strip()]
+        private_read_list = [email.strip() for email in private_read.split(",") if email.strip()] or [user_email]
+        private_write_list = [email.strip() for email in private_write.split(",") if email.strip()] or [user_email]
+        discovery_read_list = [email.strip() for email in syftobject.split(",") if email.strip()] or ["public"]
+        
+        # Prepare metadata with system settings
+        extended_metadata = metadata_dict.copy()
+        extended_metadata.update({
+            "description": description,
+            "email": user_email,
+            "auto_save": True,
+            "move_files_to_syftbox": True,
+            "create_syftbox_permissions": True
+        })
+        
+        # Handle file upload or content
+        private_file_path = None
+        if file and file.filename:
+            # Save uploaded file to temporary location
+            temp_dir = PathLib("tmp")
+            temp_dir.mkdir(exist_ok=True)
+            private_file_path = temp_dir / file.filename
+            
+            with open(private_file_path, "wb") as buffer:
+                content = await file.read()
+                buffer.write(content)
+            
+            # Use the actual filename for object name if not provided
+            if not name.strip():
+                name = PathLib(file.filename).stem.replace("_", " ").title()
+        
+        # Create the object using the syobj factory function
+        if private_file_path:
+            # Use file-based creation
+            new_object = syobj(
+                name=name or "Syft Object",
+                private_file=str(private_file_path),
+                mock_contents=f"[DEMO] Mock content for {name or 'uploaded file'}",
+                mock_read=mock_read_list,
+                mock_write=mock_write_list,
+                private_read=private_read_list,
+                private_write=private_write_list,
+                discovery_read=discovery_read_list,
+                metadata=extended_metadata
+            )
+        else:
+            # Use content-based creation
+            new_object = syobj(
+                name=name or "Syft Object",
+                private_contents=file_content or f"Content for {name or 'Syft Object'}",
+                mock_contents=f"[DEMO] Mock content for {name or 'Syft Object'}",
+                mock_read=mock_read_list,
+                mock_write=mock_write_list,
+                private_read=private_read_list,
+                private_write=private_write_list,
+                discovery_read=discovery_read_list,
+                metadata=extended_metadata
+            )
+        
+        # Clean up temporary file
+        if private_file_path and private_file_path.exists():
+            try:
+                os.remove(private_file_path)
+            except:
+                pass
+        
+        # Refresh the collection to pick up the new object from filesystem
+        objects.refresh()
+        
+        return {
+            "success": True,
+            "message": "Object created successfully",
+            "object": {
+                "uid": str(new_object.uid),
+                "name": new_object.name,
+                "description": new_object.description,
+                "email": user_email,
+                "created_at": new_object.created_at.isoformat() if new_object.created_at else None,
+                "private_url": new_object.private,
+                "mock_url": new_object.mock,
+                "syftobject_url": new_object.syftobject,
+            },
+            "timestamp": datetime.now()
+        }
+    
+    except Exception as e:
+        logger.error(f"Error creating object: {e}")
+        raise HTTPException(status_code=500, detail=f"Error creating object: {str(e)}")
 
 @app.get("/api/objects/refresh")
 async def refresh_objects() -> Dict[str, Any]:

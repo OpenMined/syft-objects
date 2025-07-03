@@ -41,6 +41,7 @@ dependencies = [
     "requests>=2.32.4",
     "uvloop>=0.17.0; sys_platform != 'win32'",
     "httptools>=0.6.0",
+    "python-multipart>=0.0.20",
 ]
 
 [project.optional-dependencies]
