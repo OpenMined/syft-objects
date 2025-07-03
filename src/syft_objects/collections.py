@@ -285,14 +285,19 @@ Example Usage:
         return self.widget()
 
     def widget(self, width="100%", height="600px", url=None):
-        """Display the syft-objects widget in an iframe"""
+        """Display the syft-objects widget in an iframe with resize capability"""
         
         self._ensure_server_ready()
         if url is None:
             url = get_syft_objects_url("widget")
         
+        # Generate a unique iframe ID for this widget instance
+        import uuid
+        iframe_id = f"syft-widget-{uuid.uuid4().hex[:8]}"
+        
         return f"""
         <iframe 
+            id="{iframe_id}"
             src="{url}" 
             width="{width}" 
             height="{height}"
@@ -300,6 +305,17 @@ Example Usage:
             style="border: none;"
             title="SyftObjects Widget">
         </iframe>
+        <script>
+        // Listen for resize messages from the widget
+        window.addEventListener('message', function(event) {{
+            if (event.data.type === 'resize-iframe') {{
+                const iframe = document.getElementById('{iframe_id}');
+                if (iframe) {{
+                    iframe.style.height = event.data.height;
+                }}
+            }}
+        }});
+        </script>
         """
 
     def _generate_interactive_table_html(self, title, count, search_indicator, container_id):
