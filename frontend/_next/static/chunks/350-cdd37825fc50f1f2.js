@@ -450,8 +450,8 @@
               }
             }
           },         eF = async e => {
-          let t = "";
-          try {
+            let t = "";
+            try {
             // Try to get the actual file path from the API
             let s = await fetch("".concat("", "/api/objects/").concat(e.uid));
             if (s.ok) {
@@ -476,20 +476,20 @@
               let s = e.private_url.replace("syft://", ""),
                 a = s.split("/")[0], // This gets "andrew@openmined.org"
                 l = "/" + s.split("/").slice(1).join("/");
-              t = "~/SyftBox/datasites/".concat(a).concat(l)
-            }
-            if (!t && e.mock_url) {
+                t = "~/SyftBox/datasites/".concat(a).concat(l)
+              }
+              if (!t && e.mock_url) {
               let s = e.mock_url.replace("syft://", ""),
                 a = s.split("/")[0], // This gets "andrew@openmined.org"
                 l = "/" + s.split("/").slice(1).join("/");
-              t = "~/SyftBox/datasites/".concat(a).concat(l)
-            }
-            if (t) await eA(t);
-            else throw Error("Could not determine local path")
-          } catch (t) {
+                t = "~/SyftBox/datasites/".concat(a).concat(l)
+              }
+              if (t) await eA(t);
+              else throw Error("Could not determine local path")
+            } catch (t) {
             await eA(e.syftobject_url || e.private_url || e.mock_url || "Path not available")
-          }
-        }, eU = e => {
+            }
+          }, eU = e => {
             if (Z && Z.uid === e) return Z.permissions;
             let t = I.find(t => t.uid === e);
             return (null == t ? void 0 : t.permissions) || null
@@ -2023,7 +2023,8 @@
               })]
             })
           }), el.isOpen && (0, a.jsx)("div", {
-            className: "fixed inset-0 bg-black/50 flex items-center justify-center p-2 z-50",
+            className: "fixed inset-0 bg-black/50 flex items-center justify-center z-50",
+            style: { padding: "5vh 5vw" },
             onClick: () => en({
               isOpen: !1,
               title: "",
@@ -2035,11 +2036,11 @@
               objectUid: null,
               canWrite: !1
             }),
-            children: (0, a.jsxs)("div", {
-              className: "bg-background rounded-lg max-w-[95vw] max-h-[95vh] overflow-hidden w-full flex flex-col",
+                          children: (0, a.jsxs)("div", {
+              className: "bg-background rounded-lg overflow-hidden w-full h-full flex flex-col",
               onClick: e => e.stopPropagation(),
               children: [(0, a.jsx)("div", {
-                className: "bg-background border-b px-4 py-2 flex-shrink-0",
+                className: "bg-background border-b px-3 py-1 flex-shrink-0",
                 children: (0, a.jsxs)("div", {
                   className: "flex items-center justify-between",
                   children: [(0, a.jsx)("h2", {
@@ -2091,25 +2092,25 @@
                       },
                       className: "px-2 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200",
                       children: "Copy File"
-                    }), (0, a.jsx)("button", {
-                      onClick: () => en({
-                        isOpen: !1,
-                        title: "",
-                        content: "",
-                        editedContent: "",
-                        loading: !1,
-                        saving: !1,
-                        fileType: null,
-                        objectUid: null,
-                        canWrite: !1
-                      }),
-                      className: "text-muted-foreground hover:text-foreground",
-                      children: "✕"
+                  }), (0, a.jsx)("button", {
+                    onClick: () => en({
+                      isOpen: !1,
+                      title: "",
+                      content: "",
+                      editedContent: "",
+                      loading: !1,
+                      saving: !1,
+                      fileType: null,
+                      objectUid: null,
+                      canWrite: !1
+                    }),
+                    className: "text-muted-foreground hover:text-foreground",
+                    children: "✕"
                     })]
                   })]
                 })
               }), (0, a.jsx)("div", {
-                className: "flex-1 overflow-hidden p-4 flex flex-col",
+                className: "flex-1 overflow-hidden p-2 flex flex-col min-h-0",
                 children: el.loading ? (0, a.jsxs)("div", {
                   className: "flex items-center justify-center h-32",
                   children: [(0, a.jsx)(f.Z, {
@@ -2125,11 +2126,11 @@
                       ...t,
                       editedContent: e.target.value
                     })),
-                    className: "flex-1 w-full text-sm font-mono bg-muted/20 p-4 rounded border resize-none focus:ring-2 focus:ring-primary focus:border-transparent",
+                    className: "flex-1 w-full text-sm font-mono bg-muted/20 p-2 rounded border resize-none focus:ring-2 focus:ring-primary focus:border-transparent min-h-[60vh]",
                     placeholder: "File content...",
                     readOnly: !el.canWrite
-                  }), (0, a.jsxs)("div", {
-                    className: "flex items-center justify-between mt-4",
+                                      }), (0, a.jsxs)("div", {
+                      className: "flex items-center justify-between mt-2",
                     children: [(0, a.jsx)("div", {
                       className: "text-xs text-muted-foreground",
                       children: el.canWrite ? "You can edit and save this file" : "You don't have write permission for this file"
