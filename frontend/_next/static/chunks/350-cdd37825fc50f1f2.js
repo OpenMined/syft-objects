@@ -2023,7 +2023,7 @@
               })]
             })
           }), el.isOpen && (0, a.jsx)("div", {
-            className: "fixed inset-0 bg-black/50 flex items-center justify-center z-50",
+            className: "fixed inset-0 flex items-center justify-center z-50",
             style: { padding: "5vh 5vw" },
             onClick: () => en({
               isOpen: !1,
@@ -2038,6 +2038,9 @@
             }),
                           children: (0, a.jsxs)("div", {
               className: "bg-background rounded-lg overflow-hidden w-full h-full flex flex-col",
+              style: { 
+                boxShadow: "0 25px 50px -12px rgba(168, 85, 247, 0.25), 0 20px 40px -8px rgba(59, 130, 246, 0.15), 0 15px 30px -4px rgba(236, 72, 153, 0.1), 0 10px 20px 0px rgba(34, 197, 94, 0.08)"
+              },
               onClick: e => e.stopPropagation(),
               children: [(0, a.jsx)("div", {
                 className: "bg-background border-b px-3 py-1 flex-shrink-0",
