@@ -653,78 +653,78 @@
                       modal.id = 'new-object-modal';
                       modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50';
                       modal.innerHTML = `
-                        <div class="bg-white rounded-lg max-w-2xl w-full max-h-screen overflow-hidden">
-                          <div class="px-4 py-3 border-b bg-white">
+                        <div class="bg-white rounded-lg max-w-lg w-full max-h-[80vh] overflow-hidden">
+                          <div class="px-3 py-2 border-b bg-white">
                             <div class="flex items-center justify-between">
-                              <h2 class="text-lg font-semibold text-gray-900">Create New SyftObject</h2>
-                              <button id="close-modal" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+                              <h2 class="text-base font-semibold text-gray-900">Create New SyftObject</h2>
+                              <button id="close-modal" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>
                             </div>
                           </div>
-                          <div class="overflow-y-auto p-4 max-h-96">
-                            <form id="new-object-form" class="space-y-3">
-                              <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Object Name</label>
-                                <input type="text" name="name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" value="Syft Object">
-                              </div>
-                              <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                <textarea name="description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">Auto-generated object: Syft Object</textarea>
-                              </div>
-                              <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Admin Email</label>
-                                <input type="email" name="email" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" value="">
-                              </div>
-                              <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">File Content</label>
-                                <div class="border border-gray-300 rounded-md">
-                                  <div class="flex border-b border-gray-300">
-                                    <button type="button" id="upload-tab" class="px-4 py-2 text-sm font-medium text-blue-600 border-b-2 border-blue-600">Upload File</button>
-                                    <button type="button" id="paste-tab" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Paste Content</button>
-                                  </div>
-                                  <div id="upload-content" class="p-3">
-                                    <input type="file" name="file" id="file-upload" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                    <p class="text-xs text-gray-500 mt-1">Upload any file type (CSV, JSON, Python, etc.)</p>
-                                  </div>
-                                  <div id="paste-content" class="p-3 hidden">
-                                    <textarea name="fileContent" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">Auto-generated content for Syft Object</textarea>
+                          <div class="overflow-y-auto p-3 max-h-[60vh]">
+                                                          <form id="new-object-form" class="space-y-2">
+                                <div>
+                                  <label class="block text-xs font-medium text-gray-700 mb-1">Object Name</label>
+                                  <input type="text" name="name" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" value="Syft Object">
+                                </div>
+                                <div>
+                                  <label class="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                                  <textarea name="description" rows="2" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent">Auto-generated object: Syft Object</textarea>
+                                </div>
+                                <div>
+                                  <label class="block text-xs font-medium text-gray-700 mb-1">Admin Email</label>
+                                  <input type="email" name="email" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" value="">
+                                </div>
+                                                              <div>
+                                  <label class="block text-xs font-medium text-gray-700 mb-1">File Content</label>
+                                  <div class="border border-gray-300 rounded">
+                                    <div class="flex border-b border-gray-300">
+                                      <button type="button" id="upload-tab" class="px-3 py-1 text-xs font-medium text-blue-600 border-b-2 border-blue-600">Upload File</button>
+                                      <button type="button" id="paste-tab" class="px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-700">Paste Content</button>
+                                    </div>
+                                    <div id="upload-content" class="p-2">
+                                      <input type="file" name="file" id="file-upload" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                      <p class="text-xs text-gray-500 mt-1">Upload any file type</p>
+                                    </div>
+                                    <div id="paste-content" class="p-2 hidden">
+                                      <textarea name="fileContent" rows="3" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent">Auto-generated content for Syft Object</textarea>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                              <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Metadata (JSON format)</label>
-                                <textarea name="metadata" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm" placeholder="{}">{}</textarea>
-                              </div>
-                              <div class="mb-4">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Permissions</label>
-                                <div class="grid grid-cols-2 gap-3 text-sm">
-                                  <div>
-                                    <label class="block text-xs font-medium text-green-700 mb-1">Private Read</label>
-                                    <input type="text" name="private_read" class="w-full px-2 py-1 border border-gray-300 rounded text-xs" value="">
-                                  </div>
-                                  <div>
-                                    <label class="block text-xs font-medium text-green-700 mb-1">Private Write</label>
-                                    <input type="text" name="private_write" class="w-full px-2 py-1 border border-gray-300 rounded text-xs" value="">
-                                  </div>
-                                  <div>
-                                    <label class="block text-xs font-medium text-blue-700 mb-1">Mock Read</label>
-                                    <input type="text" name="mock_read" class="w-full px-2 py-1 border border-gray-300 rounded text-xs" value="public">
-                                  </div>
-                                  <div>
-                                    <label class="block text-xs font-medium text-blue-700 mb-1">Mock Write</label>
-                                    <input type="text" name="mock_write" class="w-full px-2 py-1 border border-gray-300 rounded text-xs" value="">
-                                  </div>
-                                  <div class="col-span-2">
-                                    <label class="block text-xs font-medium text-purple-700 mb-1">SyftObject Access</label>
-                                    <input type="text" name="syftobject" class="w-full px-2 py-1 border border-gray-300 rounded text-xs" value="public">
+                                <div>
+                                  <label class="block text-xs font-medium text-gray-700 mb-1">Metadata (JSON format)</label>
+                                  <textarea name="metadata" rows="2" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent font-mono" placeholder="{}">{}</textarea>
+                                </div>
+                                                              <div class="mb-2">
+                                  <label class="block text-xs font-medium text-gray-700 mb-1">Permissions</label>
+                                  <div class="grid grid-cols-2 gap-2 text-xs">
+                                    <div>
+                                      <label class="block text-xs font-medium text-green-700 mb-1">Private Read</label>
+                                      <input type="text" name="private_read" class="w-full px-1 py-1 border border-gray-300 rounded text-xs" value="">
+                                    </div>
+                                    <div>
+                                      <label class="block text-xs font-medium text-green-700 mb-1">Private Write</label>
+                                      <input type="text" name="private_write" class="w-full px-1 py-1 border border-gray-300 rounded text-xs" value="">
+                                    </div>
+                                    <div>
+                                      <label class="block text-xs font-medium text-blue-700 mb-1">Mock Read</label>
+                                      <input type="text" name="mock_read" class="w-full px-1 py-1 border border-gray-300 rounded text-xs" value="public">
+                                    </div>
+                                    <div>
+                                      <label class="block text-xs font-medium text-blue-700 mb-1">Mock Write</label>
+                                      <input type="text" name="mock_write" class="w-full px-1 py-1 border border-gray-300 rounded text-xs" value="">
+                                    </div>
+                                    <div class="col-span-2">
+                                      <label class="block text-xs font-medium text-purple-700 mb-1">SyftObject Access</label>
+                                      <input type="text" name="syftobject" class="w-full px-1 py-1 border border-gray-300 rounded text-xs" value="public">
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
                             </form>
                           </div>
-                          <div class="px-4 py-4 border-t bg-gray-50">
-                            <div class="flex justify-end gap-3">
-                              <button id="cancel-btn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
-                              <button id="create-btn" style="background-color: #22c55e; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 14px;">Create Object</button>
+                          <div class="px-3 py-2 border-t bg-gray-50">
+                            <div class="flex justify-end gap-2">
+                              <button id="cancel-btn" class="px-3 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50">Cancel</button>
+                              <button id="create-btn" style="background-color: #22c55e; color: white; border: none; padding: 4px 12px; border-radius: 4px; font-weight: 600; font-size: 12px;">Create Object</button>
                             </div>
                           </div>
                         </div>
