@@ -139,7 +139,7 @@
               className: "h-8 w-8 animate-spin mx-auto text-blue-600"
             }), (0, r.jsx)("p", {
               className: "text-muted-foreground",
-              children: "the internet of private data"
+              children: "the internet of asdf2 data"
             })]
           })
         }) : (0, r.jsxs)("div", {
