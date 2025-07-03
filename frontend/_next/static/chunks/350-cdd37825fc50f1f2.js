@@ -737,204 +737,95 @@
             if (files.length > 0) {
               const file = files[0];
               
-              // Remove any existing modal
-              let existingModal = document.getElementById('new-object-modal');
-              if (existingModal) {
-                existingModal.remove();
+              // Find and click the "New" button to open the enhanced modal
+              const newButtons = document.querySelectorAll('button');
+              let newButton = null;
+              for (let button of newButtons) {
+                if (button.textContent && button.textContent.trim() === 'New') {
+                  newButton = button;
+                  break;
+                }
               }
               
-              // Create the modal (reusing existing modal creation code)
-              const modal = document.createElement('div');
-              modal.id = 'new-object-modal';
-              modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-2 z-50';
-              modal.innerHTML = `
-                <div class="bg-white rounded-lg w-full max-w-6xl" style="max-height: 90%; height: 90%; position: relative;">
-                  <div class="px-3 py-2 border-b bg-white flex-shrink-0">
-                    <div class="flex items-center justify-between">
-                      <h2 class="text-sm font-semibold text-gray-900">Create New SyftObject</h2>
-                      <button id="close-modal" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>
-                    </div>
-                  </div>
-                  <div class="overflow-y-auto p-3" style="height: calc(100% - 120px); padding-bottom: 20px;">
-                    <form id="new-object-form" class="space-y-2">
-                      <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Object Name</label>
-                        <input type="text" name="name" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" value="${file.name.replace(/\.[^/.]+$/, '')}">
-                      </div>
-                      <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Description</label>
-                        <textarea name="description" rows="2" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent">Auto-generated object: ${file.name.replace(/\.[^/.]+$/, '')}</textarea>
-                      </div>
-                      <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Admin Email</label>
-                        <input type="email" name="email" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" value="">
-                      </div>
-                      <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Private File Content</label>
-                        <div class="border border-gray-300 rounded">
-                          <div class="flex border-b border-gray-300">
-                            <button type="button" id="private-upload-tab" class="px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-700">Upload File</button>
-                            <button type="button" id="private-paste-tab" class="px-3 py-1 text-xs font-medium text-green-600 border-b-2 border-green-600">Paste Content</button>
-                          </div>
-                          <div id="private-upload-content" class="p-2 hidden">
-                            <input type="file" name="privateFile" id="private-file-upload" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100">
-                            <p class="text-xs text-gray-500 mt-1">Upload private data file (CSV, JSON, Python, etc.)</p>
-                          </div>
-                          <div id="private-paste-content" class="p-2">
-                            <textarea name="privateFileContent" rows="3" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-green-500 focus:border-transparent">Loading file content...</textarea>
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Mock File Content</label>
-                        <div class="border border-gray-300 rounded">
-                          <div class="flex border-b border-gray-300">
-                            <button type="button" id="mock-upload-tab" class="px-3 py-1 text-xs font-medium text-blue-600 border-b-2 border-blue-600">Upload File</button>
-                            <button type="button" id="mock-paste-tab" class="px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-700">Paste Content</button>
-                          </div>
-                          <div id="mock-upload-content" class="p-2">
-                            <input type="file" name="mockFile" id="mock-file-upload" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                            <p class="text-xs text-gray-500 mt-1">Upload mock/synthetic data file (CSV, JSON, Python, etc.)</p>
-                          </div>
-                          <div id="mock-paste-content" class="p-2 hidden">
-                            <textarea name="mockFileContent" rows="3" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent">Auto-generated mock content for ${file.name.replace(/\.[^/.]+$/, '')}</textarea>
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Metadata (JSON format)</label>
-                        <textarea name="metadata" rows="2" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent font-mono" placeholder="{}">{}</textarea>
-                      </div>
-                      <div class="mb-2">
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Permissions</label>
-                        <div class="grid grid-cols-2 gap-2 text-xs">
-                          <div>
-                            <label class="block text-xs font-medium text-green-700 mb-1">Private Read</label>
-                            <input type="text" name="private_read" class="w-full px-1 py-1 border border-gray-300 rounded text-xs" value="">
-                          </div>
-                          <div>
-                            <label class="block text-xs font-medium text-green-700 mb-1">Private Write</label>
-                            <input type="text" name="private_write" class="w-full px-1 py-1 border border-gray-300 rounded text-xs" value="">
-                          </div>
-                          <div>
-                            <label class="block text-xs font-medium text-blue-700 mb-1">Mock Read</label>
-                            <input type="text" name="mock_read" class="w-full px-1 py-1 border border-gray-300 rounded text-xs" value="public">
-                          </div>
-                          <div>
-                            <label class="block text-xs font-medium text-blue-700 mb-1">Mock Write</label>
-                            <input type="text" name="mock_write" class="w-full px-1 py-1 border border-gray-300 rounded text-xs" value="">
-                          </div>
-                          <div class="col-span-2">
-                            <label class="block text-xs font-medium text-purple-700 mb-1">SyftObject Access</label>
-                            <input type="text" name="syftobject" class="w-full px-1 py-1 border border-gray-300 rounded text-xs" value="public">
-                          </div>
-                        </div>
-                      </div>
-                    </form>
-                  </div>
-                  <div class="px-3 py-2 border-t bg-gray-50 flex-shrink-0" style="position: absolute; bottom: 0; left: 0; right: 0; border-radius: 0 0 8px 8px;">
-                    <div class="flex justify-end gap-2">
-                      <button id="cancel-btn" class="px-3 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50">Cancel</button>
-                      <button id="create-btn" style="background-color: #22c55e; color: white; border: none; padding: 4px 12px; border-radius: 4px; font-weight: 600; font-size: 12px;">Create Object</button>
-                    </div>
-                  </div>
-                </div>
-              `;
-              
-              document.body.appendChild(modal);
-              
-              // Read the file content and populate the textarea
-              const reader = new FileReader();
-              reader.onload = function(e) {
-                const privateContentField = document.querySelector('[name="privateFileContent"]');
-                if (privateContentField) {
-                  privateContentField.value = e.target.result;
-                }
+              if (newButton) {
+                console.log('🎯 Found New button, clicking it...');
+                newButton.click();
                 
-                // Store the filename for later use
-                const form = document.getElementById('new-object-form');
-                let filenameField = form.querySelector('[name="privateFilename"]');
-                if (!filenameField) {
-                  filenameField = document.createElement('input');
-                  filenameField.type = 'hidden';
-                  filenameField.name = 'privateFilename';
-                  form.appendChild(filenameField);
-                }
-                filenameField.value = file.name;
-              };
-              reader.readAsText(file);
-              
-              // Set up modal event listeners (copied from existing code)
-              setTimeout(() => {
-                // Fetch client info and populate defaults
-                fetch('/api/client-info')
-                  .then(response => response.json())
-                  .then(data => {
-                    const defaults = data.defaults;
-                    const emailField = document.querySelector('[name="email"]');
-                    if (emailField) emailField.value = defaults.admin_email;
-                    const privateReadField = document.querySelector('[name="private_read"]');
-                    if (privateReadField) privateReadField.value = defaults.permissions.private_read;
-                    const privateWriteField = document.querySelector('[name="private_write"]');
-                    if (privateWriteField) privateWriteField.value = defaults.permissions.private_write;
-                    const mockWriteField = document.querySelector('[name="mock_write"]');
-                    if (mockWriteField) mockWriteField.value = defaults.permissions.mock_write;
-                  })
-                  .catch(err => console.log('Could not load client info:', err));
-                
-                // Add event listeners
-                const closeModal = document.getElementById('close-modal');
-                const cancelBtn = document.getElementById('cancel-btn');
-                if (closeModal) closeModal.onclick = () => modal.remove();
-                if (cancelBtn) cancelBtn.onclick = () => modal.remove();
-                modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
-                
-                // Tab switching for private file
-                const privateUploadTab = document.getElementById('private-upload-tab');
-                const privatePasteTab = document.getElementById('private-paste-tab');
-                const privateUploadContent = document.getElementById('private-upload-content');
-                const privatePasteContent = document.getElementById('private-paste-content');
-                
-                if (privateUploadTab) {
-                  privateUploadTab.onclick = function() {
-                    this.className = 'px-3 py-1 text-xs font-medium text-green-600 border-b-2 border-green-600';
-                    privatePasteTab.className = 'px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-700';
-                    privateUploadContent.classList.remove('hidden');
-                    privatePasteContent.classList.add('hidden');
+                // Wait for the modal to be created, then populate it with the dropped file
+                setTimeout(() => {
+                  console.log('📁 Populating modal with dropped file:', file.name);
+                  
+                  // Pre-populate the object name (remove file extension)
+                  const nameField = document.querySelector('[name="name"]');
+                  if (nameField) {
+                    nameField.value = file.name.replace(/\.[^/.]+$/, '');
+                    console.log('📝 Set name:', nameField.value);
+                  }
+                  
+                  // Pre-populate the description
+                  const descField = document.querySelector('[name="description"]');
+                  if (descField) {
+                    descField.value = `Auto-generated object: ${file.name.replace(/\.[^/.]+$/, '')}`;
+                    console.log('📝 Set description:', descField.value);
+                  }
+                  
+                  // Read the file content and populate the private content field
+                  const reader = new FileReader();
+                  reader.onload = function(e) {
+                    console.log('📖 File read complete, populating content...');
+                    
+                    // Find the private paste content field
+                    const privateContentField = document.querySelector('[name="privateFileContent"]');
+                    if (privateContentField) {
+                      const fileContent = e.target.result;
+                      const preview = fileContent.length > 1000 ? 
+                        fileContent.substring(0, 1000) + '\n... (file truncated for preview, full content will be uploaded)' : 
+                        fileContent;
+                      
+                      privateContentField.value = preview;
+                      console.log('📝 Set private content preview:', preview.substring(0, 100) + '...');
+                      
+                      // Store full content in hidden field
+                      const form = document.getElementById('new-object-form');
+                      if (form) {
+                        let fullContentField = form.querySelector('[name="fullPrivateFileContent"]');
+                        if (!fullContentField) {
+                          fullContentField = document.createElement('input');
+                          fullContentField.type = 'hidden';
+                          fullContentField.name = 'fullPrivateFileContent';
+                          form.appendChild(fullContentField);
+                          console.log('🆕 Created hidden field for full content');
+                        }
+                        fullContentField.value = fileContent;
+                        console.log('💾 Stored full content, length:', fileContent.length);
+                        
+                        // Store filename
+                        let filenameField = form.querySelector('[name="privateFilename"]');
+                        if (!filenameField) {
+                          filenameField = document.createElement('input');
+                          filenameField.type = 'hidden';
+                          filenameField.name = 'privateFilename';
+                          form.appendChild(filenameField);
+                        }
+                        filenameField.value = file.name;
+                        console.log('💾 Stored filename:', file.name);
+                      }
+                      
+                      // Switch to the paste tab to show the content
+                      const privatePasteTab = document.getElementById('private-paste-tab');
+                      if (privatePasteTab) {
+                        privatePasteTab.click();
+                        console.log('🔄 Switched to paste tab');
+                      }
+                    }
                   };
-                }
-                if (privatePasteTab) {
-                  privatePasteTab.onclick = function() {
-                    this.className = 'px-3 py-1 text-xs font-medium text-green-600 border-b-2 border-green-600';
-                    privateUploadTab.className = 'px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-700';
-                    privatePasteContent.classList.remove('hidden');
-                    privateUploadContent.classList.add('hidden');
-                  };
-                }
-                
-                // Tab switching for mock file
-                const mockUploadTab = document.getElementById('mock-upload-tab');
-                const mockPasteTab = document.getElementById('mock-paste-tab');
-                const mockUploadContent = document.getElementById('mock-upload-content');
-                const mockPasteContent = document.getElementById('mock-paste-content');
-                
-                if (mockUploadTab) {
-                  mockUploadTab.onclick = function() {
-                    this.className = 'px-3 py-1 text-xs font-medium text-blue-600 border-b-2 border-blue-600';
-                    mockPasteTab.className = 'px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-700';
-                    mockUploadContent.classList.remove('hidden');
-                    mockPasteContent.classList.add('hidden');
-                  };
-                }
-                if (mockPasteTab) {
-                  mockPasteTab.onclick = function() {
-                    this.className = 'px-3 py-1 text-xs font-medium text-blue-600 border-b-2 border-blue-600';
-                    mockUploadTab.className = 'px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-700';
-                    mockPasteContent.classList.remove('hidden');
-                    mockUploadContent.classList.add('hidden');
-                  };
-                }
-              }, 100);
+                  reader.readAsText(file);
+                }, 200); // Give the modal time to be created
+              } else {
+                console.error('❌ Could not find New button');
+                // Fallback - show a simple alert
+                alert('Could not find New button to open the modal. Please try clicking the New button manually and then drag the file again.');
+              }
             }
           };
           
