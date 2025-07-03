@@ -456,7 +456,9 @@
             let s = await fetch("".concat("", "/api/objects/").concat(e.uid));
             if (s.ok) {
               let a = await s.json();
-              if (a.file_paths && a.file_paths.private) {
+              if (a.file_paths && a.file_paths.syftobject) {
+                t = a.file_paths.syftobject;
+              } else if (a.file_paths && a.file_paths.private) {
                 t = a.file_paths.private;
               } else if (a.file_paths && a.file_paths.mock) {
                 t = a.file_paths.mock;
@@ -464,6 +466,12 @@
             }
             
             // Fallback to constructing from URL if API doesn't have file_paths
+            if (!t && e.syftobject_url) {
+              let s = e.syftobject_url.replace("syft://", ""),
+                a = s.split("/")[0], // This gets "andrew@openmined.org"
+                l = "/" + s.split("/").slice(1).join("/");
+              t = "~/SyftBox/datasites/".concat(a).concat(l)
+            }
             if (!t && e.private_url) {
               let s = e.private_url.replace("syft://", ""),
                 a = s.split("/")[0], // This gets "andrew@openmined.org"
@@ -479,7 +487,7 @@
             if (t) await eA(t);
             else throw Error("Could not determine local path")
           } catch (t) {
-            await eA(e.private_url || e.mock_url || "Path not available")
+            await eA(e.syftobject_url || e.private_url || e.mock_url || "Path not available")
           }
         }, eU = e => {
             if (Z && Z.uid === e) return Z.permissions;
