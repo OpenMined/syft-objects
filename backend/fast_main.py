@@ -874,59 +874,85 @@ async def widget_page():
             let isSmall = false;
             let originalHeight = null;
             
-            function createBigSmallButton() {
-                // Find the button container (look for existing buttons in the widget)
-                const buttonContainer = document.querySelector('.flex.items-center.space-x-2') || 
-                                       document.querySelector('.flex.items-center.gap-2') ||
-                                       document.querySelector('[class*="flex"][class*="items-center"]');
-                
-                if (buttonContainer) {
-                    const bigSmallButton = document.createElement('button');
-                    bigSmallButton.textContent = 'Big/Small';
-                    bigSmallButton.className = 'px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs hover:bg-purple-200';
-                    bigSmallButton.title = 'Toggle widget height';
-                    bigSmallButton.style.marginLeft = '8px';
-                    
-                    bigSmallButton.addEventListener('click', function() {
-                        toggleWidgetHeight();
-                    });
-                    
-                    buttonContainer.appendChild(bigSmallButton);
-                } else {
-                    // Fallback: create a floating button if we can't find the button container
-                    const floatingButton = document.createElement('button');
-                    floatingButton.textContent = 'Big/Small';
-                    floatingButton.style.cssText = `
-                        position: fixed;
-                        top: 10px;
-                        right: 10px;
-                        z-index: 9999;
-                        background: #f3e8ff;
-                        color: #6b46c1;
-                        border: none;
-                        border-radius: 4px;
-                        padding: 6px 12px;
-                        font-size: 11px;
-                        cursor: pointer;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                    `;
-                    floatingButton.title = 'Toggle widget height';
-                    
-                    floatingButton.addEventListener('click', function() {
-                        toggleWidgetHeight();
-                    });
-                    
-                    floatingButton.addEventListener('mouseenter', function() {
-                        this.style.background = '#e9d5ff';
-                    });
-                    
-                    floatingButton.addEventListener('mouseleave', function() {
-                        this.style.background = '#f3e8ff';
-                    });
-                    
-                    document.body.appendChild(floatingButton);
-                }
-            }
+                         function createBigSmallButton() {
+                 // Look for the Select All button specifically and add our button next to it
+                 let selectAllButton = null;
+                 
+                 // Find the Select All button by looking through all buttons and checking their text content
+                 const allButtons = document.querySelectorAll('button');
+                 for (let button of allButtons) {
+                     if (button.textContent.includes('Select All') || button.textContent.includes('Deselect All')) {
+                         selectAllButton = button;
+                         break;
+                     }
+                 }
+                 
+                 if (selectAllButton) {
+                     const bigSmallButton = document.createElement('button');
+                     bigSmallButton.textContent = 'Big/Small';
+                     bigSmallButton.className = 'px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs hover:bg-purple-200';
+                     bigSmallButton.title = 'Toggle widget height';
+                     bigSmallButton.style.marginLeft = '8px';
+                     
+                     bigSmallButton.addEventListener('click', function() {
+                         toggleWidgetHeight();
+                     });
+                     
+                     // Insert after the Select All button
+                     selectAllButton.parentNode.insertBefore(bigSmallButton, selectAllButton.nextSibling);
+                 } else {
+                     // Fallback: look for any button container with the toolbar buttons
+                     const buttonContainer = document.querySelector('.flex.items-center.space-x-2') || 
+                                            document.querySelector('.flex.items-center.gap-2') ||
+                                            document.querySelector('[class*="flex"][class*="items-center"]');
+                     
+                     if (buttonContainer) {
+                         const bigSmallButton = document.createElement('button');
+                         bigSmallButton.textContent = 'Big/Small';
+                         bigSmallButton.className = 'px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs hover:bg-purple-200';
+                         bigSmallButton.title = 'Toggle widget height';
+                         
+                         bigSmallButton.addEventListener('click', function() {
+                             toggleWidgetHeight();
+                         });
+                         
+                         buttonContainer.appendChild(bigSmallButton);
+                     } else {
+                         // Last resort: create a floating button
+                         const floatingButton = document.createElement('button');
+                         floatingButton.textContent = 'Big/Small';
+                         floatingButton.style.cssText = `
+                             position: fixed;
+                             top: 10px;
+                             right: 10px;
+                             z-index: 9999;
+                             background: #f3e8ff;
+                             color: #6b46c1;
+                             border: none;
+                             border-radius: 4px;
+                             padding: 6px 12px;
+                             font-size: 11px;
+                             cursor: pointer;
+                             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                         `;
+                         floatingButton.title = 'Toggle widget height';
+                         
+                         floatingButton.addEventListener('click', function() {
+                             toggleWidgetHeight();
+                         });
+                         
+                         floatingButton.addEventListener('mouseenter', function() {
+                             this.style.background = '#e9d5ff';
+                         });
+                         
+                         floatingButton.addEventListener('mouseleave', function() {
+                             this.style.background = '#f3e8ff';
+                         });
+                         
+                         document.body.appendChild(floatingButton);
+                     }
+                 }
+             }
             
             function toggleWidgetHeight() {
                 const mainContainer = document.querySelector('.fixed.inset-0') || 
@@ -982,8 +1008,8 @@ async def widget_page():
                 }
             }
             
-            // Wait a bit more for the widget to fully load, then add the button
-            setTimeout(createBigSmallButton, 1000);
+                         // Wait a bit more for the widget to fully load, then add the button
+             setTimeout(createBigSmallButton, 1500);
         });
         
         // Listen for messages from parent (in case parent wants to control the size)
