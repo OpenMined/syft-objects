@@ -74,12 +74,17 @@ def syobj(
     mock_write: Optional[List[str]] = None,
     private_read: Optional[List[str]] = None,
     private_write: Optional[List[str]] = None,
+    keep_files_in_place: bool = False,  # NEW: Don't copy files to SyftBox
     metadata: Optional[Dict[str, Any]] = None
 ) -> SyftObject:
     """
     🔐 **Share files with explicit mock vs private control** 
     
     Create SyftObjects with fine-grained permission control.
+    
+    Args:
+        keep_files_in_place: If True, files stay in original locations instead of being copied to SyftBox.
+                           Note: This limits cross-user sharing and full permission system functionality.
     """
     # === SETUP ===
     if metadata is None:
@@ -93,9 +98,19 @@ def syobj(
     auto_save = metadata.get("auto_save", True)
     move_files_to_syftbox = metadata.get("move_files_to_syftbox", True)
     
+    # Override move_files_to_syftbox if keep_files_in_place is True
+    if keep_files_in_place:
+        move_files_to_syftbox = False
+        create_syftbox_permissions = False  # Can't create SyftBox permissions for files not in SyftBox
+    
     # Create clean metadata dict for the SyftObject (exclude system settings)
     system_keys = {"description", "save_to", "email", "create_syftbox_permissions", "auto_save", "move_files_to_syftbox"}
     clean_metadata = {k: v for k, v in metadata.items() if k not in system_keys}
+    
+    # Store original file paths if keeping files in place (will be set by inference logic if needed)
+    if keep_files_in_place and "_keep_files_in_place" not in clean_metadata:
+        clean_metadata["_keep_files_in_place"] = True
+        clean_metadata["_original_file_paths"] = {}
     
     # === CREATE TEMP DIRECTORY ===
     tmp_dir = Path("tmp")
@@ -107,6 +122,24 @@ def syobj(
     # === EMAIL AUTO-DETECTION ===
     if email is None:
         email = detect_user_email()
+    
+    # === INFER keep_files_in_place IF NOT EXPLICITLY SET ===
+    # If keep_files_in_place is still False (default), infer from private permissions
+    if not keep_files_in_place:
+        # Check if both private_read and private_write are exactly [email] or []
+        # This indicates single-user usage, so keeping files in place makes sense
+        private_read_is_simple = private_read in ([email], []) if private_read is not None else True
+        private_write_is_simple = private_write in ([email], []) if private_write is not None else True
+        
+        # If both are simple (user-only or empty), keep files in place
+        if private_read_is_simple and private_write_is_simple:
+            keep_files_in_place = True
+            move_files_to_syftbox = False
+            create_syftbox_permissions = False
+            
+            # Update metadata to reflect inferred keep_files_in_place
+            clean_metadata["_keep_files_in_place"] = True
+            clean_metadata["_original_file_paths"] = {}
     
     # === VALIDATE INPUT ===
     has_mock_content = mock_contents is not None or mock_file is not None
@@ -141,7 +174,7 @@ def syobj(
     base_filename = f"{name.lower().replace(' ', '_')}_{uid_short}.txt"
     
     created_files = []  # Track files we create for cleanup/reference
-    files_moved_to_syftbox = []  # Track files moved to SyftBox
+    files_moved_to_syftbox = []
     
     # === HANDLE PRIVATE CONTENT/FILE ===
     if private_contents is not None:
@@ -157,6 +190,10 @@ def syobj(
         if not private_source_path.exists():
             raise FileNotFoundError(f"Private file not found: {private_file}")
         private_filename = private_source_path.name
+        
+        # Store original path if keeping files in place
+        if keep_files_in_place:
+            clean_metadata["_original_file_paths"]["private"] = str(private_source_path.absolute())
     else:
         # No private data specified - create auto-generated content
         private_filename = base_filename
@@ -179,6 +216,10 @@ def syobj(
         if not mock_source_path.exists():
             raise FileNotFoundError(f"Mock file not found: {mock_file}")
         mock_filename = mock_source_path.name
+        
+        # Store original path if keeping files in place
+        if keep_files_in_place:
+            clean_metadata["_original_file_paths"]["mock"] = str(mock_source_path.absolute())
     else:
         # Auto-generate mock
         mock_filename = f"{Path(base_filename).stem}_mock{Path(base_filename).suffix}"
@@ -198,22 +239,31 @@ def syobj(
     # === PERMISSION HANDLING ===
     final_discovery_read = discovery_read or ["public"]
     final_mock_read = mock_read or ["public"]
-    final_mock_write = mock_write or []
+    final_mock_write = mock_write or [email]  # Changed: now defaults to [email] instead of []
     final_private_read = private_read or [email]
     final_private_write = private_write or [email]
     
     # === GENERATE SYFT:// URLS ===
-    mock_is_public = any(x in ("public", "*") for x in final_mock_read)
-    final_private_path, final_mock_path = generate_syftbox_urls(
-        email, private_filename, syftbox_client, mock_is_public=mock_is_public
-    )
+    if keep_files_in_place:
+        # Generate URLs that encode original file paths
+        final_private_path = f"syft://{email}/original/{private_source_path.name}"
+        final_mock_path = f"syft://{email}/original/{mock_source_path.name}"
+    else:
+        # Standard SyftBox URLs
+        mock_is_public = any(x in ("public", "*") for x in final_mock_read)
+        final_private_path, final_mock_path = generate_syftbox_urls(
+            email, private_filename, syftbox_client, mock_is_public=mock_is_public
+        )
     
     # Generate syftobject URL
     syftobj_filename = f"{name.lower().replace(' ', '_').replace('-', '_')}_{uid_short}.syftobject.yaml"
-    final_syftobject_path = generate_syftobject_url(email, syftobj_filename, syftbox_client)
+    if keep_files_in_place:
+        final_syftobject_path = f"syft://{email}/original/{syftobj_filename}"
+    else:
+        final_syftobject_path = generate_syftobject_url(email, syftobj_filename, syftbox_client)
     
     # === MOVE FILES TO SYFTBOX LOCATIONS ===
-    if move_files_to_syftbox and syftbox_client:
+    if move_files_to_syftbox and syftbox_client and not keep_files_in_place:
         # Handle private file
         if private_file and private_source_path != Path(private_file):
             if move_file_to_syftbox_location(private_source_path, final_private_path, syftbox_client):
@@ -245,6 +295,10 @@ def syobj(
         else:
             description = f"Auto-generated object: {name}"
     
+    # Add note about file location mode
+    if keep_files_in_place:
+        description += " (files kept in original locations)"
+    
     # === CREATE SYFT OBJECT ===
     syft_obj = SyftObject(
         uid=uid,
@@ -267,7 +321,8 @@ def syobj(
         "files_moved_to_syftbox": files_moved_to_syftbox,
         "created_files": [str(f) for f in created_files],
         "syftbox_available": bool(syftbox_client),
-        "syftobject_yaml_path": None  # Will be set during save
+        "syftobject_yaml_path": None,  # Will be set during save
+        "keep_files_in_place": keep_files_in_place
     }
     clean_metadata["_file_operations"] = file_operations
     
@@ -283,9 +338,9 @@ def syobj(
         # Save the syftobject.yaml file
         syft_obj.save_yaml(save_path, create_syftbox_permissions=False)
         
-        # Move .syftobject.yaml file to SyftBox location if available
+        # Move .syftobject.yaml file to SyftBox location if available and not keeping files in place
         final_syftobj_path = save_path
-        if move_files_to_syftbox and syftbox_client and not str(save_path).startswith("syft://"):
+        if move_files_to_syftbox and syftbox_client and not str(save_path).startswith("syft://") and not keep_files_in_place:
             syftobj_filename = Path(save_path).name
             syftobj_url = f"syft://{email}/public/objects/{syftobj_filename}"
             
@@ -308,7 +363,7 @@ def syobj(
         syft_obj.metadata.update(clean_metadata)
         
         # Create SyftBox permission files in the final location
-        if create_syftbox_permissions:
+        if create_syftbox_permissions and not keep_files_in_place:
             syft_obj._create_syftbox_permissions(Path(final_syftobj_path))
     
     return syft_obj 

@@ -163,6 +163,26 @@ class SyftObject(BaseModel):
     def _check_file_exists(self, syft_url: str) -> bool:
         """Check if a file exists locally (for display purposes)"""
         try:
+            # Check if this is a "keep_files_in_place" object
+            if self.metadata.get("_keep_files_in_place", False):
+                original_paths = self.metadata.get("_original_file_paths", {})
+                
+                # For URLs like syft://email/original/filename, check if we have original path stored
+                if "/original/" in syft_url:
+                    filename = syft_url.split("/")[-1]
+                    
+                    # Check if this matches a stored original path
+                    for file_type, original_path in original_paths.items():
+                        if Path(original_path).name == filename:
+                            return Path(original_path).exists()
+                    
+                    # Fallback: check if the URL matches our object's private/mock URLs
+                    if syft_url == self.private_url and "private" in original_paths:
+                        return Path(original_paths["private"]).exists()
+                    elif syft_url == self.mock_url and "mock" in original_paths:
+                        return Path(original_paths["mock"]).exists()
+            
+            # Standard SyftBox URL resolution
             syftbox_client = get_syftbox_client()
             if syftbox_client:
                 local_path = extract_local_path_from_syft_url(syft_url)
@@ -180,6 +200,31 @@ class SyftObject(BaseModel):
     def _get_local_file_path(self, syft_url: str) -> str:
         """Get the local file path for a syft:// URL"""
         try:
+            # Check if this is a "keep_files_in_place" object
+            if self.metadata.get("_keep_files_in_place", False):
+                original_paths = self.metadata.get("_original_file_paths", {})
+                
+                # For URLs like syft://email/original/filename, check if we have original path stored
+                if "/original/" in syft_url:
+                    filename = syft_url.split("/")[-1]
+                    
+                    # Check if this matches a stored original path
+                    for file_type, original_path in original_paths.items():
+                        if Path(original_path).name == filename:
+                            if Path(original_path).exists():
+                                return str(Path(original_path).absolute())
+                    
+                    # Fallback: check if the URL matches our object's private/mock URLs
+                    if syft_url == self.private_url and "private" in original_paths:
+                        original_path = original_paths["private"]
+                        if Path(original_path).exists():
+                            return str(Path(original_path).absolute())
+                    elif syft_url == self.mock_url and "mock" in original_paths:
+                        original_path = original_paths["mock"]
+                        if Path(original_path).exists():
+                            return str(Path(original_path).absolute())
+            
+            # Standard SyftBox URL resolution
             syftbox_client = get_syftbox_client()
             if syftbox_client:
                 local_path = extract_local_path_from_syft_url(syft_url)

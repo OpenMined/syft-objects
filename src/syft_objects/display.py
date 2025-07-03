@@ -14,6 +14,8 @@ def create_html_display(syft_obj: 'SyftObject') -> str:
     created_files = file_ops.get("created_files", [])
     syftbox_available = file_ops.get("syftbox_available", False)
     syftobject_yaml_path = file_ops.get("syftobject_yaml_path")
+    keep_files_in_place = file_ops.get("keep_files_in_place", False)
+    original_file_paths = syft_obj.metadata.get("_original_file_paths", {})
     
     # Check if files exist locally
     mock_file_exists = syft_obj._check_file_exists(syft_obj.mock_url)
@@ -73,7 +75,9 @@ def create_html_display(syft_obj: 'SyftObject') -> str:
         description_row=description_row,
         files_moved=files_moved,
         created_files=created_files,
-        syftbox_available=syftbox_available
+        syftbox_available=syftbox_available,
+        keep_files_in_place=keep_files_in_place,
+        original_file_paths=original_file_paths
     )
     
     return html
@@ -81,7 +85,8 @@ def create_html_display(syft_obj: 'SyftObject') -> str:
 
 def create_html_template(syft_obj, mock_file_exists, private_file_exists, mock_info, private_info, 
                         syftobject_yaml_path, permission_badge, file_badge, updated_row, 
-                        description_row, files_moved, created_files, syftbox_available) -> str:
+                        description_row, files_moved, created_files, syftbox_available,
+                        keep_files_in_place=False, original_file_paths=None) -> str:
     """Create the HTML template with all the styling"""
     return f'''
     <style>
@@ -361,7 +366,7 @@ def create_html_template(syft_obj, mock_file_exists, private_file_exists, mock_i
                 {render_custom_metadata(syft_obj)}
             </div>
             
-            {render_file_operations(files_moved, created_files, syftbox_available)}
+            {render_file_operations(files_moved, created_files, syftbox_available, keep_files_in_place, original_file_paths)}
         </div>
     </div>
     '''
@@ -386,13 +391,17 @@ def render_custom_metadata(syft_obj: 'SyftObject') -> str:
     return html
 
 
-def render_file_operations(files_moved, created_files, syftbox_available) -> str:
+def render_file_operations(files_moved, created_files, syftbox_available, keep_files_in_place=False, original_file_paths=None) -> str:
     """Render file operations section"""
-    if not files_moved and not created_files:
+    if not files_moved and not created_files and not keep_files_in_place:
         return ""
     
-    status_icon = "✅" if syftbox_available else "⚠️"
-    status_text = "SyftBox Integration Active" if syftbox_available else "SyftBox Not Available"
+    if keep_files_in_place:
+        status_icon = "📍"
+        status_text = "Files Kept in Original Locations"
+    else:
+        status_icon = "✅" if syftbox_available else "⚠️"
+        status_text = "SyftBox Integration Active" if syftbox_available else "SyftBox Not Available"
     
     ops_html = f'''
     <div class="syft-file-ops">
@@ -400,12 +409,16 @@ def render_file_operations(files_moved, created_files, syftbox_available) -> str
         <div class="syft-file-ops-list">
     '''
     
-    if files_moved:
+    if keep_files_in_place and original_file_paths:
+        ops_html += "Files kept in original locations:<br>"
+        for file_type, original_path in original_file_paths.items():
+            ops_html += f"  • {file_type}: {original_path}<br>"
+        ops_html += "  Note: Files are not copied to SyftBox - limited sharing capabilities<br>"
+    elif files_moved:
         ops_html += "Moved to SyftBox locations:<br>"
         for move_info in files_moved:
             ops_html += f"  • {move_info}<br>"
-    
-    if created_files and not files_moved:
+    elif created_files and not files_moved:
         ops_html += "Created in tmp/ directory:<br>"
         for file_path in created_files:
             ops_html += f"  • {file_path}<br>"
