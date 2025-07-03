@@ -222,14 +222,30 @@ async def create_object(
     name: str = Body(...),
     description: str = Body(""),
     email: str = Body(""),
-    file_content: str = Body(""),
-    filename: str = Body(""),
+    file_content: str = Body(""),  # Legacy single file support
+    filename: str = Body(""),      # Legacy single file support
+    private_file_content: str = Body(""),  # New dual file support
+    private_filename: str = Body(""),      # New dual file support
+    mock_file_content: str = Body(""),     # New dual file support
+    mock_filename: str = Body(""),         # New dual file support
     metadata: Dict[str, Any] = Body({}),
     permissions: Dict[str, List[str]] = Body({})
 ) -> Dict[str, Any]:
     """Create a new syft object."""
     if objects is None:
         raise HTTPException(status_code=503, detail="Syft objects not available")
+    
+    # Debug logging
+    logger.info(f"🚀 Creating object with parameters:")
+    logger.info(f"  name: {name}")
+    logger.info(f"  description: {description}")
+    logger.info(f"  email: {email}")
+    logger.info(f"  private_file_content length: {len(private_file_content) if private_file_content else 0}")
+    logger.info(f"  private_filename: {private_filename}")
+    logger.info(f"  mock_file_content length: {len(mock_file_content) if mock_file_content else 0}")
+    logger.info(f"  mock_filename: {mock_filename}")
+    logger.info(f"  legacy file_content length: {len(file_content) if file_content else 0}")
+    logger.info(f"  legacy filename: {filename}")
     
     try:
         # Import the syobj factory function
@@ -267,8 +283,72 @@ async def create_object(
         import tempfile
         from pathlib import Path as PathLib
         
-        if filename and file_content:
-            # Create temporary files with original filename
+        # Check for dual file approach first (new method)
+        if private_file_content or mock_file_content:
+            temp_dir = PathLib("tmp")
+            temp_dir.mkdir(exist_ok=True)
+            
+            private_file_path = None
+            mock_file_path = None
+            
+            # Handle private file
+            if private_file_content:
+                if private_filename:
+                    private_file_path = temp_dir / private_filename
+                else:
+                    private_file_path = temp_dir / f"{name}_private.txt"
+                private_file_path.write_text(private_file_content)
+                logger.info(f"📝 Created private file: {private_file_path} with {len(private_file_content)} chars")
+            
+            # Handle mock file
+            if mock_file_content:
+                if mock_filename:
+                    mock_file_path = temp_dir / mock_filename
+                else:
+                    mock_file_path = temp_dir / f"{name}_mock.txt"
+                mock_file_path.write_text(mock_file_content)
+                logger.info(f"📝 Created mock file: {mock_file_path} with {len(mock_file_content)} chars")
+            
+            # Create the object using the dual file approach
+            if private_file_path and mock_file_path:
+                new_object = syobj(
+                    name=name,
+                    private_file=str(private_file_path),
+                    mock_file=str(mock_file_path),
+                    mock_read=mock_read,
+                    mock_write=mock_write,
+                    private_read=private_read,
+                    private_write=private_write,
+                    discovery_read=discovery_read,
+                    metadata=extended_metadata
+                )
+            elif private_file_path:
+                new_object = syobj(
+                    name=name,
+                    private_file=str(private_file_path),
+                    mock_contents=f"[AUTO-GENERATED] Mock content for {name}",
+                    mock_read=mock_read,
+                    mock_write=mock_write,
+                    private_read=private_read,
+                    private_write=private_write,
+                    discovery_read=discovery_read,
+                    metadata=extended_metadata
+                )
+            else:  # only mock file
+                new_object = syobj(
+                    name=name,
+                    private_contents=f"[AUTO-GENERATED] Private content for {name}",
+                    mock_file=str(mock_file_path),
+                    mock_read=mock_read,
+                    mock_write=mock_write,
+                    private_read=private_read,
+                    private_write=private_write,
+                    discovery_read=discovery_read,
+                    metadata=extended_metadata
+                )
+        
+        # Fallback to legacy single file approach
+        elif filename and file_content:
             temp_dir = PathLib("tmp")
             temp_dir.mkdir(exist_ok=True)
             
@@ -279,10 +359,10 @@ async def create_object(
             # Create mock file with original filename (add _mock before extension)
             name_parts = filename.rsplit('.', 1)
             if len(name_parts) == 2:
-                mock_filename = f"{name_parts[0]}_mock.{name_parts[1]}"
+                mock_filename_legacy = f"{name_parts[0]}_mock.{name_parts[1]}"
             else:
-                mock_filename = f"{filename}_mock"
-            mock_file_path = temp_dir / mock_filename
+                mock_filename_legacy = f"{filename}_mock"
+            mock_file_path = temp_dir / mock_filename_legacy
             
             # Create truncated mock content
             mock_content = file_content[:200] + "..." if len(file_content) > 200 else file_content
