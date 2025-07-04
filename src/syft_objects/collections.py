@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from .models import SyftObject
 
 from .client import get_syftbox_client, SYFTBOX_AVAILABLE, get_syft_objects_url, get_syft_objects_port
+from .auto_install import ensure_syftbox_app_installed, ensure_server_healthy
 
 
 class ObjectsCollection:
@@ -32,10 +33,7 @@ class ObjectsCollection:
         
         try:
             # ALWAYS check and install syft-objects app in SyftBox (same as import does)
-            from .auto_install import ensure_syftbox_app_installed, ensure_server_healthy
-            
-            # First ensure app is installed
-            app_installed = ensure_syftbox_app_installed(silent=True)
+            app_installed = ensure_syftbox_app_installed(silent=False)
             if not app_installed:
                 print("⚠️  SyftBox or syft-objects app not available")
                 self._server_ready = False
@@ -43,12 +41,11 @@ class ObjectsCollection:
             
             # Then ensure server health with proper waiting
             print("🔄 Checking syft-objects server status...")
-            if ensure_server_healthy(timeout_minutes=2):  # Wait up to 2 minutes
+            if ensure_server_healthy(timeout_minutes=0.5):  # Wait up to 30 seconds initially
                 self._server_ready = True
-                print("✅ Server is ready")
             else:
-                print("⚠️  Server not available - widget features may not work")
-                print("    Try refreshing the page or restarting SyftBox")
+                print("⚠️  Server not available after timeout")
+                print("    The widget will continue trying to connect...")
                 self._server_ready = False
         except Exception as e:
             print(f"⚠️  Could not check server status: {e}")
@@ -219,6 +216,11 @@ class ObjectsCollection:
 
     def __str__(self):
         """Display objects as a nice table"""
+        # Ensure server is ready before loading objects
+        self._ensure_server_ready()
+        
+        # Always ensure objects are loaded fresh when displaying
+        self._cached = False  # Force reload
         self._ensure_loaded()
         if not self._objects:
             return "No syft objects available"
@@ -302,8 +304,10 @@ Example Usage:
     def widget(self, width="100%", height="600px", url=None):
         """Display the syft-objects widget in an iframe with resize capability"""
         
-        # Ensure server is ready before showing widget
-        self._ensure_server_ready()
+        # Only check server if we haven't already determined it's not ready
+        if self._server_ready is not False:
+            # Ensure server is ready before showing widget
+            self._ensure_server_ready()
         
         # If server isn't ready, show a waiting message with auto-retry
         if not self._server_ready:

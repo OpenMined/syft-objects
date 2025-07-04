@@ -393,8 +393,10 @@ class SyftObject(BaseModel):
             use_relative_paths = self.base_path is not None
         
         if use_relative_paths:
-            # Set base_path to the directory containing the .syftobject.yaml file
-            self.base_path = str(file_path.parent)
+            # Only set base_path if it's not already set
+            if not self.base_path:
+                # Set base_path to the directory containing the .syftobject.yaml file
+                self.base_path = str(file_path.parent)
             # Update relative paths
             self._update_relative_paths()
         
@@ -421,12 +423,34 @@ class SyftObject(BaseModel):
         with open(file_path, 'r') as f:
             data = yaml.safe_load(f)
         
-        # Auto-detect base path if not specified
-        if 'base_path' not in data or data['base_path'] is None:
+        # Auto-detect base path if not specified and if there are relative paths to resolve
+        if ('base_path' not in data or data['base_path'] is None) and any(
+            key in data for key in ['private_url_relative', 'mock_url_relative', 'syftobject_relative']
+        ):
             data['base_path'] = str(file_path.parent)
         
         # Create the object
         obj = cls(**data)
+        
+        # If we have relative paths but the current base_path doesn't work, try the file's directory
+        if obj.base_path and any(getattr(obj, f"{field}_relative", None) for field in ['private_url', 'mock_url', 'syftobject']):
+            # Test if the relative paths work from the current base_path
+            test_working = False
+            for field in ['private_url', 'mock_url']:
+                relative_path = getattr(obj, f"{field}_relative", None)
+                if relative_path:
+                    base = Path(obj.base_path)
+                    if not base.is_absolute():
+                        base = Path.cwd() / base
+                    test_file = base / relative_path
+                    if test_file.exists():
+                        test_working = True
+                        break
+            
+            # If the original base_path doesn't work, try using the file's directory
+            if not test_working:
+                # Update base_path to the file's directory and recalculate relative paths
+                obj.base_path = str(file_path.parent)
         
         # Update relative paths based on current file locations
         obj._update_relative_paths()

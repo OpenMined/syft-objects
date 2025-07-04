@@ -308,7 +308,7 @@ def syobj(
         private_permissions=final_private_read,
         private_write_permissions=final_private_write,
         # Add relative path support
-        base_path=str(base_path_obj) if base_path_obj else None,
+        base_path=base_path,
         private_url_relative=private_relative,
         mock_url_relative=mock_relative,
         syftobject_relative=syftobject_relative
