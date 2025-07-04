@@ -103,6 +103,33 @@ obj = syo.syobj(
 )
 ```
 
+## Reference-Only Mode
+
+**New in v0.3.5**: Keep files in their original location without copying to SyftBox.
+
+```python
+# Files stay in place (not copied to SyftBox)
+obj = syo.syobj(
+    name="Large Dataset",
+    private_file="/path/to/my/large_dataset.csv",
+    reference_only=True,  # 🔑 Key flag!
+    metadata={"save_to": "dataset_metadata.syftobject.yaml"}
+)
+
+# Or via metadata
+obj = syo.syobj(
+    name="My Data",
+    private_file="important_data.txt",
+    metadata={"reference_only": True}
+)
+```
+
+**Benefits:**
+- ✅ Files stay in their original location
+- ✅ No unnecessary copying or moving
+- ✅ Perfect for large datasets or files you want to keep in place
+- ✅ Still get all SyftObjects benefits (permissions, metadata, etc.)
+
 ## Installation
 
 ```bash

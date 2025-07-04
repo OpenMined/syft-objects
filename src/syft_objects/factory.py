@@ -74,12 +74,18 @@ def syobj(
     mock_write: Optional[List[str]] = None,
     private_read: Optional[List[str]] = None,
     private_write: Optional[List[str]] = None,
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None,
+    reference_only: Optional[bool] = None
 ) -> SyftObject:
     """
     🔐 **Share files with explicit mock vs private control** 
     
     Create SyftObjects with fine-grained permission control.
+    
+    Args:
+        reference_only: If True, files are referenced in place without copying to SyftBox.
+                       If None, uses metadata.get("reference_only", False).
+                       When True, overrides move_files_to_syftbox to False.
     """
     # === SETUP ===
     if metadata is None:
@@ -95,8 +101,16 @@ def syobj(
     use_relative_paths = metadata.get("use_relative_paths", False)
     base_path = metadata.get("base_path", None)
     
+    # Handle reference_only flag - can be passed as parameter or in metadata
+    if reference_only is None:
+        reference_only = metadata.get("reference_only", False)
+    
+    # If reference_only is True, override move_files_to_syftbox to False
+    if reference_only:
+        move_files_to_syftbox = False
+    
     # Create clean metadata dict for the SyftObject (exclude system settings)
-    system_keys = {"description", "save_to", "email", "create_syftbox_permissions", "auto_save", "move_files_to_syftbox", "use_relative_paths", "base_path"}
+    system_keys = {"description", "save_to", "email", "create_syftbox_permissions", "auto_save", "move_files_to_syftbox", "use_relative_paths", "base_path", "reference_only"}
     clean_metadata = {k: v for k, v in metadata.items() if k not in system_keys}
     
     # === CREATE TEMP DIRECTORY ===
@@ -182,8 +196,15 @@ def syobj(
             raise FileNotFoundError(f"Mock file not found: {mock_file}")
         mock_filename = mock_source_path.name
     else:
-        # Auto-generate mock
-        mock_filename = f"{Path(base_filename).stem}_mock{Path(base_filename).suffix}"
+        # Auto-generate mock with matching extension to private file
+        if private_file:
+            # Match the extension of the private file
+            private_ext = Path(private_source_path).suffix
+            mock_filename = f"{Path(private_source_path).stem}_mock{private_ext}"
+        else:
+            # Use default extension
+            mock_filename = f"{Path(base_filename).stem}_mock{Path(base_filename).suffix}"
+        
         mock_file_path = tmp_dir / mock_filename
         
         if private_contents:
@@ -204,24 +225,39 @@ def syobj(
     final_private_read = private_read or [email]
     final_private_write = private_write or [email]
     
-    # === GENERATE SYFT:// URLS ===
+    # === GENERATE SYFT:// URLS OR USE REFERENCE PATHS ===
     mock_is_public = any(x in ("public", "*") for x in final_mock_read)
     
     # Convert base_path to Path if provided
     base_path_obj = Path(base_path) if base_path else None
     
-    # Generate URLs with optional relative paths
-    final_private_path, final_mock_path, private_relative, mock_relative = generate_syftbox_urls(
-        email, private_filename, syftbox_client, mock_is_public=mock_is_public,
-        use_relative_paths=use_relative_paths, base_path=base_path_obj
-    )
-    
-    # Generate syftobject URL
-    syftobj_filename = f"{name.lower().replace(' ', '_').replace('-', '_')}_{uid_short}.syftobject.yaml"
-    final_syftobject_path, syftobject_relative = generate_syftobject_url(
-        email, syftobj_filename, syftbox_client, 
-        use_relative_paths=use_relative_paths, base_path=base_path_obj
-    )
+    if reference_only:
+        # Reference-only mode: use original file paths without moving to SyftBox
+        final_private_path = str(private_source_path.absolute())
+        final_mock_path = str(mock_source_path.absolute())
+        private_relative = None
+        mock_relative = None
+        
+        # For reference-only mode, save syftobject in current directory or specified save_to location
+        if save_to:
+            final_syftobject_path = str(Path(save_to).absolute())
+        else:
+            syftobj_filename = f"{name.lower().replace(' ', '_').replace('-', '_')}_{uid_short}.syftobject.yaml"
+            final_syftobject_path = str(Path.cwd().absolute() / syftobj_filename)
+        syftobject_relative = None
+    else:
+        # Normal mode: generate SyftBox URLs with optional relative paths
+        final_private_path, final_mock_path, private_relative, mock_relative = generate_syftbox_urls(
+            email, private_filename, syftbox_client, mock_is_public=mock_is_public,
+            use_relative_paths=use_relative_paths, base_path=base_path_obj
+        )
+        
+        # Generate syftobject URL
+        syftobj_filename = f"{name.lower().replace(' ', '_').replace('-', '_')}_{uid_short}.syftobject.yaml"
+        final_syftobject_path, syftobject_relative = generate_syftobject_url(
+            email, syftobj_filename, syftbox_client, 
+            use_relative_paths=use_relative_paths, base_path=base_path_obj
+        )
     
     # === MOVE FILES TO SYFTBOX LOCATIONS ===
     if move_files_to_syftbox and syftbox_client:

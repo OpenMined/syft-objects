@@ -1,0 +1,21 @@
+rules:
+- pattern: my_custom_object.syftobject.yaml
+  access:
+    read:
+    - '*'
+- pattern: my_dataset.syftobject.yaml
+  access:
+    read:
+    - '*'
+- pattern: metadata_dataset.syftobject.yaml
+  access:
+    read:
+    - '*'
+- pattern: my_data.txt
+  access:
+    read:
+    - liamtrask@gmail.com
+    write:
+    - liamtrask@gmail.com
+    admin:
+    - liamtrask@gmail.com

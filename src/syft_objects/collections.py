@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, List, Optional
 if TYPE_CHECKING:
     from .models import SyftObject
 
-from .client import get_syftbox_client, SYFTBOX_AVAILABLE, get_syft_objects_url
+from .client import get_syftbox_client, SYFTBOX_AVAILABLE, get_syft_objects_url, get_syft_objects_port
 
 
 class ObjectsCollection:
@@ -26,18 +26,33 @@ class ObjectsCollection:
     def _ensure_server_ready(self):
         """Ensure syft-objects server is ready before UI operations"""
         
+        # Skip if already checked and server is ready
+        if self._server_ready:
+            return
+        
         try:
             # ALWAYS check and install syft-objects app in SyftBox (same as import does)
             from .auto_install import ensure_syftbox_app_installed, ensure_server_healthy
-            ensure_syftbox_app_installed(silent=True)
             
-            # Then ensure server health
-            if ensure_server_healthy():
+            # First ensure app is installed
+            app_installed = ensure_syftbox_app_installed(silent=True)
+            if not app_installed:
+                print("⚠️  SyftBox or syft-objects app not available")
+                self._server_ready = False
+                return
+            
+            # Then ensure server health with proper waiting
+            print("🔄 Checking syft-objects server status...")
+            if ensure_server_healthy(timeout_minutes=2):  # Wait up to 2 minutes
                 self._server_ready = True
+                print("✅ Server is ready")
             else:
-                print("⚠️  Server not available - some features may not work")
+                print("⚠️  Server not available - widget features may not work")
+                print("    Try refreshing the page or restarting SyftBox")
+                self._server_ready = False
         except Exception as e:
             print(f"⚠️  Could not check server status: {e}")
+            self._server_ready = False
 
     def _get_object_email(self, syft_obj: 'SyftObject'):
         """Extract email from syft:// URL"""
@@ -235,47 +250,47 @@ class ObjectsCollection:
 🔐 Syft Objects Collection Help
 
 Import Convention:
-  import syft_objects as syo
+  import syft_queue as so
 
 Interactive UI:
-  syo.objects              # Show interactive table with search & selection
+  so.objects              # Show interactive table with search & selection
   • Use search box to filter in real-time
   • Check boxes to select objects  
   • Click "Generate Code" for copy-paste Python code
 
 Programmatic Usage:
-  syo.objects[0]           # Get first object
-  syo.objects[:3]          # Get first 3 objects
-  len(syo.objects)         # Count objects
+  so.objects[0]           # Get first object
+  so.objects[:3]          # Get first 3 objects
+  len(so.objects)         # Count objects
 
 Search & Filter:
-  syo.objects.search("financial")        # Search for 'financial' in names/emails
-  syo.objects.filter_by_email("andrew")  # Filter by email containing 'andrew'
-  syo.objects.get_by_indices([0,1,5])    # Get specific objects by index
+  so.objects.search("financial")        # Search for 'financial' in names/emails
+  so.objects.filter_by_email("andrew")  # Filter by email containing 'andrew'
+  so.objects.get_by_indices([0,1,5])    # Get specific objects by index
   
 Utility Methods:
-  syo.objects.list_unique_emails()       # List all unique emails
-  syo.objects.list_unique_names()        # List all unique object names
-  syo.objects.refresh()                  # Manually refresh the collection
+  so.objects.list_unique_emails()       # List all unique emails
+  so.objects.list_unique_names()        # List all unique object names
+  so.objects.refresh()                  # Manually refresh the collection
   
 Example Usage:
-  import syft_objects as syo
+  import syft_queue as so
   
   # Browse and select objects interactively
-  syo.objects
+  so.objects
   
   # Selected objects:
-  objects = [syo.objects[i] for i in [0, 1, 16, 20, 23]]
+  objects = [so.objects[i] for i in [0, 1, 16, 20, 23]]
   
   # Access object properties:
-  obj = syo.objects[0]
+  obj = so.objects[0]
   print(obj.name)           # Object name
               print(obj.private_url)        # Private syft:// URL
     print(obj.mock_url)           # Mock syft:// URL
   print(obj.description)    # Object description
   
   # Refresh after creating new objects:
-  syo.objects.refresh()
+  so.objects.refresh()
         """
         print(help_text)
 
@@ -287,7 +302,85 @@ Example Usage:
     def widget(self, width="100%", height="600px", url=None):
         """Display the syft-objects widget in an iframe with resize capability"""
         
+        # Ensure server is ready before showing widget
         self._ensure_server_ready()
+        
+        # If server isn't ready, show a waiting message with auto-retry
+        if not self._server_ready:
+            import uuid
+            waiting_id = f"syft-waiting-{uuid.uuid4().hex[:8]}"
+            port = get_syft_objects_port()
+            health_url = f"http://localhost:{port}/health"
+            widget_url = get_syft_objects_url("widget") if url is None else url
+            
+            return f"""
+            <div id="{waiting_id}" style="padding: 20px; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                <h3>⏳ Waiting for syft-objects server...</h3>
+                <p>The server is starting up. This page will automatically load when ready.</p>
+                <div id="{waiting_id}-status" style="margin: 10px 0;">
+                    <span style="color: #666;">Checking server status...</span>
+                </div>
+                <p style="font-size: 0.9em; color: #666;">If this persists for more than 30 seconds, please check:</p>
+                <ul style="text-align: left; display: inline-block; font-size: 0.9em; color: #666;">
+                    <li>SyftBox is running</li>
+                    <li>syft-objects app is installed in SyftBox/apps</li>
+                    <li>No errors in the console</li>
+                </ul>
+                <button onclick="location.reload()" style="margin-top: 10px;">Manual Refresh</button>
+            </div>
+            <script>
+            (function() {{
+                let attempts = 0;
+                const maxAttempts = 60; // 30 seconds with 500ms intervals
+                const statusDiv = document.getElementById('{waiting_id}-status');
+                const containerDiv = document.getElementById('{waiting_id}');
+                
+                function checkServer() {{
+                    attempts++;
+                    
+                    // Update status
+                    statusDiv.innerHTML = '<span style="color: #666;">Attempt ' + attempts + ' of ' + maxAttempts + '...</span>';
+                    
+                    // Try to fetch the health endpoint
+                    fetch('{health_url}', {{ method: 'GET', mode: 'cors' }})
+                        .then(response => {{
+                            if (response.ok) {{
+                                // Server is ready! Replace with iframe
+                                containerDiv.innerHTML = `
+                                    <iframe 
+                                        src="{widget_url}" 
+                                        width="{width}" 
+                                        height="{height}"
+                                        frameborder="0"
+                                        style="border: none;"
+                                        title="SyftObjects Widget">
+                                    </iframe>
+                                `;
+                            }} else {{
+                                // Server responded but not ready
+                                if (attempts < maxAttempts) {{
+                                    setTimeout(checkServer, 500);
+                                }} else {{
+                                    statusDiv.innerHTML = '<span style="color: #e74c3c;">Server not responding. Please check SyftBox and try again.</span>';
+                                }}
+                            }}
+                        }})
+                        .catch(error => {{
+                            // Network error or server not running
+                            if (attempts < maxAttempts) {{
+                                setTimeout(checkServer, 500);
+                            }} else {{
+                                statusDiv.innerHTML = '<span style="color: #e74c3c;">Could not connect to server. Please ensure SyftBox is running.</span>';
+                            }}
+                        }});
+                }}
+                
+                // Start checking immediately
+                checkServer();
+            }})();
+            </script>
+            """
+        
         if url is None:
             url = get_syft_objects_url("widget")
         
@@ -303,8 +396,15 @@ Example Usage:
             height="{height}"
             frameborder="0"
             style="border: none;"
-            title="SyftObjects Widget">
+            title="SyftObjects Widget"
+            onload="this.style.visibility='visible';"
+            onerror="this.style.visibility='hidden'; document.getElementById('{iframe_id}-error').style.display='block';">
         </iframe>
+        <div id="{iframe_id}-error" style="display: none; padding: 20px; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <h3>❌ Failed to load widget</h3>
+            <p>Could not connect to syft-objects server at {url}</p>
+            <button onclick="location.reload()">Retry</button>
+        </div>
         <script>
         // Listen for resize messages from the widget
         window.addEventListener('message', function(event) {{
@@ -630,11 +730,11 @@ Example Usage:
             let code;
             if (selectedIndices.length === 1) {{
                 code = `# Selected object:
-obj = syo.objects[${{selectedIndices[0]}}]`;
+obj = so.objects[${{selectedIndices[0]}}]`;
             }} else {{
                 const indicesStr = selectedIndices.join(', ');
                 code = `# Selected objects:
-objects = [syo.objects[i] for i in [${{indicesStr}}]]`;
+objects = [so.objects[i] for i in [${{indicesStr}}]]`;
             }}
             
             // Copy to clipboard
