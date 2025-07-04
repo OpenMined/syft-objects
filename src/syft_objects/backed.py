@@ -66,61 +66,83 @@ class SingleSyftObjBacked:
             "attributes": {}
         }
         
-        try:
-            # Create syft-object with initial data
-            private_content = json.dumps(initial_data, indent=2)
-            mock_content = json.dumps({
-                "object_name": self._object_name,
-                "created_at": initial_data["created_at"],
-                "type": "SingleSyftObjBacked",
-                "attributes": "[Private - contact owner for access]"
-            }, indent=2)
-            
-            self._syft_object = syobj(
-                name=self._object_name,
-                private_contents=private_content,
-                mock_contents=mock_content,
-                private_read=[self._owner_email],
-                private_write=[self._owner_email],
-                mock_read=["public"],
-                mock_write=[],
-                metadata={
-                    "object_type": "SingleSyftObjBacked",
+        # Check if we're in a SyftBox directory structure
+        is_syftbox_dir = self._is_syftbox_directory()
+        
+        if is_syftbox_dir:
+            try:
+                # Create syft-object with initial data
+                private_content = json.dumps(initial_data, indent=2)
+                mock_content = json.dumps({
                     "object_name": self._object_name,
-                    "owner_email": self._owner_email,
-                    "save_to": str(self._object_path / f"{self._object_name}.syftobject.yaml")
-                }
-            )
-        except Exception as e:
-            print(f"Warning: Could not create syft-object, using fallback JSON: {e}")
-            # Fallback to JSON file
+                    "created_at": initial_data["created_at"],
+                    "type": "SingleSyftObjBacked",
+                    "attributes": "[Private - contact owner for access]"
+                }, indent=2)
+                
+                self._syft_object = syobj(
+                    name=self._object_name,
+                    private_contents=private_content,
+                    mock_contents=mock_content,
+                    private_read=[self._owner_email],
+                    private_write=[self._owner_email],
+                    mock_read=["public"],
+                    mock_write=[],
+                    metadata={
+                        "object_type": "SingleSyftObjBacked",
+                        "object_name": self._object_name,
+                        "owner_email": self._owner_email,
+                    }
+                )
+            except Exception as e:
+                # Suppress misleading "not writable" errors - syft-objects are often created successfully despite this warning
+                if "not writable" not in str(e):
+                    print(f"Warning: Could not create syft-object, using fallback JSON: {e}")
+                # Fallback to JSON file
+                with open(self._fallback_file, 'w') as f:
+                    json.dump(initial_data, f, indent=2)
+        else:
+            # For local directories, use JSON fallback directly
             with open(self._fallback_file, 'w') as f:
                 json.dump(initial_data, f, indent=2)
     
+    def _is_syftbox_directory(self) -> bool:
+        """Check if the current directory is within a SyftBox directory structure."""
+        path_str = str(self._object_path.resolve())
+        return (
+            'SyftBox/datasites/' in path_str or
+            '/datasites/' in path_str or
+            'syftbox/datasites/' in path_str
+        )
+    
     def _load_backing_file(self) -> Dict[str, Any]:
         """Load data from the backing file."""
-        syft_object_file = self._object_path / f"{self._object_name}.syftobject.yaml"
-        if syft_object_file.exists():
-            try:
-                if self._syft_object is None:
-                    self._syft_object = SyftObject.load_yaml(syft_object_file)
-                
-                # Get private content - check if it has proper structure
-                if hasattr(self._syft_object, 'private') and hasattr(self._syft_object.private, 'file'):
-                    if hasattr(self._syft_object.private.file, 'read_text'):
-                        # It's a Path object
-                        private_content = self._syft_object.private.file.read_text()
+        # Try syft-object first if we're in a SyftBox directory
+        if self._is_syftbox_directory():
+            syft_object_file = self._object_path / f"{self._object_name}.syftobject.yaml"
+            if syft_object_file.exists():
+                try:
+                    if self._syft_object is None:
+                        self._syft_object = SyftObject.load_yaml(syft_object_file)
+                    
+                    # Get private content - check if it has proper structure
+                    if hasattr(self._syft_object, 'private') and hasattr(self._syft_object.private, 'file'):
+                        if hasattr(self._syft_object.private.file, 'read_text'):
+                            # It's a Path object
+                            private_content = self._syft_object.private.file.read_text()
+                        else:
+                            # It's a file handle, use regular read
+                            private_content = self._syft_object.private.file.read()
+                        
+                        return json.loads(private_content)
                     else:
-                        # It's a file handle, use regular read
-                        private_content = self._syft_object.private.file.read()
-                    
-                    return json.loads(private_content)
-                else:
-                    raise Exception("Syft-object structure not as expected")
-                    
-            except Exception as e:
-                print(f"Error loading syft-object: {e}")
-                return {"attributes": {}}
+                        raise Exception("Syft-object structure not as expected")
+                        
+                except Exception as e:
+                    # Suppress misleading "not writable" errors - syft-objects are often created successfully despite this warning
+                    if "not writable" not in str(e):
+                        print(f"Error loading syft-object: {e}")
+                    # Fall through to JSON fallback
         
         # Fallback to JSON file
         if self._fallback_file.exists():
@@ -134,7 +156,8 @@ class SingleSyftObjBacked:
     
     def _save_backing_file(self, data: Dict[str, Any]) -> None:
         """Save data to the backing file."""
-        if self._syft_object is not None:
+        # Check if we're in a SyftBox directory and have a syft-object
+        if self._syft_object is not None and self._is_syftbox_directory():
             try:
                 # Update private content
                 private_content = json.dumps(data, indent=2)
@@ -176,12 +199,14 @@ class SingleSyftObjBacked:
                     raise Exception("Syft-object structure not as expected")
                 
             except Exception as e:
-                print(f"Error saving syft-object: {e}")
+                # Suppress misleading "not writable" errors - syft-objects are often created successfully despite this warning
+                if "not writable" not in str(e):
+                    print(f"Error saving syft-object: {e}")
                 # Fallback to JSON
                 with open(self._fallback_file, 'w') as f:
                     json.dump(data, f, indent=2)
         else:
-            # Fallback to JSON file
+            # Use JSON file for local directories or when syft-object is not available
             with open(self._fallback_file, 'w') as f:
                 json.dump(data, f, indent=2)
     
@@ -717,9 +742,8 @@ class MultiSyftObjBacked:
                 
                 # Save syft-object metadata if possible
                 if hasattr(syft_obj, 'save_yaml'):
-                    syft_obj_name = f"{self._object_name}_{name}"
-                    syft_obj_file = self._object_path / f"{syft_obj_name}.syftobject.yaml"
-                    syft_obj.save_yaml(syft_obj_file)
+                    syft_object_file = self._object_path / f"{self._object_name}_{name}.syftobject.yaml"
+                    syft_obj.save_yaml(syft_object_file)
                 
             except Exception as e:
                 print(f"Error updating syft-object {name}: {e}")

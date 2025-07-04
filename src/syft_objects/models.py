@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 import yaml
 
 from pydantic import BaseModel, Field, model_validator
+import os
 
 from .client import get_syftbox_client, extract_local_path_from_syft_url
 from .permissions import set_file_permissions_wrapper
@@ -29,6 +30,17 @@ class SyftObject(BaseModel):
     mock_url: str = Field(description="Syft:// path to the public/mock object", alias="mock")
     syftobject: str = Field(description="Syft:// path to the .syftobject.yaml metadata file")
     created_at: datetime = Field(default_factory=utcnow, description="Creation timestamp")
+    
+    # New fields for relative path support
+    base_path: Optional[str] = Field(None, description="Base path for resolving relative URLs")
+    private_url_relative: Optional[str] = Field(None, description="Relative path to private object")
+    mock_url_relative: Optional[str] = Field(None, description="Relative path to mock object")
+    syftobject_relative: Optional[str] = Field(None, description="Relative path to .syftobject.yaml")
+    
+    # Fallback absolute paths (for recovery)
+    private_url_absolute_fallback: Optional[str] = Field(None, description="Absolute fallback for private")
+    mock_url_absolute_fallback: Optional[str] = Field(None, description="Absolute fallback for mock")
+    syftobject_absolute_fallback: Optional[str] = Field(None, description="Absolute fallback for syftobject")
     
     # Permission metadata - who can access what (read/write granularity)
     syftobject_permissions: list[str] = Field(
@@ -75,19 +87,24 @@ class SyftObject(BaseModel):
     @property
     def private_path(self) -> str:
         """Get the full local file path for the private object"""
-        return self._get_local_file_path(self.private_url)
+        # Use new resolution logic
+        resolved = self._resolve_path('private_url')
+        return str(resolved) if resolved else ""
     
     @property
     def mock_path(self) -> str:
         """Get the full local file path for the mock object"""
-        return self._get_local_file_path(self.mock_url)
+        # Use new resolution logic
+        resolved = self._resolve_path('mock_url')
+        return str(resolved) if resolved else ""
     
     @property
     def syftobject_path(self) -> str:
         """Get the full local file path for the .syftobject.yaml file"""
-        # First try to get path from the syftobject field
-        if hasattr(self, 'syftobject') and self.syftobject:
-            return self._get_local_file_path(self.syftobject)
+        # Use new resolution logic
+        resolved = self._resolve_path('syftobject')
+        if resolved:
+            return str(resolved)
         
         # Fall back to metadata if available
         file_ops = self.metadata.get("_file_operations", {})
@@ -163,6 +180,21 @@ class SyftObject(BaseModel):
     def _check_file_exists(self, syft_url: str) -> bool:
         """Check if a file exists locally (for display purposes)"""
         try:
+            # Determine which URL field this is
+            url_field = None
+            if syft_url == self.private_url:
+                url_field = 'private_url'
+            elif syft_url == self.mock_url:
+                url_field = 'mock_url'
+            elif syft_url == self.syftobject:
+                url_field = 'syftobject'
+            
+            if url_field:
+                # Use new resolution logic
+                resolved = self._resolve_path(url_field)
+                return resolved is not None
+            
+            # Fallback for unknown URLs
             syftbox_client = get_syftbox_client()
             if syftbox_client:
                 local_path = extract_local_path_from_syft_url(syft_url)
@@ -197,6 +229,115 @@ class SyftObject(BaseModel):
         except Exception:
             return ""
     
+    def _resolve_path(self, url_field: str) -> Optional[Path]:
+        """Resolve a path using multiple strategies:
+        1. Try relative path if base_path exists
+        2. Try absolute syft:// URL
+        3. Try absolute fallback path
+        4. Search common locations
+        """
+        # Strategy 1: Relative path
+        relative_field = f"{url_field}_relative"
+        if self.base_path and hasattr(self, relative_field):
+            relative_url = getattr(self, relative_field)
+            if relative_url:
+                # Handle both absolute and relative base paths
+                base = Path(self.base_path)
+                if not base.is_absolute():
+                    # If base_path is relative, resolve it from current working directory
+                    base = Path.cwd() / base
+                
+                candidate = base / relative_url
+                if candidate.exists():
+                    return candidate.absolute()
+        
+        # Strategy 2: Absolute syft:// URL (current behavior)
+        absolute_url = getattr(self, url_field, None)
+        if absolute_url:
+            try:
+                local_path = extract_local_path_from_syft_url(absolute_url)
+                if local_path and local_path.exists():
+                    return local_path.absolute()
+            except:
+                pass
+        
+        # Strategy 3: Absolute fallback
+        fallback_field = f"{url_field}_absolute_fallback"
+        if hasattr(self, fallback_field):
+            fallback = getattr(self, fallback_field, None)
+            if fallback:
+                fallback_path = Path(fallback)
+                if fallback_path.exists():
+                    return fallback_path.absolute()
+        
+        # Strategy 4: Search heuristics
+        return self._search_for_file(url_field)
+    
+    def _search_for_file(self, url_field: str) -> Optional[Path]:
+        """Search for a file using heuristics when other methods fail"""
+        # Get the filename from the URL
+        url = getattr(self, url_field, None)
+        if not url:
+            return None
+        
+        filename = url.split("/")[-1]
+        
+        # Search locations in order of likelihood
+        search_paths = [
+            Path("tmp"),  # Current tmp directory
+            Path.cwd(),  # Current working directory
+            Path.home() / "SyftBox" / "datasites",  # Default SyftBox location
+        ]
+        
+        # If we have a base_path, also search relative to it
+        if self.base_path:
+            base = Path(self.base_path)
+            if not base.is_absolute():
+                base = Path.cwd() / base
+            search_paths.insert(0, base)
+            search_paths.append(base.parent)
+        
+        # Search for the file
+        for search_dir in search_paths:
+            if search_dir.exists():
+                # Direct check
+                candidate = search_dir / filename
+                if candidate.exists():
+                    return candidate.absolute()
+                
+                # Recursive search (limited depth)
+                try:
+                    for path in search_dir.rglob(filename):
+                        if path.is_file():
+                            return path.absolute()
+                except:
+                    pass
+        
+        return None
+    
+    def _update_relative_paths(self):
+        """Update relative paths based on current file locations"""
+        if not self.base_path:
+            return
+        
+        base = Path(self.base_path)
+        if not base.is_absolute():
+            base = Path.cwd() / base
+        
+        # Update relative paths for each URL field
+        for url_field in ['private_url', 'mock_url', 'syftobject']:
+            resolved_path = self._resolve_path(url_field)
+            if resolved_path:
+                try:
+                    # Calculate relative path from base to file
+                    relative_path = os.path.relpath(resolved_path, base)
+                    setattr(self, f"{url_field}_relative", relative_path)
+                    
+                    # Also update absolute fallback
+                    setattr(self, f"{url_field}_absolute_fallback", str(resolved_path))
+                except:
+                    pass
+    
     def _get_file_preview(self, file_path: str, max_chars: int = 1000) -> str:
         """Get a preview of file content (first N characters)"""
         try:
@@ -221,9 +362,15 @@ class SyftObject(BaseModel):
             return f"Error reading file: {str(e)}"
 
 
-    def save_yaml(self, file_path: str | Path, create_syftbox_permissions: bool = True) -> None:
-        """Save the syft object to a YAML file with .syftobject.yaml extension and create SyftBox permission files"""
-        file_path = Path(file_path)
+    def save_yaml(self, file_path: str | Path, create_syftbox_permissions: bool = True, use_relative_paths: bool = None) -> None:
+        """Save the syft object to a YAML file with .syftobject.yaml extension and create SyftBox permission files
+        
+        Args:
+            file_path: Path to save the .syftobject.yaml file
+            create_syftbox_permissions: Whether to create SyftBox permission files
+            use_relative_paths: Whether to use relative paths (None = auto-detect based on existing base_path)
+        """
+        file_path = Path(file_path).absolute()
         
         # Ensure the file ends with .syftobject.yaml
         if not file_path.name.endswith('.syftobject.yaml'):
@@ -240,8 +387,19 @@ class SyftObject(BaseModel):
         # Ensure directory exists
         file_path.parent.mkdir(parents=True, exist_ok=True)
         
+        # Handle relative paths
+        if use_relative_paths is None:
+            # Auto-detect: use relative paths if base_path is already set
+            use_relative_paths = self.base_path is not None
+        
+        if use_relative_paths:
+            # Set base_path to the directory containing the .syftobject.yaml file
+            self.base_path = str(file_path.parent)
+            # Update relative paths
+            self._update_relative_paths()
+        
         # Convert to dict and handle datetime/UUID serialization
-        data = self.model_dump(mode='json')
+        data = self.model_dump(mode='json', exclude_none=True)
         
         # Write to YAML file
         with open(file_path, 'w') as f:
@@ -254,7 +412,7 @@ class SyftObject(BaseModel):
     @classmethod
     def load_yaml(cls, file_path: str | Path) -> 'SyftObject':
         """Load a syft object from a .syftobject.yaml file"""
-        file_path = Path(file_path)
+        file_path = Path(file_path).absolute()
         
         # Validate that the file has the correct extension
         if not file_path.name.endswith('.syftobject.yaml'):
@@ -262,7 +420,18 @@ class SyftObject(BaseModel):
         
         with open(file_path, 'r') as f:
             data = yaml.safe_load(f)
-        return cls(**data)
+        
+        # Auto-detect base path if not specified
+        if 'base_path' not in data or data['base_path'] is None:
+            data['base_path'] = str(file_path.parent)
+        
+        # Create the object
+        obj = cls(**data)
+        
+        # Update relative paths based on current file locations
+        obj._update_relative_paths()
+        
+        return obj
 
     def _create_syftbox_permissions(self, syftobject_file_path: Path) -> None:
         """Create SyftBox permission files for the syft object"""

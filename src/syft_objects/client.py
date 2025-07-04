@@ -50,6 +50,40 @@ def extract_local_path_from_syft_url(syft_url: str):
         return None
 
 
+def resolve_relative_path(base_path: str | Path, relative_path: str) -> Path:
+    """Resolve a relative path against a base path
+    
+    Args:
+        base_path: The base directory path (can be relative or absolute)
+        relative_path: The relative path to resolve
+    
+    Returns:
+        Absolute path resolved from base_path and relative_path
+    """
+    base = Path(base_path)
+    if not base.is_absolute():
+        # If base_path is relative, resolve it from current working directory
+        base = Path.cwd() / base
+    
+    return (base / relative_path).resolve()
+
+
+def find_syftobject_files(directory: str | Path) -> list[Path]:
+    """Find all .syftobject.yaml files in a directory
+    
+    Args:
+        directory: Directory to search in
+    
+    Returns:
+        List of paths to .syftobject.yaml files
+    """
+    directory = Path(directory)
+    if not directory.exists():
+        return []
+    
+    return list(directory.rglob("*.syftobject.yaml"))
+
+
 def check_syftbox_status():
     """Check SyftBox status and store information for startup banner"""
     global _syftbox_status

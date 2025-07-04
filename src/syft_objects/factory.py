@@ -92,9 +92,11 @@ def syobj(
     create_syftbox_permissions = metadata.get("create_syftbox_permissions", True)
     auto_save = metadata.get("auto_save", True)
     move_files_to_syftbox = metadata.get("move_files_to_syftbox", True)
+    use_relative_paths = metadata.get("use_relative_paths", False)
+    base_path = metadata.get("base_path", None)
     
     # Create clean metadata dict for the SyftObject (exclude system settings)
-    system_keys = {"description", "save_to", "email", "create_syftbox_permissions", "auto_save", "move_files_to_syftbox"}
+    system_keys = {"description", "save_to", "email", "create_syftbox_permissions", "auto_save", "move_files_to_syftbox", "use_relative_paths", "base_path"}
     clean_metadata = {k: v for k, v in metadata.items() if k not in system_keys}
     
     # === CREATE TEMP DIRECTORY ===
@@ -204,13 +206,22 @@ def syobj(
     
     # === GENERATE SYFT:// URLS ===
     mock_is_public = any(x in ("public", "*") for x in final_mock_read)
-    final_private_path, final_mock_path = generate_syftbox_urls(
-        email, private_filename, syftbox_client, mock_is_public=mock_is_public
+    
+    # Convert base_path to Path if provided
+    base_path_obj = Path(base_path) if base_path else None
+    
+    # Generate URLs with optional relative paths
+    final_private_path, final_mock_path, private_relative, mock_relative = generate_syftbox_urls(
+        email, private_filename, syftbox_client, mock_is_public=mock_is_public,
+        use_relative_paths=use_relative_paths, base_path=base_path_obj
     )
     
     # Generate syftobject URL
     syftobj_filename = f"{name.lower().replace(' ', '_').replace('-', '_')}_{uid_short}.syftobject.yaml"
-    final_syftobject_path = generate_syftobject_url(email, syftobj_filename, syftbox_client)
+    final_syftobject_path, syftobject_relative = generate_syftobject_url(
+        email, syftobj_filename, syftbox_client, 
+        use_relative_paths=use_relative_paths, base_path=base_path_obj
+    )
     
     # === MOVE FILES TO SYFTBOX LOCATIONS ===
     if move_files_to_syftbox and syftbox_client:
@@ -259,7 +270,12 @@ def syobj(
         mock_permissions=final_mock_read,
         mock_write_permissions=final_mock_write,
         private_permissions=final_private_read,
-        private_write_permissions=final_private_write
+        private_write_permissions=final_private_write,
+        # Add relative path support
+        base_path=str(base_path_obj) if base_path_obj else None,
+        private_url_relative=private_relative,
+        mock_url_relative=mock_relative,
+        syftobject_relative=syftobject_relative
     )
     
     # === TRACK FILE OPERATIONS ===
@@ -281,7 +297,7 @@ def syobj(
             save_path = tmp_dir / f"{safe_name}_{uid_short}.syftobject.yaml"
         
         # Save the syftobject.yaml file
-        syft_obj.save_yaml(save_path, create_syftbox_permissions=False)
+        syft_obj.save_yaml(save_path, create_syftbox_permissions=False, use_relative_paths=use_relative_paths)
         
         # Move .syftobject.yaml file to SyftBox location if available
         final_syftobj_path = save_path
