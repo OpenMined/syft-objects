@@ -1,6 +1,6 @@
 # syft-objects - Distributed file discovery and addressing system 
 
-__version__ = "0.3.7"
+__version__ = "0.3.8"
 
 # Core imports
 from .models import SyftObject
@@ -32,7 +32,15 @@ __all__ = [
 
 # Check SyftBox status - only show banner if there are issues or delays
 check_syftbox_status()
-ensure_syftbox_app_installed(silent=True)
+
+# Ensure app is installed and server is healthy
+# This will auto-install if needed and attempt to start the server
+try:
+    from .auto_install import ensure_server_healthy
+    ensure_server_healthy(timeout_minutes=0.5)  # Quick check on import
+except Exception:
+    # Don't fail import if server check fails
+    pass
 
 # Import _print_startup_banner here to avoid circular imports
 from .client import _print_startup_banner
