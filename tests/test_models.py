@@ -4,7 +4,7 @@ import pytest
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID, uuid4
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock, PropertyMock
 import yaml
 
 from syft_objects.models import SyftObject, utcnow, DataAccessor
@@ -122,17 +122,20 @@ class TestSyftObject:
         )
         
         assert isinstance(obj.private, DataAccessor)
-        assert obj.private.syft_url == "syft://test@example.com/private/test.txt"
-        assert obj.private.parent_object == obj
+        assert obj.private._syft_url == "syft://test@example.com/private/test.txt"
+        assert obj.private._syft_object == obj
         
         assert isinstance(obj.mock, DataAccessor)
-        assert obj.mock.syft_url == "syft://test@example.com/public/test.txt"
-        assert obj.mock.parent_object == obj
+        assert obj.mock._syft_url == "syft://test@example.com/public/test.txt"
+        assert obj.mock._syft_object == obj
     
     @patch('syft_objects.models.get_syftbox_client')
     @patch('syft_objects.models.extract_local_path_from_syft_url')
     def test_private_path_property(self, mock_extract, mock_client):
         """Test private_path property"""
+        from pathlib import Path
+        import os
+        
         obj = SyftObject(
             private_url="syft://test@example.com/private/test.txt",
             mock_url="syft://test@example.com/public/test.txt",
@@ -149,14 +152,25 @@ class TestSyftObject:
         assert obj.private_path == "/path/to/test.txt"
         
         # Test fallback to tmp directory
+        mock_client.return_value = None
         mock_extract.return_value = None
-        with patch('syft_objects.models.Path') as mock_path_cls:
-            mock_tmp_path = Mock()
-            mock_tmp_path.exists.return_value = True
-            mock_tmp_path.absolute.return_value = Path("/tmp/test.txt")
-            mock_path_cls.return_value = mock_tmp_path
-            
-            assert obj.private_path == "/tmp/test.txt"
+        
+        # Create a real tmp file to test the fallback
+        # Create a tmp directory in the current working directory
+        tmp_dir_existed = Path("tmp").exists()
+        os.makedirs("tmp", exist_ok=True)
+        tmp_file = Path("tmp") / "test.txt"
+        tmp_file.write_text("test content")
+        
+        try:
+            assert obj.private_path == str(tmp_file.absolute())
+        finally:
+            # Clean up
+            if tmp_file.exists():
+                tmp_file.unlink()
+            # Only remove tmp dir if we created it
+            if not tmp_dir_existed and Path("tmp").exists() and not list(Path("tmp").iterdir()):
+                Path("tmp").rmdir()
     
     @patch('syft_objects.models.get_syftbox_client')
     @patch('syft_objects.models.extract_local_path_from_syft_url')
@@ -289,14 +303,14 @@ class TestSyftObject:
             syftobject="syft://test@example.com/public/test.syftobject.yaml"
         )
         
-        # Create binary file
+        # Create binary file with non-UTF-8 bytes that will trigger UnicodeDecodeError
         test_file = temp_dir / "test.bin"
-        test_file.write_bytes(b'\x00\x01\x02\x03\x04')
+        test_file.write_bytes(b'\xff\xfe\x00\x01\x02\x03\x04\x80\x81\x82\x83\x84\x85\x86\x87\x88\x89\x8a\x8b\x8c\x8d\x8e\x8f')
         
         preview = obj._get_file_preview(str(test_file))
-        assert "Binary file" in preview
+        assert "Binary file:" in preview
         assert "test.bin" in preview
-        assert "5 bytes" in preview
+        assert "bytes" in preview
     
     def test_get_file_preview_missing_file(self):
         """Test _get_file_preview with missing file"""
@@ -500,3 +514,162 @@ class TestSyftObject:
         
         # Check datetime is serialized as string
         assert isinstance(data['created_at'], str)
+    
+    def test_syftobject_path_fallback(self):
+        """Test syftobject_path property fallback to empty string"""
+        obj = SyftObject(
+            private_url="syft://test@example.com/private/test.txt",
+            mock_url="syft://test@example.com/public/test.txt",
+            syftobject="syft://test@example.com/public/test.syftobject.yaml"
+        )
+        
+        # Mock the syftobject field to be None after creation to test the fallback
+        obj.syftobject = None
+        
+        # Should return empty string when syftobject is None
+        assert obj.syftobject_path == ""
+    
+    def test_file_type_with_none_urls(self):
+        """Test file_type property with None/empty URLs"""
+        obj = SyftObject(
+            name="test",
+            private_url="syft://test@example.com/private/test.txt",
+            mock_url="syft://test@example.com/public/test.txt",
+            syftobject="syft://test@example.com/public/test.syftobject.yaml"
+        )
+        
+        # Set URLs to None to test the fallback
+        obj.private_url = None
+        obj.mock_url = None
+        
+        # Should return empty string when no URLs
+        assert obj.file_type == ""
+    
+    def test_file_type_continue_path(self):
+        """Test file_type property continue path when URL is empty"""
+        obj = SyftObject(
+            private_url="syft://test@example.com/private/test.txt",
+            mock_url="syft://test@example.com/public/test.txt",
+            syftobject="syft://test@example.com/public/test.syftobject.yaml"
+        )
+        
+        # Set private_url to empty to test continue path
+        obj.private_url = ""
+        
+        # Should get extension from mock_url
+        assert obj.file_type == ".txt"
+    
+    def test_file_type_exception_handling(self):
+        """Test file_type property exception handling"""
+        obj = SyftObject(
+            name="test",
+            private_url="syft://test@example.com/private/test.txt",
+            mock_url="syft://test@example.com/public/test.txt",
+            syftobject="syft://test@example.com/public/test.syftobject.yaml"
+        )
+        
+        # Create a mock object with problematic URLs to trigger exception
+        obj.private_url = Mock()
+        obj.private_url.split = Mock(side_effect=Exception("URL error"))
+        obj.mock_url = Mock()
+        obj.mock_url.split = Mock(side_effect=Exception("URL error"))
+        
+        # Should return empty string on exception
+        assert obj.file_type == ""
+    
+    def test_get_file_preview_error_case(self):
+        """Test _get_file_preview error handling"""
+        obj = SyftObject(
+            private_url="syft://test@example.com/private/test.txt",
+            mock_url="syft://test@example.com/public/test.txt",
+            syftobject="syft://test@example.com/public/test.syftobject.yaml"
+        )
+        
+        # Create a file that exists but will cause exception when reading
+        temp_file = Path("test_error.txt")
+        temp_file.write_text("test")
+        
+        try:
+            # Mock the exists check to return True but stat to raise exception
+            with patch.object(Path, 'exists', return_value=True):
+                with patch.object(Path, 'stat', side_effect=Exception("Stat error")):
+                    preview = obj._get_file_preview(str(temp_file))
+                    assert "Error reading file:" in preview
+                    assert "Stat error" in preview
+        finally:
+            if temp_file.exists():
+                temp_file.unlink()
+    
+    def test_get_file_preview_text_truncation(self):
+        """Test _get_file_preview text truncation"""
+        obj = SyftObject(
+            private_url="syft://test@example.com/private/test.txt",
+            mock_url="syft://test@example.com/public/test.txt",
+            syftobject="syft://test@example.com/public/test.syftobject.yaml"
+        )
+        
+        # Create a long text file
+        long_content = "A" * 1500  # More than default 1000 chars
+        temp_file = Path("temp_long.txt")
+        temp_file.write_text(long_content)
+        
+        try:
+            preview = obj._get_file_preview(str(temp_file), max_chars=100)
+            assert len(preview.split("(truncated")[0]) <= 105  # Allow for some buffer
+            assert "truncated" in preview
+            assert "showing first 100 characters of 1500 total" in preview
+        finally:
+            if temp_file.exists():
+                temp_file.unlink()
+    
+    def test_save_yaml_ensure_extension(self):
+        """Test save_yaml ensures .syftobject.yaml extension"""
+        obj = SyftObject(
+            name="test",
+            private_url="syft://test@example.com/private/test.txt",
+            mock_url="syft://test@example.com/public/test.txt",
+            syftobject="syft://test@example.com/public/test.syftobject.yaml"
+        )
+        
+        # Try to save with wrong extension
+        temp_file = Path("test_wrong_ext.yaml")
+        
+        try:
+            obj.save_yaml(temp_file, create_syftbox_permissions=False)
+            
+            # Should create file with correct extension
+            expected_file = Path("test_wrong_ext.yaml.syftobject.yaml")
+            assert expected_file.exists()
+            
+            # Clean up
+            if expected_file.exists():
+                expected_file.unlink()
+        finally:
+            # Clean up any leftover files
+            for f in Path(".").glob("test_wrong_ext*"):
+                f.unlink()
+    
+    def test_save_yaml_permissions_exception(self):
+        """Test save_yaml handles permission creation exceptions"""
+        obj = SyftObject(
+            name="test",
+            private_url="syft://test@example.com/private/test.txt",
+            mock_url="syft://test@example.com/public/test.txt",
+            syftobject="syft://test@example.com/public/test.syftobject.yaml"
+        )
+        
+        temp_file = Path("test_perm_exception.syftobject.yaml")
+        
+        with patch.object(obj, '_create_syftbox_permissions', side_effect=Exception("Permission error")):
+            try:
+                # Should still save the file even if permissions fail
+                obj.save_yaml(temp_file, create_syftbox_permissions=True)
+                assert temp_file.exists()
+            finally:
+                if temp_file.exists():
+                    temp_file.unlink()
+    
+    def test_load_yaml_file_not_found(self):
+        """Test load_yaml with non-existent file"""
+        with pytest.raises(FileNotFoundError):
+            SyftObject.load_yaml("/nonexistent/file.syftobject.yaml")

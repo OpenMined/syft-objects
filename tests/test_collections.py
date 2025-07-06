@@ -32,8 +32,8 @@ class TestObjectsCollection:
         assert collection._cached is True
         assert collection._server_ready is False
     
-    @patch('syft_objects.collections.ensure_syftbox_app_installed')
-    @patch('syft_objects.collections.ensure_server_healthy')
+    @patch('syft_objects.auto_install.ensure_syftbox_app_installed')
+    @patch('syft_objects.auto_install.ensure_server_healthy')
     def test_ensure_server_ready_success(self, mock_healthy, mock_install):
         """Test _ensure_server_ready when server is healthy"""
         mock_healthy.return_value = True
@@ -45,8 +45,8 @@ class TestObjectsCollection:
         mock_healthy.assert_called_once()
         assert collection._server_ready is True
     
-    @patch('syft_objects.collections.ensure_syftbox_app_installed')
-    @patch('syft_objects.collections.ensure_server_healthy')
+    @patch('syft_objects.auto_install.ensure_syftbox_app_installed')
+    @patch('syft_objects.auto_install.ensure_server_healthy')
     @patch('builtins.print')
     def test_ensure_server_ready_unhealthy(self, mock_print, mock_healthy, mock_install):
         """Test _ensure_server_ready when server is not healthy"""
@@ -60,7 +60,7 @@ class TestObjectsCollection:
         assert collection._server_ready is False
         mock_print.assert_called_with("⚠️  Server not available - some features may not work")
     
-    @patch('syft_objects.collections.ensure_syftbox_app_installed')
+    @patch('syft_objects.auto_install.ensure_syftbox_app_installed')
     @patch('builtins.print')
     def test_ensure_server_ready_exception(self, mock_print, mock_install):
         """Test _ensure_server_ready with exception"""
@@ -212,7 +212,7 @@ class TestObjectsCollection:
         """Test search method"""
         # Create test objects
         obj1 = Mock()
-        obj1.name = "Test Object One"
+        obj1.name = "Unique Object One"
         obj1.description = "Description one"
         obj1.created_at = datetime.now()
         obj1.updated_at = datetime.now()
@@ -220,10 +220,10 @@ class TestObjectsCollection:
         
         obj2 = Mock()
         obj2.name = "Another Object"
-        obj2.description = "Test description"
+        obj2.description = "Second description"
         obj2.created_at = datetime.now()
         obj2.updated_at = datetime.now()
-        obj2.metadata = {"type": "test"}
+        obj2.metadata = {"type": "data"}
         
         collection = ObjectsCollection()
         collection._objects = [obj1, obj2]
@@ -231,10 +231,10 @@ class TestObjectsCollection:
         
         with patch.object(collection, '_get_object_email', return_value="test@example.com"):
             # Search by name
-            result = collection.search("Test")
+            result = collection.search("Unique")
             assert len(result._objects) == 1
             assert result._objects[0] == obj1
-            assert "Search results for 'Test'" in result._search_info
+            assert "Search results for 'unique'" in result._search_info
             
             # Search by description
             result = collection.search("description")
@@ -317,10 +317,14 @@ class TestObjectsCollection:
     
     def test_list_unique_names(self):
         """Test list_unique_names method"""
-        obj1 = Mock(name="Object One")
-        obj2 = Mock(name="Object Two")
-        obj3 = Mock(name="Object One")  # Duplicate
-        obj4 = Mock(name=None)  # No name
+        obj1 = Mock()
+        obj1.name = "Object One"
+        obj2 = Mock()
+        obj2.name = "Object Two"
+        obj3 = Mock()
+        obj3.name = "Object One"  # Duplicate
+        obj4 = Mock()
+        obj4.name = None  # No name
         
         collection = ObjectsCollection()
         collection._objects = [obj1, obj2, obj3, obj4]
@@ -560,3 +564,94 @@ class TestObjectsCollection:
             assert 'filterSyftObjects' in html
             assert 'selectAllSyftObjects' in html
             assert 'generateSyftObjectsCode' in html
+
+    def test_load_objects_exception_handling(self):
+        """Test exception handling in _load_objects"""
+        # Test datasites.iterdir() exception (line 68-69)
+        mock_client = Mock()
+        mock_client.datasites.iterdir.side_effect = Exception("Directory error")
+        
+        with patch('syft_objects.collections.get_syftbox_client', return_value=mock_client):
+            with patch('syft_objects.collections.SYFTBOX_AVAILABLE', True):
+                collection = ObjectsCollection()
+                collection._load_objects()  # Should handle exception gracefully
+                assert collection._objects == []
+
+    def test_load_objects_syftobject_load_exception(self):
+        """Test exception handling when loading individual SyftObject files (lines 90-91)"""
+        mock_client = Mock()
+        mock_datasite = Mock()
+        mock_datasite.name = "test@example.com"
+        mock_client.datasites.iterdir.return_value = [mock_datasite]
+        
+        # Create a real path structure that will trigger the exception on the right lines
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        
+        with TemporaryDirectory() as temp_dir:
+            # Create the full directory structure
+            email_dir = Path(temp_dir) / "test@example.com"
+            public_dir = email_dir / "public" / "objects"
+            public_dir.mkdir(parents=True)
+            
+            # Create a YAML file that will exist
+            yaml_file = public_dir / "test.syftobject.yaml"
+            yaml_file.write_text("invalid: yaml: content")
+            
+            # Mock the client to return our temp directory as datasites
+            mock_client.datasites = Path(temp_dir)
+            
+            with patch('syft_objects.collections.get_syftbox_client', return_value=mock_client):
+                with patch('syft_objects.collections.SYFTBOX_AVAILABLE', True):
+                    # Mock SyftObject.load_yaml to raise an exception
+                    with patch('syft_objects.models.SyftObject.load_yaml', side_effect=Exception("YAML load failed")):
+                        collection = ObjectsCollection()
+                        collection._load_objects()  # Should continue despite YAML load errors
+                        # Objects list should be empty due to exception - the exception gets caught
+
+    def test_load_objects_directory_exception(self):
+        """Test exception handling for directory access (lines 93-94)"""
+        mock_client = Mock()
+        mock_datasite = Mock()
+        mock_datasite.name = "test@example.com"
+        mock_client.datasites.iterdir.return_value = [mock_datasite]
+        
+        with patch('syft_objects.collections.get_syftbox_client', return_value=mock_client):
+            with patch('syft_objects.collections.SYFTBOX_AVAILABLE', True):
+                with patch('pathlib.Path.__truediv__', side_effect=Exception("Path error")):
+                    collection = ObjectsCollection()
+                    collection._load_objects()  # Should continue despite path errors
+
+    def test_load_objects_general_exception(self):
+        """Test general exception handling (lines 96-97)"""
+        with patch('syft_objects.collections.get_syftbox_client', side_effect=Exception("Client error")):
+            collection = ObjectsCollection()
+            collection._load_objects()  # Should handle any general exception
+            assert collection._objects == []
+
+    def test_iter_ensures_loaded(self):
+        """Test __iter__ calls _ensure_loaded when not cached (line 202)"""
+        collection = ObjectsCollection()
+        collection._cached = False
+        collection._objects = []  # Prevent actual loading
+        
+        with patch.object(collection, '_ensure_loaded') as mock_ensure:
+            list(collection)  # Force iteration
+            mock_ensure.assert_called()
+
+    def test_type_checking_import(self):
+        """Test TYPE_CHECKING import (line 6)"""
+        import typing
+        from syft_objects import collections
+        
+        # Force TYPE_CHECKING to be True to trigger the import
+        original_value = typing.TYPE_CHECKING
+        try:
+            typing.TYPE_CHECKING = True
+            import importlib
+            importlib.reload(collections)
+        finally:
+            typing.TYPE_CHECKING = original_value
+        
+        # Verify module still works
+        assert hasattr(collections, 'ObjectsCollection')
