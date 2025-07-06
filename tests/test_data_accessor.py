@@ -4,6 +4,7 @@ import pytest
 import json
 import pickle
 import sqlite3
+import sys
 from pathlib import Path
 from unittest.mock import Mock, patch, mock_open
 import pandas as pd
@@ -599,6 +600,184 @@ class TestDataAccessor:
         content = accessor._load_file_content()
         
         assert content == "File not found: /path/that/doesnt/exist.txt"
+    
+    def test_load_file_content_parquet_no_pandas(self, temp_dir):
+        """Test loading Parquet file without pandas (line 118)"""
+        mock_obj = Mock()
+        test_file = temp_dir / "test.parquet"
+        test_file.write_text("fake parquet data")
+        
+        mock_obj._get_local_file_path.return_value = str(test_file)
+        
+        accessor = DataAccessor("syft://test@example.com/test.parquet", mock_obj)
+        
+        # Mock pandas import to raise ImportError
+        with patch.dict('sys.modules', {'pandas': None}):
+            with patch('builtins.__import__', side_effect=ImportError("No pandas")):
+                content = accessor._load_file_content()
+                assert "pandas and pyarrow not available" in content
+                assert "Cannot load Parquet file" in content
+    
+    def test_load_file_content_yaml_no_yaml(self, temp_dir):
+        """Test loading YAML file without PyYAML (lines 134-135)"""
+        mock_obj = Mock()
+        test_file = temp_dir / "test.yaml"
+        test_file.write_text("key: value")
+        
+        mock_obj._get_local_file_path.return_value = str(test_file)
+        
+        accessor = DataAccessor("syft://test@example.com/test.yaml", mock_obj)
+        
+        # Mock yaml import to raise ImportError
+        original_yaml = sys.modules.get('yaml')
+        try:
+            sys.modules['yaml'] = None
+            with patch('builtins.__import__', side_effect=ImportError("No yaml")):
+                content = accessor._load_file_content()
+                assert "PyYAML not available" in content
+                assert "Cannot load YAML file" in content
+        finally:
+            if original_yaml:
+                sys.modules['yaml'] = original_yaml
+            else:
+                sys.modules.pop('yaml', None)
+    
+    def test_load_file_content_yaml_exception(self, temp_dir):
+        """Test loading YAML file with exception (lines 136-137)"""
+        mock_obj = Mock()
+        test_file = temp_dir / "test.yaml"
+        test_file.write_text("invalid: yaml: content: [")
+        
+        mock_obj._get_local_file_path.return_value = str(test_file)
+        
+        accessor = DataAccessor("syft://test@example.com/test.yaml", mock_obj)
+        content = accessor._load_file_content()
+        
+        assert "Error loading YAML file" in content
+    
+    def test_load_file_content_numpy_no_numpy(self, temp_dir):
+        """Test loading numpy file without numpy (line 145)"""
+        mock_obj = Mock()
+        test_file = temp_dir / "test.npy"
+        test_file.write_text("fake numpy data")
+        
+        mock_obj._get_local_file_path.return_value = str(test_file)
+        
+        accessor = DataAccessor("syft://test@example.com/test.npy", mock_obj)
+        
+        # Mock numpy import to raise ImportError
+        original_numpy = sys.modules.get('numpy')
+        try:
+            sys.modules['numpy'] = None
+            with patch('builtins.__import__', side_effect=ImportError("No numpy")):
+                content = accessor._load_file_content()
+                assert "numpy not available" in content
+                assert "Cannot load .npy file" in content
+        finally:
+            if original_numpy:
+                sys.modules['numpy'] = original_numpy
+            else:
+                sys.modules.pop('numpy', None)
+    
+    def test_load_file_content_numpy_archive_no_numpy(self, temp_dir):
+        """Test loading numpy archive without numpy (line 155)"""
+        mock_obj = Mock()
+        test_file = temp_dir / "test.npz"
+        test_file.write_text("fake numpy archive data")
+        
+        mock_obj._get_local_file_path.return_value = str(test_file)
+        
+        accessor = DataAccessor("syft://test@example.com/test.npz", mock_obj)
+        
+        # Mock numpy import to raise ImportError
+        original_numpy = sys.modules.get('numpy')
+        try:
+            sys.modules['numpy'] = None
+            with patch('builtins.__import__', side_effect=ImportError("No numpy")):
+                content = accessor._load_file_content()
+                assert "numpy not available" in content
+                assert "Cannot load .npz file" in content
+        finally:
+            if original_numpy:
+                sys.modules['numpy'] = original_numpy
+            else:
+                sys.modules.pop('numpy', None)
+    
+    def test_repr_html_dataframe_with_to_html(self):
+        """Test _repr_html_ with object that has to_html method (line 182)"""
+        mock_obj = Mock()
+        accessor = DataAccessor("syft://test@example.com/test.csv", mock_obj)
+        
+        # Create a mock object with to_html method but no _repr_html_
+        mock_df = Mock()
+        mock_df.to_html.return_value = "<table><tr><td>Data</td></tr></table>"
+        # Ensure it doesn't have _repr_html_
+        del mock_df._repr_html_
+        
+        accessor._cached_obj = mock_df
+        
+        html = accessor._repr_html_()
+        assert html == "<table><tr><td>Data</td></tr></table>"
+        mock_df.to_html.assert_called_once()
+    
+    def test_repr_html_sqlite_exception(self, temp_dir):
+        """Test _repr_html_ with SQLite connection exception (lines 205-206)"""
+        import sqlite3
+        
+        mock_obj = Mock()
+        test_file = temp_dir / "test.db"
+        
+        # Create a real SQLite database
+        conn = sqlite3.connect(str(test_file))
+        conn.close()
+        
+        mock_obj._get_local_file_path.return_value = str(test_file)
+        
+        accessor = DataAccessor("syft://test@example.com/test.db", mock_obj)
+        
+        # Open a connection and close it to make cursor() fail
+        conn = sqlite3.connect(str(test_file))
+        conn.close()
+        
+        accessor._cached_obj = conn
+        
+        # Now when we try to access cursor on a closed connection, it will fail
+        html = accessor._repr_html_()
+        assert "<strong>SQLite Database</strong>" in html
+        assert "Connection:" in html
+        assert str(test_file) in html
+    
+    def test_repr_html_other_object_short(self):
+        """Test _repr_html_ with other object (lines 210-211)"""
+        mock_obj = Mock()
+        accessor = DataAccessor("syft://test@example.com/test.txt", mock_obj)
+        
+        # Create a custom object with short string representation
+        class CustomObject:
+            def __str__(self):
+                return "Short custom object"
+        
+        accessor._cached_obj = CustomObject()
+        
+        html = accessor._repr_html_()
+        assert "<pre>Short custom object</pre>" == html
+    
+    def test_repr_html_other_object_long(self):
+        """Test _repr_html_ with other object that has long string repr (lines 210-211)"""
+        mock_obj = Mock()
+        accessor = DataAccessor("syft://test@example.com/test.txt", mock_obj)
+        
+        # Create a custom object with long string representation
+        class CustomObject:
+            def __str__(self):
+                return "X" * 600  # Long string
+        
+        accessor._cached_obj = CustomObject()
+        
+        html = accessor._repr_html_()
+        assert "<pre>" in html
+        assert "X" * 500 in html
+        assert "...</pre>" in html
     
     @property
     def syft_url(self) -> str:
