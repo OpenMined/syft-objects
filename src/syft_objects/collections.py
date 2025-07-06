@@ -1,5 +1,6 @@
 # syft-objects collections - ObjectsCollection class for managing multiple objects
 
+import os
 from typing import TYPE_CHECKING, List, Optional
 
 if TYPE_CHECKING:
@@ -65,10 +66,16 @@ class ObjectsCollection:
 
             try:
                 datasites = list(map(lambda x: x.name, syftbox_client.datasites.iterdir()))
-            except Exception:
+                if "DEBUG_SYFT_OBJECTS" in os.environ:
+                    print(f"Debug: Found {len(datasites)} datasites")
+            except Exception as e:
+                if "DEBUG_SYFT_OBJECTS" in os.environ:
+                    print(f"Debug: Error getting datasites: {e}")
                 return
 
             for email in datasites:
+                if "DEBUG_SYFT_OBJECTS" in os.environ:
+                    print(f"Debug: Processing datasite {email}")
                 try:
                     # Original locations: public/objects and private/objects
                     public_objects_dir = syftbox_client.datasites / email / "public" / "objects"
@@ -95,6 +102,8 @@ class ObjectsCollection:
                     # This is where syft-queue jobs and other apps may store their objects
                     app_data_dir = syftbox_client.datasites / email / "app_data"
                     if app_data_dir.exists():
+                        if "DEBUG_SYFT_OBJECTS" in os.environ:
+                            print(f"Debug: Scanning app_data for {email}")
                         # Use rglob to recursively find syftobject yaml files
                         # Look for both patterns to handle different naming conventions:
                         # - "syftobject.yaml" (used by syft-queue jobs)
@@ -102,6 +111,8 @@ class ObjectsCollection:
                         
                         # First, find all syftobject.yaml files
                         for syftobj_file in app_data_dir.rglob("syftobject.yaml"):
+                            if "DEBUG_SYFT_OBJECTS" in os.environ:
+                                print(f"Debug: Found {syftobj_file.relative_to(app_data_dir)}")
                             try:
                                 from .models import SyftObject
                                 syft_obj = SyftObject.load_yaml(syftobj_file)
