@@ -459,3 +459,134 @@ class TestAutoInstallModule:
             assert result is True
             assert "SyftBox detected but syft-objects app not found" in str(mock_print.call_args_list)
             assert "installed successfully" in str(mock_print.call_args_list)
+    
+    def test_ensure_server_healthy_no_requests_at_module_level(self):
+        """Test that requests=None is handled properly"""
+        # This tests the behavior when requests is None (simulating lines 13-14)
+        with patch('syft_objects.auto_install.requests', None):
+            with patch('builtins.print') as mock_print:
+                result = ensure_server_healthy()
+                assert result is False
+                assert "requests library not available" in str(mock_print.call_args)
+    
+    @patch('subprocess.run')
+    def test_clone_syftbox_app_git_not_found(self, mock_run, temp_dir):
+        """Test clone_syftbox_app when git binary not found (lines 90-92)"""
+        apps_path = temp_dir / "apps"
+        
+        # Mock git --version to raise FileNotFoundError
+        mock_run.side_effect = FileNotFoundError("git not found")
+        
+        with patch('syft_objects.auto_install.get_syftbox_apps_path', return_value=apps_path):
+            with patch('builtins.print') as mock_print:
+                result = clone_syftbox_app()
+                assert result is False
+                assert "Git is not installed" in str(mock_print.call_args_list)
+    
+    @patch('subprocess.run')
+    def test_clone_syftbox_app_unexpected_error(self, mock_run, temp_dir):
+        """Test clone_syftbox_app with unexpected error (lines 93-95)"""
+        apps_path = temp_dir / "apps"
+        
+        # Mock git --version to raise unexpected exception
+        mock_run.side_effect = Exception("Unexpected error occurred")
+        
+        with patch('syft_objects.auto_install.get_syftbox_apps_path', return_value=apps_path):
+            with patch('builtins.print') as mock_print:
+                result = clone_syftbox_app()
+                assert result is False
+                assert "Unexpected error during installation" in str(mock_print.call_args_list)
+                assert "Unexpected error occurred" in str(mock_print.call_args_list)
+    
+    @patch('syft_objects.auto_install._check_health_endpoint')
+    @patch('syft_objects.auto_install.get_syftbox_apps_path') 
+    @patch('syft_objects.auto_install.is_syftbox_running')
+    @patch('syft_objects.auto_install.is_syftbox_app_installed')
+    @patch('syft_objects.auto_install.reinstall_syftbox_app')
+    def test_ensure_server_healthy_reinstall_failure(self, mock_reinstall, mock_installed,
+                                                     mock_running, mock_apps_path, mock_check):
+        """Test ensure_server_healthy when reinstall fails (lines 135-136)"""
+        mock_check.return_value = False
+        mock_apps_path.return_value = Path("/apps")
+        mock_running.return_value = True
+        mock_installed.return_value = False
+        mock_reinstall.return_value = False  # Reinstall fails
+        
+        with patch('builtins.print') as mock_print:
+            result = ensure_server_healthy()
+            assert result is False
+            assert "Failed to install syft-objects app" in str(mock_print.call_args_list)
+    
+    def test_get_server_port_exception(self, temp_dir):
+        """Test _get_server_port with exception (lines 164-165)"""
+        config_dir = temp_dir / ".syftbox"
+        config_dir.mkdir()
+        config_file = config_dir / "syft_objects.config"
+        config_file.write_text("8004")
+        
+        # Mock Path.home to return temp_dir
+        with patch('syft_objects.auto_install.Path.home', return_value=temp_dir):
+            # Mock exists to return True but read_text to raise exception
+            with patch.object(Path, 'exists', return_value=True):
+                with patch.object(Path, 'read_text', side_effect=Exception("Read error")):
+                    port = _get_server_port()
+                    assert port is None
+    
+    @patch('syft_objects.client.get_syftbox_client')
+    @patch('syft_objects.auto_install.requests')
+    def test_is_syftbox_running_request_exception(self, mock_requests, mock_get_client):
+        """Test is_syftbox_running with request exception (lines 248-249)"""
+        mock_client = Mock()
+        mock_client.config.client_url = "http://localhost:5000"
+        mock_get_client.return_value = mock_client
+        
+        # Mock requests.get to raise exception
+        mock_requests.get.side_effect = Exception("Connection error")
+        
+        result = is_syftbox_running()
+        assert result is False
+    
+    @patch('syft_objects.client.get_syftbox_client')
+    def test_is_syftbox_running_client_exception(self, mock_get_client):
+        """Test is_syftbox_running with client exception (lines 251-252)"""
+        # Mock get_syftbox_client to raise exception
+        mock_get_client.side_effect = Exception("Client error")
+        
+        result = is_syftbox_running()
+        assert result is False
+    
+    @patch('syft_objects.auto_install.get_syftbox_apps_path')
+    @patch('syft_objects.auto_install.is_syftbox_running')
+    @patch('shutil.rmtree')
+    def test_reinstall_syftbox_app_exception(self, mock_rmtree, mock_running, mock_apps_path, temp_dir):
+        """Test reinstall_syftbox_app with exception (lines 298-301)"""
+        apps_path = temp_dir / "apps"
+        apps_path.mkdir()
+        app_dir = apps_path / "syft-objects"
+        app_dir.mkdir()
+        
+        mock_apps_path.return_value = apps_path
+        mock_running.return_value = True
+        mock_rmtree.side_effect = Exception("Permission denied")
+        
+        with patch('builtins.print') as mock_print:
+            result = reinstall_syftbox_app(silent=False)
+            assert result is False
+            assert "Error during reinstallation" in str(mock_print.call_args_list)
+            assert "Permission denied" in str(mock_print.call_args_list)
+    
+    @patch('syft_objects.auto_install.get_syftbox_apps_path')
+    @patch('syft_objects.auto_install.is_syftbox_running')
+    @patch('syft_objects.auto_install.is_syftbox_app_installed')
+    @patch('syft_objects.auto_install.clone_syftbox_app')
+    def test_ensure_syftbox_app_installed_clone_failure(self, mock_clone, mock_installed,
+                                                         mock_running, mock_apps_path):
+        """Test ensure_syftbox_app_installed when clone fails (line 337)"""
+        mock_apps_path.return_value = Path("/apps")
+        mock_running.return_value = True
+        mock_installed.return_value = False
+        mock_clone.return_value = False  # Clone fails
+        
+        result = ensure_syftbox_app_installed(silent=True)
+        assert result is False
+    
