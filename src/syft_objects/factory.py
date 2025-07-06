@@ -3,6 +3,7 @@
 import os
 import hashlib
 import time
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, List
@@ -11,6 +12,8 @@ from uuid import uuid4
 from .models import SyftObject, utcnow
 from .client import get_syftbox_client
 from .file_ops import (
+    move_object_to_syftbox_location,
+    copy_object_to_syftbox_location,
     move_file_to_syftbox_location, 
     copy_file_to_syftbox_location,
     generate_syftbox_urls,
@@ -69,6 +72,8 @@ def syobj(
     private_contents: Optional[str] = None,
     mock_file: Optional[str] = None,
     private_file: Optional[str] = None,
+    mock_folder: Optional[str] = None,
+    private_folder: Optional[str] = None,
     discovery_read: Optional[List[str]] = None,
     mock_read: Optional[List[str]] = None,
     mock_write: Optional[List[str]] = None,
@@ -97,6 +102,12 @@ def syobj(
     system_keys = {"description", "save_to", "email", "create_syftbox_permissions", "auto_save", "move_files_to_syftbox"}
     clean_metadata = {k: v for k, v in metadata.items() if k not in system_keys}
     
+    # === DETECT FOLDER OBJECT ===
+    is_folder = bool(mock_folder or private_folder)
+    
+    if is_folder and (mock_contents or private_contents or mock_file or private_file):
+        raise ValueError("Cannot mix folder and file parameters")
+    
     # === CREATE TEMP DIRECTORY ===
     tmp_dir = Path("tmp")
     tmp_dir.mkdir(exist_ok=True)
@@ -107,6 +118,84 @@ def syobj(
     # === EMAIL AUTO-DETECTION ===
     if email is None:
         email = detect_user_email()
+    
+    # === HANDLE FOLDER OBJECTS ===
+    if is_folder:
+        # Validate folders exist
+        if private_folder and not Path(private_folder).is_dir():
+            raise ValueError(f"Private folder not found: {private_folder}")
+        if mock_folder and not Path(mock_folder).is_dir():
+            raise ValueError(f"Mock folder not found: {mock_folder}")
+        
+        # Generate folder names
+        uid = uuid4()
+        uid_short = str(uid)[:8]
+        if name is None:
+            name = Path(private_folder or mock_folder).name
+        folder_name = f"{name.lower().replace(' ', '_')}_{uid_short}"
+        
+        # Copy folders to tmp location
+        if private_folder:
+            private_tmp = tmp_dir / f"{folder_name}_private"
+            if private_tmp.exists():
+                shutil.rmtree(private_tmp)
+            shutil.copytree(private_folder, private_tmp)
+            private_source_path = private_tmp
+        else:
+            # Create empty private folder
+            private_tmp = tmp_dir / f"{folder_name}_private"
+            private_tmp.mkdir(exist_ok=True)
+            private_source_path = private_tmp
+        
+        if mock_folder:
+            mock_tmp = tmp_dir / f"{folder_name}_mock"
+            if mock_tmp.exists():
+                shutil.rmtree(mock_tmp)
+            shutil.copytree(mock_folder, mock_tmp)
+            mock_source_path = mock_tmp
+        else:
+            # Auto-generate mock from private
+            mock_tmp = tmp_dir / f"{folder_name}_mock"
+            mock_tmp.mkdir(exist_ok=True)
+            _create_mock_folder_structure(private_source_path, mock_tmp)
+            mock_source_path = mock_tmp
+        
+        # Generate folder URLs (with trailing /)
+        private_url = f"syft://{email}/private/objects/{folder_name}/"
+        mock_url = f"syft://{email}/public/objects/{folder_name}/" if any(x in ("public", "*") for x in (mock_read or ["public"])) else f"syft://{email}/private/objects/{folder_name}/"
+        
+        # Move folders to SyftBox locations
+        if move_files_to_syftbox and syftbox_client:
+            from .file_ops import move_object_to_syftbox_location
+            move_object_to_syftbox_location(private_source_path, private_url, syftbox_client)
+            move_object_to_syftbox_location(mock_source_path, mock_url, syftbox_client)
+        else:
+            # Store actual paths in metadata when not moving
+            clean_metadata["_folder_paths"] = {
+                "private": str(private_source_path),
+                "mock": str(mock_source_path)
+            }
+        
+        # Create SyftObject with folder type
+        syftobj_filename = f"{folder_name}.syftobject.yaml"
+        final_syftobject_path = generate_syftobject_url(email, syftobj_filename, syftbox_client)
+        
+        return SyftObject(
+            uid=uid,
+            private_url=private_url,
+            mock_url=mock_url,
+            syftobject=final_syftobject_path,
+            name=name,
+            object_type="folder",  # KEY: Mark as folder
+            description=description or f"Folder object: {name}",
+            updated_at=utcnow(),
+            metadata=clean_metadata,
+            syftobject_permissions=discovery_read or ["public"],
+            mock_permissions=mock_read or ["public"],
+            mock_write_permissions=mock_write or [],
+            private_permissions=private_read or [email],
+            private_write_permissions=private_write or [email]
+        )
     
     # === VALIDATE INPUT ===
     has_mock_content = mock_contents is not None or mock_file is not None
@@ -309,4 +398,26 @@ def syobj(
         if create_syftbox_permissions:
             syft_obj._create_syftbox_permissions(Path(final_syftobj_path))
     
-    return syft_obj 
+    return syft_obj
+
+
+def _create_mock_folder_structure(source: Path, target: Path):
+    """Create a mock version of a folder structure."""
+    for item in source.rglob("*"):
+        if item.is_file():
+            relative = item.relative_to(source)
+            mock_file = target / relative
+            mock_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Create mock content based on file type
+            if item.suffix in ['.json', '.yaml', '.yml']:
+                mock_file.write_text('{"mock": true, "data": "sample"}')
+            elif item.suffix in ['.txt', '.md']:
+                mock_file.write_text("This is mock content for demonstration.")
+            elif item.suffix in ['.csv']:
+                mock_file.write_text("col1,col2,col3\n1,2,3\n4,5,6")
+            elif item.suffix in ['.sh']:
+                mock_file.write_text("#!/bin/bash\necho 'Mock script'")
+            else:
+                # Create small binary file
+                mock_file.write_bytes(b"MOCK") 

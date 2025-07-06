@@ -30,6 +30,12 @@ class SyftObject(BaseModel):
     syftobject: str = Field(description="Syft:// path to the .syftobject.yaml metadata file")
     created_at: datetime = Field(default_factory=utcnow, description="Creation timestamp")
     
+    # Object type - new field for folder support
+    object_type: str = Field(
+        default="file", 
+        description="Type of object: 'file' or 'folder'"
+    )
+    
     # Permission metadata - who can access what (read/write granularity)
     syftobject_permissions: list[str] = Field(
         default_factory=lambda: ["public"], 
@@ -59,6 +65,11 @@ class SyftObject(BaseModel):
     
     # Arbitrary metadata
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Arbitrary metadata")
+    
+    @property
+    def is_folder(self) -> bool:
+        """Check if this object represents a folder."""
+        return self.object_type == "folder"
     
     # Data accessor properties
     @property
@@ -99,6 +110,10 @@ class SyftObject(BaseModel):
     @property
     def file_type(self) -> str:
         """Get the file extension from mock/private URLs"""
+        # Folders don't have file extensions
+        if self.is_folder:
+            return ""
+            
         try:
             # Try to extract file extension from private URL first, then mock URL
             for url in [self.private_url, self.mock_url]:
@@ -118,8 +133,29 @@ class SyftObject(BaseModel):
             return ""
     
     @model_validator(mode='after')
+    def validate_urls(self):
+        """Validate URLs match object type"""
+        if self.is_folder:
+            # Folders must end with /
+            if not self.private_url.endswith('/'):
+                self.private_url += '/'
+            if not self.mock_url.endswith('/'):
+                self.mock_url += '/'
+        else:
+            # Files must NOT end with /
+            if self.private_url.endswith('/'):
+                raise ValueError("File URLs cannot end with /")
+            if self.mock_url.endswith('/'):
+                raise ValueError("File URLs cannot end with /")
+        return self
+    
+    @model_validator(mode='after')
     def validate_file_extensions(self):
         """Validate that mock and private files have matching extensions"""
+        # Skip validation for folders - they don't have extensions
+        if self.is_folder:
+            return self
+            
         def extract_extension(url: str) -> str:
             """Extract file extension from a URL filename"""
             if not url:
@@ -180,6 +216,14 @@ class SyftObject(BaseModel):
     def _get_local_file_path(self, syft_url: str) -> str:
         """Get the local file path for a syft:// URL"""
         try:
+            # Check for folder paths in metadata first
+            if self.is_folder and "_folder_paths" in self.metadata:
+                folder_paths = self.metadata["_folder_paths"]
+                if syft_url == self.private_url and "private" in folder_paths:
+                    return folder_paths["private"]
+                elif syft_url == self.mock_url and "mock" in folder_paths:
+                    return folder_paths["mock"]
+            
             syftbox_client = get_syftbox_client()
             if syftbox_client:
                 local_path = extract_local_path_from_syft_url(syft_url)
@@ -188,7 +232,7 @@ class SyftObject(BaseModel):
             
             # Fallback: check if it's in tmp directory
             from pathlib import Path
-            filename = syft_url.split("/")[-1]
+            filename = syft_url.split("/")[-1].rstrip('/')  # Remove trailing slash for folders
             tmp_path = Path("tmp") / filename
             if tmp_path.exists():
                 return str(tmp_path.absolute())

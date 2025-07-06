@@ -3,7 +3,49 @@ Data accessor for syft objects - provides multiple ways to access the same data
 """
 
 from pathlib import Path
-from typing import Any, Union, BinaryIO, TextIO
+from typing import Any, Union, BinaryIO, TextIO, List
+
+
+class FolderAccessor:
+    """Accessor for folder objects."""
+    
+    def __init__(self, folder_path: Path):
+        self.path = folder_path if isinstance(folder_path, Path) else Path(folder_path)
+    
+    def list_files(self, pattern: str = "*") -> List[Path]:
+        """List files in the folder matching pattern."""
+        return [f for f in self.path.glob(pattern) if f.is_file()]
+    
+    def list_all_files(self) -> List[Path]:
+        """Recursively list all files."""
+        return [f for f in self.path.rglob("*") if f.is_file()]
+    
+    def get_file(self, relative_path: str) -> Path:
+        """Get a specific file by relative path."""
+        file_path = self.path / relative_path
+        if not file_path.exists():
+            raise FileNotFoundError(f"File not found: {relative_path}")
+        return file_path
+    
+    def read_file(self, relative_path: str) -> str:
+        """Read a text file's contents."""
+        return self.get_file(relative_path).read_text()
+    
+    def exists(self) -> bool:
+        """Check if folder exists."""
+        return self.path.exists() and self.path.is_dir()
+    
+    def size(self) -> int:
+        """Get total size of all files in folder."""
+        total = 0
+        for file in self.path.rglob("*"):
+            if file.is_file():
+                total += file.stat().st_size
+        return total
+    
+    def __repr__(self):
+        file_count = len(list(self.path.rglob("*")))
+        return f"FolderAccessor(path={self.path}, files={file_count})"
 
 
 class DataAccessor:
@@ -32,6 +74,9 @@ class DataAccessor:
         """Get the local file path for this data"""
         if self._cached_path is None:
             self._cached_path = self._syft_object._get_local_file_path(self._syft_url)
+            # For folders, ensure path doesn't have trailing /
+            if self._syft_object.is_folder and self._cached_path.endswith('/'):
+                self._cached_path = self._cached_path.rstrip('/')
         return self._cached_path
     
     @property
@@ -55,7 +100,10 @@ class DataAccessor:
     
     @property
     def obj(self) -> Any:
-        """Get the loaded object (DataFrame, dict, Connection, etc.)"""
+        """Get the loaded object - returns FolderAccessor for folders"""
+        if self._syft_object.is_folder:
+            return FolderAccessor(Path(self.path))
+        
         if self._cached_obj is None:
             self._cached_obj = self._load_file_content()
         return self._cached_obj
