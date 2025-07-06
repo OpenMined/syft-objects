@@ -7,7 +7,7 @@ import syft_objects
 
 def test_version():
     """Test version is defined"""
-    assert syft_objects.__version__ == "0.4.4"
+    assert syft_objects.__version__ == "0.5.0"
 
 
 def test_exports():

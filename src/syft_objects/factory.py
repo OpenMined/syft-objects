@@ -215,24 +215,22 @@ def syobj(
     # === MOVE FILES TO SYFTBOX LOCATIONS ===
     if move_files_to_syftbox and syftbox_client:
         # Handle private file
-        if private_file and private_source_path != Path(private_file):
-            if move_file_to_syftbox_location(private_source_path, final_private_path, syftbox_client):
-                files_moved_to_syftbox.append(f"{private_source_path} → {final_private_path}")
-        elif private_file:
+        if private_file:
+            # When private_file is provided, we copy (not move) to preserve the original
             if copy_file_to_syftbox_location(private_source_path, final_private_path, syftbox_client):
                 files_moved_to_syftbox.append(f"{private_source_path} → {final_private_path}")
         else:
+            # When we created the file, we can move it
             if move_file_to_syftbox_location(private_source_path, final_private_path, syftbox_client):
                 files_moved_to_syftbox.append(f"{private_source_path} → {final_private_path}")
         
         # Handle mock file
-        if mock_file and mock_source_path != Path(mock_file):
-            if move_file_to_syftbox_location(mock_source_path, final_mock_path, syftbox_client):
-                files_moved_to_syftbox.append(f"{mock_source_path} → {final_mock_path}")
-        elif mock_file:
+        if mock_file:
+            # When mock_file is provided, we copy (not move) to preserve the original
             if copy_file_to_syftbox_location(mock_source_path, final_mock_path, syftbox_client):
                 files_moved_to_syftbox.append(f"{mock_source_path} → {final_mock_path}")
         else:
+            # When we created the file, we can move it
             if move_file_to_syftbox_location(mock_source_path, final_mock_path, syftbox_client):
                 files_moved_to_syftbox.append(f"{mock_source_path} → {final_mock_path}")
     
