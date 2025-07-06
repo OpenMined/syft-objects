@@ -95,22 +95,35 @@ class ObjectsCollection:
                     # This is where syft-queue jobs and other apps may store their objects
                     app_data_dir = syftbox_client.datasites / email / "app_data"
                     if app_data_dir.exists():
-                        # Use rglob to recursively find all syftobject yaml files
-                        # This catches "syftobject.yaml", "*.syftobject.yaml", and "syftobject.syftobject.yaml"
-                        for syftobj_file in app_data_dir.rglob("*syftobject.yaml"):
+                        # Use rglob to recursively find syftobject yaml files
+                        # Look for both patterns to handle different naming conventions:
+                        # - "syftobject.yaml" (used by syft-queue jobs)
+                        # - "*.syftobject.yaml" (standard syft-objects pattern)
+                        
+                        # First, find all syftobject.yaml files
+                        for syftobj_file in app_data_dir.rglob("syftobject.yaml"):
                             try:
                                 from .models import SyftObject
                                 syft_obj = SyftObject.load_yaml(syftobj_file)
                                 self._objects.append(syft_obj)
-                            except Exception:
+                            except Exception as e:
+                                if "DEBUG_SYFT_OBJECTS" in os.environ:
+                                    print(f"Debug: Error loading {syftobj_file}: {e}")
                                 continue
-                        # Also check for the double extension pattern specifically
-                        for syftobj_file in app_data_dir.rglob("syftobject.syftobject.yaml"):
+                        
+                        # Also find *.syftobject.yaml files (but not syftobject.syftobject.yaml)
+                        for syftobj_file in app_data_dir.rglob("*.syftobject.yaml"):
+                            # Skip if this is syftobject.syftobject.yaml (which we want to avoid)
+                            if syftobj_file.name == "syftobject.syftobject.yaml":
+                                continue
                             try:
                                 from .models import SyftObject
                                 syft_obj = SyftObject.load_yaml(syftobj_file)
                                 self._objects.append(syft_obj)
-                            except Exception:
+                            except Exception as e:
+                                # Debug: print errors during development
+                                if "DEBUG_SYFT_OBJECTS" in os.environ:
+                                    print(f"Debug: Error loading {syftobj_file}: {e}")
                                 continue
                                 
                 except Exception:
