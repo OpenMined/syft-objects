@@ -23,12 +23,16 @@ class TestPermissionsModule:
         mock_get = Mock()
         mock_remove = Mock()
         
-        with patch('syft_objects.permissions.syft_perm') as mock_syft_perm:
-            mock_syft_perm.set_file_permissions = mock_set
-            mock_syft_perm.get_file_permissions = mock_get
-            mock_syft_perm.remove_file_permissions = mock_remove
-            mock_syft_perm.SYFTBOX_AVAILABLE = True
-            
+        # Mock the syft_perm module
+        mock_syft_perm = Mock()
+        mock_syft_perm.set_file_permissions = mock_set
+        mock_syft_perm.get_file_permissions = mock_get
+        mock_syft_perm.remove_file_permissions = mock_remove
+        mock_syft_perm.SYFTBOX_AVAILABLE = True
+        
+        # Mock the import by patching sys.modules
+        import sys
+        with patch.dict(sys.modules, {'syft_perm': mock_syft_perm}):
             _initialize_permissions()
             
             assert permissions_module.set_file_permissions == mock_set
@@ -44,8 +48,8 @@ class TestPermissionsModule:
         permissions_module.remove_file_permissions = None
         permissions_module.SYFTBOX_AVAILABLE = False
         
-        with patch('builtins.__import__', side_effect=ImportError("No syft_perm")):
-            with patch('builtins.print') as mock_print:
+        with patch('builtins.print') as mock_print:
+            with patch('builtins.__import__', side_effect=ImportError("No syft_perm")):
                 _initialize_permissions()
                 
                 # Check warning was printed
@@ -56,6 +60,15 @@ class TestPermissionsModule:
                 assert callable(permissions_module.set_file_permissions)
                 assert callable(permissions_module.get_file_permissions)
                 assert callable(permissions_module.remove_file_permissions)
+                
+                # Test the fallback functions to cover lines 35 and 41
+                permissions_module.set_file_permissions("test.txt", ["public"])
+                permissions_module.remove_file_permissions("test.txt")
+                
+                # Check that the specific fallback warnings were printed
+                print_calls = [str(call) for call in mock_print.call_args_list]
+                assert any("File permissions not set" in call for call in print_calls)
+                assert any("File permissions not removed" in call for call in print_calls)
     
     def test_fallback_set_file_permissions(self):
         """Test fallback set_file_permissions function"""

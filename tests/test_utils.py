@@ -172,6 +172,18 @@ class TestUtilsModule:
     def test_type_checking_import(self):
         """Test that TYPE_CHECKING import works correctly"""
         from syft_objects import utils
+        import typing
+        
+        # Force TYPE_CHECKING to be True to trigger the import
+        original_value = typing.TYPE_CHECKING
+        try:
+            typing.TYPE_CHECKING = True
+            # Re-import the module to trigger the TYPE_CHECKING block
+            import importlib
+            importlib.reload(utils)
+        finally:
+            typing.TYPE_CHECKING = original_value
+        
         # This test ensures the TYPE_CHECKING import line is covered
         assert hasattr(utils, 'scan_for_syft_objects')
         assert hasattr(utils, 'load_syft_objects_from_directory')

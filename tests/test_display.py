@@ -180,6 +180,7 @@ class TestDisplayModule:
         mock_obj.mock_url = "syft://test@example.com/mock.txt"
         mock_obj.private_url = "syft://test@example.com/private.txt"
         mock_obj.created_at = datetime.now(timezone.utc)
+        mock_obj.metadata = {}  # Add metadata for the template
         mock_obj.syftobject_permissions = ["public"]
         mock_obj.mock_permissions = ["public"]
         mock_obj.mock_write_permissions = []
@@ -261,6 +262,17 @@ class TestDisplayModule:
     def test_type_checking_import(self):
         """Test that TYPE_CHECKING import works correctly"""
         from syft_objects import display
-        # This test ensures the TYPE_CHECKING import line is covered
+        import typing
+        
+        # Force TYPE_CHECKING to be True to trigger the import
+        original_value = typing.TYPE_CHECKING
+        try:
+            typing.TYPE_CHECKING = True
+            # Re-import the module to trigger the TYPE_CHECKING block
+            import importlib
+            importlib.reload(display)
+        finally:
+            typing.TYPE_CHECKING = original_value
+        
         assert hasattr(display, 'create_html_display')
         assert hasattr(display, 'render_custom_metadata')
