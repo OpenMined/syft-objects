@@ -45,8 +45,10 @@ class DataAccessor:
         if not path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
         
-        # Try to open as text first, fall back to binary
+        # Check if file is binary by trying to read a small portion
         try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                f.read(512)  # Try reading first 512 bytes
             return open(file_path, 'r', encoding='utf-8')
         except UnicodeDecodeError:
             return open(file_path, 'rb')
