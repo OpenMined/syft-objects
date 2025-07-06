@@ -69,6 +69,36 @@ class TestDetectUserEmail:
                         email = detect_user_email()
                         assert email == "user@example.com"
 
+    def test_detect_syftbox_client_exception(self):
+        """Test email detection when syftbox client raises exception"""
+        mock_client = Mock()
+        # Make both accessing the email attribute and str() conversion raise exception
+        mock_email = Mock()
+        mock_email.__str__ = Mock(side_effect=Exception("Client error"))
+        mock_client.email = mock_email
+        
+        with patch('syft_objects.factory.get_syftbox_client', return_value=mock_client):
+            with patch('syft_objects.factory.Path.home', return_value=Path("/nonexistent")):
+                with patch('subprocess.run', side_effect=Exception("No git")):
+                    with patch.dict(os.environ, {}, clear=True):
+                        email = detect_user_email()
+                        assert email == "user@example.com"
+
+    def test_detect_config_file_exception(self, temp_dir):
+        """Test email detection when config file reading raises exception"""
+        # Create config directory and file
+        config_dir = temp_dir / ".syftbox"
+        config_dir.mkdir()
+        config_file = config_dir / "config.yaml"
+        config_file.write_text("invalid yaml: [")  # Invalid YAML that will cause parsing error
+        
+        with patch('syft_objects.factory.get_syftbox_client', return_value=None):
+            with patch('syft_objects.factory.Path.home', return_value=temp_dir):
+                with patch('subprocess.run', side_effect=Exception("No git")):
+                    with patch.dict(os.environ, {}, clear=True):
+                        email = detect_user_email()
+                        assert email == "user@example.com"
+
 
 class TestSyobj:
     """Test syobj factory function"""
@@ -124,6 +154,12 @@ class TestSyobj:
             with pytest.raises(FileNotFoundError, match="Private file not found"):
                 syobj(private_file="/nonexistent/file.txt")
     
+    def test_mock_file_not_found(self):
+        """Test syobj with non-existent mock file"""
+        with patch('syft_objects.factory.get_syftbox_client', return_value=None):
+            with pytest.raises(FileNotFoundError, match="Mock file not found"):
+                syobj(mock_file="/nonexistent/mock_file.txt")
+    
     def test_auto_generate_name_from_content(self):
         """Test automatic name generation from content"""
         with patch('syft_objects.factory.get_syftbox_client', return_value=None):
@@ -131,6 +167,14 @@ class TestSyobj:
             
             assert obj.name.startswith("Content")
             assert len(obj.name.split()[-1]) == 8  # Hash suffix
+    
+    def test_default_name_generation(self):
+        """Test default name when no content or files provided but name=None"""
+        with patch('syft_objects.factory.get_syftbox_client', return_value=None):
+            # Pass some content so auto-generation doesn't happen, but name=None to trigger fallback
+            obj = syobj(name=None, mock_contents="", private_contents="")
+            
+            assert obj.name == "Syft Object"
     
     def test_auto_generate_name_from_file(self, temp_dir):
         """Test automatic name generation from file"""
@@ -326,3 +370,57 @@ class TestSyobj:
         """Test .syftobject.yaml file movement to SyftBox"""
         # Skip complex mocking for now - focus on basic functionality
         pass
+
+    def test_file_copy_scenarios(self, temp_dir):
+        """Test different file copy/move scenarios"""
+        private_file = temp_dir / "private.txt"
+        private_file.write_text("Private content")
+        mock_file = temp_dir / "mock.txt" 
+        mock_file.write_text("Mock content")
+        
+        mock_client = Mock()
+        mock_client.email = "test@example.com"
+        mock_client.datasites = temp_dir / "syftbox"
+        mock_client.datasites.mkdir()
+        
+        # Test case where move_file_to_syftbox_location returns True (lines 219-220, 230-231)
+        with patch('syft_objects.factory.get_syftbox_client', return_value=mock_client):
+            with patch('syft_objects.factory.move_file_to_syftbox_location', return_value=True) as mock_move:
+                with patch('syft_objects.factory.copy_file_to_syftbox_location', return_value=True) as mock_copy:
+                    obj = syobj(
+                        name="Copy Test",
+                        private_file=str(private_file),
+                        mock_file=str(mock_file),
+                        metadata={"move_files_to_syftbox": True}
+                    )
+                    
+                    # Check that move was called
+                    assert mock_move.call_count > 0
+                    
+                    # Check files_moved_to_syftbox in metadata
+                    file_ops = obj.metadata.get("_file_operations", {})
+                    files_moved = file_ops.get("files_moved_to_syftbox", [])
+                    assert len(files_moved) > 0
+
+    def test_syftbox_url_exception_handling(self, temp_dir):
+        """Test exception handling in SyftBoxURL processing"""
+        test_file = temp_dir / "test.txt"
+        test_file.write_text("Test content")
+        
+        mock_client = Mock()
+        mock_client.email = "test@example.com"
+        mock_client.datasites = temp_dir / "syftbox"
+        mock_client.datasites.mkdir()
+        
+        # Mock SyftBoxURL to raise exception (lines 298-302)
+        with patch('syft_objects.factory.get_syftbox_client', return_value=mock_client):
+            with patch('syft_objects.client.SyftBoxURL', side_effect=Exception("URL error")):
+                with patch('syft_objects.factory.move_file_to_syftbox_location', return_value=True):
+                    obj = syobj(
+                        name="Exception Test",
+                        private_file=str(test_file),
+                        metadata={"auto_save": True, "move_files_to_syftbox": True}
+                    )
+                    
+                    # Should still create object despite exception
+                    assert obj.name == "Exception Test"

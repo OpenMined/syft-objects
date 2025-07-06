@@ -139,13 +139,14 @@ class TestClientModule:
         """Test check_syftbox_status successful"""
         mock_client = Mock()
         mock_client.email = "test@example.com"
-        mock_client.datasites = Path("/datasites")
-        mock_client.datasites.iterdir.return_value = [Path("/datasites/test@example.com")]
+        mock_datasites = Mock()
+        mock_datasites.iterdir.return_value = [Path("/datasites/test@example.com")]
+        mock_client.datasites = mock_datasites
         mock_client.config.client_url = "http://localhost:5000"
         
         with patch.object(client_module, 'SYFTBOX_AVAILABLE', True):
             with patch('syft_objects.client.get_syftbox_client', return_value=mock_client):
-                with patch('syft_objects.client.requests.get') as mock_get:
+                with patch('requests.get') as mock_get:
                     mock_response = Mock()
                     mock_response.status_code = 200
                     mock_response.text = "go1.19"
@@ -164,13 +165,14 @@ class TestClientModule:
         """Test check_syftbox_status when app not running"""
         mock_client = Mock()
         mock_client.email = "test@example.com"
-        mock_client.datasites = Path("/datasites")
-        mock_client.datasites.iterdir.return_value = [Path("/datasites/test@example.com")]
+        mock_datasites = Mock()
+        mock_datasites.iterdir.return_value = [Path("/datasites/test@example.com")]
+        mock_client.datasites = mock_datasites
         mock_client.config.client_url = "http://localhost:5000"
         
         with patch.object(client_module, 'SYFTBOX_AVAILABLE', True):
             with patch('syft_objects.client.get_syftbox_client', return_value=mock_client):
-                with patch('syft_objects.client.requests.get', side_effect=Exception("Connection refused")):
+                with patch('requests.get', side_effect=Exception("Connection refused")):
                     check_syftbox_status()
                     
                     status = client_module._syftbox_status
@@ -205,7 +207,12 @@ class TestClientModule:
                 
                 # Should print error message
                 assert mock_print.call_count >= 1
-                printed = ' '.join(str(call[0][0]) for call in mock_print.call_args_list)
+                # Extract all printed messages
+                printed_messages = []
+                for call in mock_print.call_args_list:
+                    if call[0]:  # Check if there are positional args
+                        printed_messages.append(str(call[0][0]))
+                printed = ' '.join(printed_messages)
                 assert "Syft Objects" in printed
                 assert "8004" in printed
     
@@ -222,7 +229,11 @@ class TestClientModule:
                 _print_startup_banner(only_if_needed=False)
                 
                 assert mock_print.call_count >= 1
-                printed = ' '.join(str(call[0][0]) for call in mock_print.call_args_list)
+                printed_messages = []
+                for call in mock_print.call_args_list:
+                    if call[0]:  # Check if there are positional args
+                        printed_messages.append(str(call[0][0]))
+                printed = ' '.join(printed_messages)
                 assert "Connected: test@example.com" in printed
                 assert "8004" in printed
     
@@ -238,7 +249,11 @@ class TestClientModule:
                 _print_startup_banner(only_if_needed=False)
                 
                 assert mock_print.call_count >= 1
-                printed = ' '.join(str(call[0][0]) for call in mock_print.call_args_list)
+                printed_messages = []
+                for call in mock_print.call_args_list:
+                    if call[0]:  # Check if there are positional args
+                        printed_messages.append(str(call[0][0]))
+                printed = ' '.join(printed_messages)
                 assert "Local mode" in printed
                 assert "8004" in printed
     
@@ -271,10 +286,16 @@ class TestClientModule:
             assert port == 8004  # Default
     
     def test_get_syft_objects_port_exception(self):
-        """Test get_syft_objects_port with exception"""
-        with patch('syft_objects.client.Path.home', side_effect=Exception("Error")):
-            port = get_syft_objects_port()
-            assert port == 8004  # Default
+        """Test get_syft_objects_port with exception in file reading"""
+        temp_dir = Path("/tmp/test_syft_port_exception")
+        
+        # Mock the home directory to point to our temp location
+        with patch('syft_objects.client.Path.home', return_value=temp_dir):
+            # Mock exists() to return True but read_text() to raise an exception
+            with patch.object(Path, 'exists', return_value=True):
+                with patch.object(Path, 'read_text', side_effect=Exception("Read error")):
+                    port = get_syft_objects_port()
+                    assert port == 8004  # Should return default due to exception
     
     def test_get_syft_objects_url_base(self):
         """Test get_syft_objects_url for base URL"""
