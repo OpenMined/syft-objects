@@ -70,6 +70,7 @@ class ObjectsCollection:
 
             for email in datasites:
                 try:
+                    # Original locations: public/objects and private/objects
                     public_objects_dir = syftbox_client.datasites / email / "public" / "objects"
                     if public_objects_dir.exists():
                         for syftobj_file in public_objects_dir.glob("*.syftobject.yaml"):
@@ -83,6 +84,28 @@ class ObjectsCollection:
                     private_objects_dir = syftbox_client.datasites / email / "private" / "objects"
                     if private_objects_dir.exists():
                         for syftobj_file in private_objects_dir.glob("*.syftobject.yaml"):
+                            try:
+                                from .models import SyftObject
+                                syft_obj = SyftObject.load_yaml(syftobj_file)
+                                self._objects.append(syft_obj)
+                            except Exception:
+                                continue
+                    
+                    # NEW: Also scan app_data directory for syftobject.yaml files
+                    # This is where syft-queue jobs and other apps may store their objects
+                    app_data_dir = syftbox_client.datasites / email / "app_data"
+                    if app_data_dir.exists():
+                        # Use rglob to recursively find all syftobject yaml files
+                        # This catches "syftobject.yaml", "*.syftobject.yaml", and "syftobject.syftobject.yaml"
+                        for syftobj_file in app_data_dir.rglob("*syftobject.yaml"):
+                            try:
+                                from .models import SyftObject
+                                syft_obj = SyftObject.load_yaml(syftobj_file)
+                                self._objects.append(syft_obj)
+                            except Exception:
+                                continue
+                        # Also check for the double extension pattern specifically
+                        for syftobj_file in app_data_dir.rglob("syftobject.syftobject.yaml"):
                             try:
                                 from .models import SyftObject
                                 syft_obj = SyftObject.load_yaml(syftobj_file)
