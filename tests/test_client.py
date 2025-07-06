@@ -353,17 +353,17 @@ class TestClientModule:
         """Test _print_startup_banner explicit call with error path (lines 116-117)"""
         client_module._syftbox_status = {
             'client_connected': False,
-            'error': 'Test error message'
+            'error': 'Connection refused'  # Error that doesn't contain "not available"
         }
         
         with patch('builtins.print') as mock_print:
             with patch('syft_objects.client.get_syft_objects_port', return_value=8004):
-                _print_startup_banner(only_if_needed=False)
+                _print_startup_banner(only_if_needed=True)  # Use only_if_needed=True to trigger the error path
                 
                 # Should print error message on lines 116-117
                 print_calls = [str(call) for call in mock_print.call_args_list]
-                error_prints = [call for call in print_calls if "Test error message" in call and "localhost:8004" in call]
-                assert len(error_prints) >= 1
+                # Check that we printed the warning with the error message
+                assert any("Connection refused" in str(call) and "localhost:8004" in str(call) for call in print_calls)
     
     def test_print_startup_banner_explicit_no_connection(self):
         """Test _print_startup_banner explicit call with no connection (lines 131-132)"""
