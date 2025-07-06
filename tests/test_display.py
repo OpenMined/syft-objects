@@ -257,3 +257,10 @@ class TestDisplayModule:
         # Check the display shows correct status
         assert "✓ Available" in html  # Mock file exists
         assert "⚠ Not accessible" in html  # Private file doesn't exist
+    
+    def test_type_checking_import(self):
+        """Test that TYPE_CHECKING import works correctly"""
+        from syft_objects import display
+        # This test ensures the TYPE_CHECKING import line is covered
+        assert hasattr(display, 'create_html_display')
+        assert hasattr(display, 'render_custom_metadata')

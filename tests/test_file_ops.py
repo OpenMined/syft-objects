@@ -201,3 +201,32 @@ class TestFileOpsModule:
         )
         
         assert url == "syft://test@example.com/SyftBox/datasites/test@example.com/public/objects/object.syftobject.yaml"
+    
+    @patch('syft_objects.file_ops.SYFTBOX_AVAILABLE', True)
+    @patch('syft_objects.file_ops.SyftBoxURL')
+    @patch('shutil.copy2')
+    def test_copy_file_exception_handling(self, mock_copy, mock_url_class, temp_dir):
+        """Test copy_file_to_syftbox_location exception handling"""
+        test_file = temp_dir / "test.txt"
+        test_file.write_text("test content")
+        
+        mock_client = Mock()
+        mock_client.datasites = temp_dir / "datasites"
+        
+        target_path = temp_dir / "datasites" / "test@example.com" / "public" / "test.txt"
+        mock_url_obj = Mock()
+        mock_url_obj.to_local_path.return_value = target_path
+        mock_url_class.return_value = mock_url_obj
+        
+        # Make copy2 raise an exception
+        mock_copy.side_effect = Exception("Copy failed")
+        
+        with patch('builtins.print') as mock_print:
+            result = copy_file_to_syftbox_location(
+                test_file,
+                "syft://test@example.com/public/test.txt",
+                mock_client
+            )
+            
+            assert result is False
+            mock_print.assert_called_with("Warning: Could not copy file to SyftBox location: Copy failed")

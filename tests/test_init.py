@@ -7,7 +7,7 @@ import syft_objects
 
 def test_version():
     """Test version is defined"""
-    assert syft_objects.__version__ == "0.3.7"
+    assert syft_objects.__version__ == "0.4.0"
 
 
 def test_exports():
@@ -100,28 +100,21 @@ def test_load_syft_objects_from_directory():
         assert result == []
 
 
-def test_get_syft_objects_port():
+def test_get_syft_objects_port(temp_dir):
     """Test get_syft_objects_port function"""
-    with patch('syft_objects.client.Path') as mock_path:
-        # Create mock path hierarchy
-        mock_home = Mock()
-        mock_syftbox = Mock()
-        mock_config = Mock()
-        
-        # Set up the path chain
-        mock_path.home.return_value = mock_home
-        mock_home.__truediv__.return_value = mock_syftbox
-        mock_syftbox.__truediv__.return_value = mock_config
-        
-        # Test with config file
-        mock_config.exists.return_value = True
-        mock_config.read_text.return_value = "8005"
-        
+    # Test with config file
+    config_dir = temp_dir / ".syftbox"
+    config_dir.mkdir()
+    config_file = config_dir / "syft_objects.config"
+    config_file.write_text("8005")
+    
+    with patch('syft_objects.client.Path.home', return_value=temp_dir):
         port = syft_objects.get_syft_objects_port()
         assert port == 8005
-        
-        # Test without config file
-        mock_config.exists.return_value = False
+    
+    # Test without config file
+    config_file.unlink()
+    with patch('syft_objects.client.Path.home', return_value=temp_dir):
         port = syft_objects.get_syft_objects_port()
         assert port == 8004  # default
 
