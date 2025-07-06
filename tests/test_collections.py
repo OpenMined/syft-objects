@@ -591,23 +591,29 @@ class TestObjectsCollection:
         with TemporaryDirectory() as temp_dir:
             # Create the full directory structure
             email_dir = Path(temp_dir) / "test@example.com"
+            
+            # Create BOTH public and private directories to hit both exception paths
             public_dir = email_dir / "public" / "objects"
             public_dir.mkdir(parents=True)
+            private_dir = email_dir / "private" / "objects"
+            private_dir.mkdir(parents=True)
             
-            # Create a YAML file that will exist
-            yaml_file = public_dir / "test.syftobject.yaml"
-            yaml_file.write_text("invalid: yaml: content")
+            # Create YAML files that will exist
+            public_yaml = public_dir / "test_public.syftobject.yaml"
+            public_yaml.write_text("invalid: yaml: content")
+            private_yaml = private_dir / "test_private.syftobject.yaml"
+            private_yaml.write_text("invalid: yaml: content")
             
             # Mock the client to return our temp directory as datasites
             mock_client.datasites = Path(temp_dir)
             
             with patch('syft_objects.collections.get_syftbox_client', return_value=mock_client):
                 with patch('syft_objects.collections.SYFTBOX_AVAILABLE', True):
-                    # Mock SyftObject.load_yaml to raise an exception
+                    # Mock SyftObject.load_yaml to raise an exception - this should hit lines 80 and 90
                     with patch('syft_objects.models.SyftObject.load_yaml', side_effect=Exception("YAML load failed")):
                         collection = ObjectsCollection()
                         collection._load_objects()  # Should continue despite YAML load errors
-                        # Objects list should be empty due to exception - the exception gets caught
+                        # Objects list should be empty due to exceptions - both exceptions get caught
 
     def test_load_objects_directory_exception(self):
         """Test exception handling for directory access (lines 93-94)"""

@@ -323,3 +323,60 @@ class TestClientModule:
         assert hasattr(client_module, 'SYFTBOX_AVAILABLE')
         assert hasattr(client_module, 'SyftBoxClient')
         assert hasattr(client_module, 'SyftBoxURL')
+    
+    def test_check_syftbox_status_filesystem_exception(self):
+        """Test check_syftbox_status with filesystem access exception (lines 82-84)"""
+        mock_client = Mock()
+        mock_client.email.side_effect = Exception("Email access error")
+        
+        with patch.object(client_module, 'SYFTBOX_AVAILABLE', True):
+            with patch('syft_objects.client.get_syftbox_client', return_value=mock_client):
+                check_syftbox_status()
+                
+                status = client_module._syftbox_status
+                assert status['available'] is False
+                assert "SyftBox filesystem not accessible" in status['error']
+                assert "Email access error" in status['error']
+    
+    def test_check_syftbox_status_client_exception(self):
+        """Test check_syftbox_status with client access exception (lines 96-97)"""
+        with patch.object(client_module, 'SYFTBOX_AVAILABLE', True):
+            with patch('syft_objects.client.get_syftbox_client', side_effect=Exception("Client load error")):
+                check_syftbox_status()
+                
+                status = client_module._syftbox_status
+                assert status['available'] is False
+                assert "Could not find SyftBox client" in status['error']
+                assert "Client load error" in status['error']
+    
+    def test_print_startup_banner_explicit_with_error_path(self):
+        """Test _print_startup_banner explicit call with error path (lines 116-117)"""
+        client_module._syftbox_status = {
+            'client_connected': False,
+            'error': 'Test error message'
+        }
+        
+        with patch('builtins.print') as mock_print:
+            with patch('syft_objects.client.get_syft_objects_port', return_value=8004):
+                _print_startup_banner(only_if_needed=False)
+                
+                # Should print error message on lines 116-117
+                print_calls = [str(call) for call in mock_print.call_args_list]
+                error_prints = [call for call in print_calls if "Test error message" in call and "localhost:8004" in call]
+                assert len(error_prints) >= 1
+    
+    def test_print_startup_banner_explicit_no_connection(self):
+        """Test _print_startup_banner explicit call with no connection (lines 131-132)"""
+        client_module._syftbox_status = {
+            'client_connected': False,
+            'error': None  # No specific error, just not connected
+        }
+        
+        with patch('builtins.print') as mock_print:
+            with patch('syft_objects.client.get_syft_objects_port', return_value=8004):
+                _print_startup_banner(only_if_needed=False)
+                
+                # Should print basic server info on lines 131-132
+                print_calls = [str(call) for call in mock_print.call_args_list]
+                server_prints = [call for call in print_calls if "Server: localhost:8004" in call and "error" not in call.lower()]
+                assert len(server_prints) >= 1

@@ -424,3 +424,72 @@ class TestSyobj:
                     
                     # Should still create object despite exception
                     assert obj.name == "Exception Test"
+    
+    def test_file_movement_success_paths(self, temp_dir):
+        """Test successful file movement to cover lines 219-220, 230-231"""
+        # Create source files
+        source_dir = temp_dir / "source"
+        source_dir.mkdir()
+        private_file = source_dir / "private.txt"
+        private_file.write_text("private content")
+        mock_file = source_dir / "mock.txt"
+        mock_file.write_text("mock content")
+        
+        # Create syftbox structure
+        datasites_dir = temp_dir / "datasites"
+        my_datasite = datasites_dir / "test@example.com"
+        private_dir = my_datasite / "private" / "objects"
+        public_dir = my_datasite / "public" / "objects"
+        private_dir.mkdir(parents=True)
+        public_dir.mkdir(parents=True)
+        
+        # Create a mock SyftBox client
+        mock_client = Mock()
+        mock_client.datasites = datasites_dir
+        mock_client.my_datasite = my_datasite
+        mock_client.email = "test@example.com"
+        
+        with patch('syft_objects.factory.get_syftbox_client', return_value=mock_client):
+            with patch('syft_objects.client.SYFTBOX_AVAILABLE', True):
+                # Mock move_file_to_syftbox_location to return True (successful move)
+                with patch('syft_objects.factory.move_file_to_syftbox_location', return_value=True):
+                    with patch('builtins.print') as mock_print:
+                        obj = syobj(
+                            name="test_movement",
+                            private_file=str(private_file),
+                            mock_file=str(mock_file),
+                            metadata={"auto_save": True}
+                        )
+                        
+                        # Should print file movement messages (lines 220, 231)
+                        print_calls = [str(call) for call in mock_print.call_args_list]
+                        movement_messages = [call for call in print_calls if "→" in call]
+                        assert len(movement_messages) >= 1  # Should have file movement messages
+                        
+                        assert obj.name == "test_movement"
+    
+    def test_syftbox_url_processing_exception(self, temp_dir):
+        """Test SyftBoxURL exception handling (lines 298-302)"""
+        # Create temp files
+        private_file = temp_dir / "private.txt"
+        private_file.write_text("private content")
+        
+        # Create a mock SyftBox client  
+        mock_client = Mock()
+        mock_client.datasites = temp_dir / "datasites"
+        mock_client.my_datasite = temp_dir / "datasites" / "test@example.com"
+        mock_client.email = "test@example.com"
+        
+        with patch('syft_objects.factory.get_syftbox_client', return_value=mock_client):
+            with patch('syft_objects.client.SYFTBOX_AVAILABLE', True):
+                # Mock SyftBoxURL constructor to raise exception (lines 299, 301-302)
+                with patch('syft_objects.client.SyftBoxURL', side_effect=Exception("URL parsing failed")):
+                    # This will trigger URL processing in the save logic which should hit lines 298-302
+                    obj = syobj(
+                        name="test_url_exception", 
+                        private_file=str(private_file),
+                        metadata={"auto_save": True}
+                    )
+                    
+                    # Should complete despite URL parsing exception
+                    assert obj.name == "test_url_exception"
