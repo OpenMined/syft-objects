@@ -23,12 +23,14 @@ class TestClientModule:
         client_module.SyftBoxClient = None
         client_module.SyftBoxURL = None
         
-        with patch('syft_objects.client.syft_core') as mock_syft_core:
-            mock_client_class = Mock()
-            mock_url_class = Mock()
-            mock_syft_core.Client = mock_client_class
-            mock_syft_core.url.SyftBoxURL = mock_url_class
-            
+        # Create mock module
+        mock_syft_core = Mock()
+        mock_client_class = Mock()
+        mock_url_class = Mock()
+        mock_syft_core.Client = mock_client_class
+        mock_syft_core.url.SyftBoxURL = mock_url_class
+        
+        with patch.dict('sys.modules', {'syft_core': mock_syft_core, 'syft_core.url': mock_syft_core.url}):
             _initialize_syftbox()
             
             assert client_module.SYFTBOX_AVAILABLE is True
