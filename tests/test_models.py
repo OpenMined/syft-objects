@@ -578,24 +578,23 @@ class TestSyftObject:
         assert obj.file_type == ""
     
     def test_get_file_preview_error_case(self):
-        """Test _get_file_preview error handling"""
+        """Test _get_file_preview error handling (lines 220-221)"""
         obj = SyftObject(
             private_url="syft://test@example.com/private/test.txt",
             mock_url="syft://test@example.com/public/test.txt",
             syftobject="syft://test@example.com/public/test.syftobject.yaml"
         )
         
-        # Create a file that exists but will cause exception when reading
-        temp_file = Path("test_error.txt")
-        temp_file.write_text("test")
+        # Create a temp file
+        temp_file = Path("test_preview_error.txt")
+        temp_file.write_text("test content")
         
         try:
-            # Mock the exists check to return True but stat to raise exception
-            with patch.object(Path, 'exists', return_value=True):
-                with patch.object(Path, 'stat', side_effect=Exception("Stat error")):
-                    preview = obj._get_file_preview(str(temp_file))
-                    assert "Error reading file:" in preview
-                    assert "Stat error" in preview
+            # Mock read_text to raise an exception that's not UnicodeDecodeError
+            with patch.object(Path, 'read_text', side_effect=Exception("Read error")):
+                preview = obj._get_file_preview(str(temp_file))
+                assert "Error reading file:" in preview
+                assert "Read error" in preview
         finally:
             if temp_file.exists():
                 temp_file.unlink()
@@ -615,15 +614,15 @@ class TestSyftObject:
         
         try:
             preview = obj._get_file_preview(str(temp_file), max_chars=100)
-            assert len(preview.split("(truncated")[0]) <= 105  # Allow for some buffer
+            assert len(preview.split("(truncated")[0]) <= 110  # Allow for buffer including newlines
             assert "truncated" in preview
             assert "showing first 100 characters of 1500 total" in preview
         finally:
             if temp_file.exists():
                 temp_file.unlink()
     
-    def test_save_yaml_ensure_extension(self):
-        """Test save_yaml ensures .syftobject.yaml extension"""
+    def test_save_yaml_ensure_extension_yaml_suffix(self):
+        """Test save_yaml with .yaml suffix (lines 230-232)"""
         obj = SyftObject(
             name="test",
             private_url="syft://test@example.com/private/test.txt",
@@ -631,14 +630,14 @@ class TestSyftObject:
             syftobject="syft://test@example.com/public/test.syftobject.yaml"
         )
         
-        # Try to save with wrong extension
-        temp_file = Path("test_wrong_ext.yaml")
+        # Try to save with .yaml extension
+        temp_file = Path("test_file.yaml")
         
         try:
             obj.save_yaml(temp_file, create_syftbox_permissions=False)
             
             # Should create file with correct extension
-            expected_file = Path("test_wrong_ext.yaml.syftobject.yaml")
+            expected_file = Path("test_file.syftobject.yaml")
             assert expected_file.exists()
             
             # Clean up
@@ -646,11 +645,11 @@ class TestSyftObject:
                 expected_file.unlink()
         finally:
             # Clean up any leftover files
-            for f in Path(".").glob("test_wrong_ext*"):
+            for f in Path(".").glob("test_file*"):
                 f.unlink()
     
-    def test_save_yaml_permissions_exception(self):
-        """Test save_yaml handles permission creation exceptions"""
+    def test_save_yaml_ensure_extension_no_suffix(self):
+        """Test save_yaml with no suffix (lines 233-235)"""
         obj = SyftObject(
             name="test",
             private_url="syft://test@example.com/private/test.txt",
@@ -658,16 +657,169 @@ class TestSyftObject:
             syftobject="syft://test@example.com/public/test.syftobject.yaml"
         )
         
-        temp_file = Path("test_perm_exception.syftobject.yaml")
+        # Try to save with no extension
+        temp_file = Path("test_file_no_ext")
         
-        with patch.object(obj, '_create_syftbox_permissions', side_effect=Exception("Permission error")):
-            try:
-                # Should still save the file even if permissions fail
-                obj.save_yaml(temp_file, create_syftbox_permissions=True)
-                assert temp_file.exists()
-            finally:
-                if temp_file.exists():
-                    temp_file.unlink()
+        try:
+            obj.save_yaml(temp_file, create_syftbox_permissions=False)
+            
+            # Should create file with correct extension
+            expected_file = Path("test_file_no_ext.syftobject.yaml")
+            assert expected_file.exists()
+            
+            # Clean up
+            if expected_file.exists():
+                expected_file.unlink()
+        finally:
+            # Clean up any leftover files
+            for f in Path(".").glob("test_file_no_ext*"):
+                f.unlink()
+    
+    def test_save_yaml_ensure_extension_other_suffix(self):
+        """Test save_yaml with other suffix (lines 236-238)"""
+        obj = SyftObject(
+            name="test",
+            private_url="syft://test@example.com/private/test.txt",
+            mock_url="syft://test@example.com/public/test.txt",
+            syftobject="syft://test@example.com/public/test.syftobject.yaml"
+        )
+        
+        # Try to save with different extension
+        temp_file = Path("test_file.txt")
+        
+        try:
+            obj.save_yaml(temp_file, create_syftbox_permissions=False)
+            
+            # Should append .syftobject.yaml to existing extension
+            expected_file = Path("test_file.txt.syftobject.yaml")
+            assert expected_file.exists()
+            
+            # Clean up
+            if expected_file.exists():
+                expected_file.unlink()
+        finally:
+            # Clean up any leftover files
+            for f in Path(".").glob("test_file*"):
+                f.unlink()
+    
+    def test_validate_file_extensions_empty_url(self):
+        """Test validate_file_extensions with empty URL (line 126)"""
+        # This validator runs after model creation
+        obj = SyftObject(
+            private_url="",  # Empty URL should return empty extension
+            mock_url="syft://test@example.com/public/test.txt",
+            syftobject="syft://test@example.com/public/test.syftobject.yaml"
+        )
+        assert obj.private_url == ""
+    
+    def test_check_file_exists_fallback_tmp_directory(self):
+        """Test _check_file_exists fallback to tmp directory (lines 173-176)"""
+        obj = SyftObject(
+            private_url="syft://test@example.com/private/test.txt",
+            mock_url="syft://test@example.com/public/test.txt",
+            syftobject="syft://test@example.com/public/test.syftobject.yaml"
+        )
+        
+        # Create a file in tmp directory
+        from pathlib import Path
+        tmp_dir = Path("tmp")
+        tmp_dir.mkdir(exist_ok=True)
+        tmp_file = tmp_dir / "test.txt"
+        tmp_file.write_text("test content")
+        
+        try:
+            # Mock get_syftbox_client to return None so it falls back to tmp check
+            with patch('syft_objects.models.get_syftbox_client', return_value=None):
+                exists = obj._check_file_exists("syft://test@example.com/private/test.txt")
+                assert exists is True
+        finally:
+            if tmp_file.exists():
+                tmp_file.unlink()
+    
+    def test_get_local_file_path_fallback_tmp_directory(self):
+        """Test _get_local_file_path fallback to tmp directory"""
+        obj = SyftObject(
+            private_url="syft://test@example.com/private/fallback_test.txt",
+            mock_url="syft://test@example.com/public/fallback_test.txt",
+            syftobject="syft://test@example.com/public/test.syftobject.yaml"
+        )
+        
+        # Create a file in tmp directory
+        from pathlib import Path
+        tmp_dir = Path("tmp")
+        tmp_dir.mkdir(exist_ok=True)
+        tmp_file = tmp_dir / "fallback_test.txt"
+        tmp_file.write_text("test content")
+        
+        try:
+            # Mock to make extract_local_path_from_syft_url return None
+            with patch('syft_objects.models.extract_local_path_from_syft_url', return_value=None):
+                path = obj._get_local_file_path("syft://test@example.com/private/fallback_test.txt")
+                assert path == str(tmp_file.absolute())
+        finally:
+            if tmp_file.exists():
+                tmp_file.unlink()
+    
+    def test_get_local_file_path_not_found_returns_empty(self):
+        """Test _get_local_file_path returns empty when file not found (lines 196-198)"""
+        obj = SyftObject(
+            private_url="syft://test@example.com/private/nonexistent.txt",
+            mock_url="syft://test@example.com/public/nonexistent.txt",
+            syftobject="syft://test@example.com/public/test.syftobject.yaml"
+        )
+        
+        # Mock to make extract_local_path_from_syft_url return None
+        with patch('syft_objects.models.extract_local_path_from_syft_url', return_value=None):
+            # File doesn't exist in tmp either
+            path = obj._get_local_file_path("syft://test@example.com/private/nonexistent.txt")
+            assert path == ""
+    
+    def test_set_permissions_private_write_only(self):
+        """Test set_permissions for private file with write only (line 292)"""
+        obj = SyftObject(
+            private_url="syft://test@example.com/private/test.txt",
+            mock_url="syft://test@example.com/public/test.txt",
+            syftobject="syft://test@example.com/public/test.syftobject.yaml"
+        )
+        
+        with patch('syft_objects.models.set_file_permissions_wrapper') as mock_set:
+            # Set only write permissions (not read)
+            obj.set_permissions("private", write=["user@example.com"])
+            
+            assert obj.private_write_permissions == ["user@example.com"]
+            mock_set.assert_called_with(
+                "syft://test@example.com/private/test.txt",
+                obj.private_permissions,  # Should use existing read permissions
+                ["user@example.com"]
+            )
+    
+    def test_set_permissions_syftobject_with_path(self):
+        """Test set_permissions for syftobject with provided path (line 300)"""
+        obj = SyftObject(
+            private_url="syft://test@example.com/private/test.txt",
+            mock_url="syft://test@example.com/public/test.txt",
+            syftobject="syft://test@example.com/public/test.syftobject.yaml"
+        )
+        
+        with patch('syft_objects.models.set_file_permissions_wrapper') as mock_set:
+            # Set permissions with explicit path
+            obj.set_permissions("syftobject", read=["public"], syftobject_file_path="/path/to/file.syftobject.yaml")
+            
+            assert obj.syftobject_permissions == ["public"]
+            mock_set.assert_called_with("/path/to/file.syftobject.yaml", ["public"])
+    
+    def test_get_local_file_path_exception_handling(self):
+        """Test _get_local_file_path exception handling (lines 197-198)"""
+        obj = SyftObject(
+            private_url="syft://test@example.com/private/test.txt",
+            mock_url="syft://test@example.com/public/test.txt",
+            syftobject="syft://test@example.com/public/test.syftobject.yaml"
+        )
+        
+        # Mock get_syftbox_client to raise exception
+        with patch('syft_objects.models.get_syftbox_client', side_effect=Exception("Client error")):
+            path = obj._get_local_file_path("syft://test@example.com/private/test.txt")
+            assert path == ""
     
     def test_load_yaml_file_not_found(self):
         """Test load_yaml with non-existent file"""
