@@ -75,7 +75,9 @@ class DataAccessor:
         if self._cached_path is None:
             self._cached_path = self._syft_object._get_local_file_path(self._syft_url)
             # For folders, ensure path doesn't have trailing /
-            if self._syft_object.is_folder and self._cached_path.endswith('/'):
+            if (hasattr(self._syft_object, 'is_folder') and 
+                getattr(self._syft_object, 'is_folder', False) is True and 
+                self._cached_path.endswith('/')):
                 self._cached_path = self._cached_path.rstrip('/')
         return self._cached_path
     
@@ -101,7 +103,9 @@ class DataAccessor:
     @property
     def obj(self) -> Any:
         """Get the loaded object - returns FolderAccessor for folders"""
-        if self._syft_object.is_folder:
+        # Only create FolderAccessor for actual folder objects, not Mock objects
+        if (hasattr(self._syft_object, 'is_folder') and 
+            getattr(self._syft_object, 'is_folder', False) is True):
             return FolderAccessor(Path(self.path))
         
         if self._cached_obj is None:
@@ -220,6 +224,14 @@ class DataAccessor:
         """HTML representation for Jupyter widgets"""
         try:
             obj = self.obj
+            
+            # Handle FolderAccessor objects
+            if isinstance(obj, FolderAccessor):
+                files = obj.list_files()
+                file_list = "<br/>".join([f"📄 {f.name}" for f in files[:10]])
+                if len(files) > 10:
+                    file_list += f"<br/>... and {len(files) - 10} more files"
+                return f"<div><strong>📁 Folder:</strong> {obj.path}<br/><strong>Files ({len(files)}):</strong><br/>{file_list}</div>"
             
             # If the object has its own _repr_html_, use that
             if hasattr(obj, '_repr_html_') and callable(getattr(obj, '_repr_html_')):

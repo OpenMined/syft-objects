@@ -69,7 +69,7 @@ class TestFileOpsModule:
         
         assert result is False
         mock_print.assert_called()
-        assert "Could not move file" in str(mock_print.call_args)
+        assert "Could not move object" in str(mock_print.call_args)
     
     @patch('syft_objects.file_ops.SYFTBOX_AVAILABLE', False)
     def test_copy_file_no_syftbox(self, temp_dir):
@@ -229,4 +229,4 @@ class TestFileOpsModule:
             )
             
             assert result is False
-            mock_print.assert_called_with("Warning: Could not copy file to SyftBox location: Copy failed")
+            mock_print.assert_called_with("Warning: Could not copy object to SyftBox location: Copy failed")

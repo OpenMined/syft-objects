@@ -93,6 +93,7 @@ class TestDataAccessor:
         """Test obj property with caching"""
         mock_obj = Mock()
         mock_obj._get_local_file_path.return_value = "/path/test.txt"
+        mock_obj.is_folder = False  # Ensure this is treated as a file, not folder
         
         accessor = DataAccessor("syft://test@example.com/test.txt", mock_obj)
         
