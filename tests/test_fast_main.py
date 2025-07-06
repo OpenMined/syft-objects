@@ -476,23 +476,13 @@ class TestFastAPIEndpoints:
         assert response.status_code == 307
         assert response.headers["location"] == "/widget/"
     
-    def test_widget_page(self, client, temp_dir):
+    def test_widget_page(self, client):
         """Test /widget/ page"""
-        # Create a mock widget file
-        widget_dir = temp_dir / "frontend" / "widget"
-        widget_dir.mkdir(parents=True)
-        widget_file = widget_dir / "index.html"
-        widget_file.write_text("<html>Widget</html>")
-        
-        with patch('backend.fast_main.PathLib') as mock_pathlib:
-            # Mock the file path construction
-            mock_path = Mock()
-            mock_path.__truediv__.return_value = widget_file
-            mock_pathlib.return_value.parent.parent = temp_dir
-            
-            response = client.get("/widget/")
-            # Should return 404 since the mocked path won't match the actual file system
-            assert response.status_code == 404
+        # Test the actual widget endpoint behavior
+        response = client.get("/widget/")
+        # The widget page should return HTML content
+        assert response.status_code == 200
+        assert "html" in response.text.lower()
     
     @patch('backend.fast_main.PathLib')
     def test_root_page(self, mock_pathlib, client):
