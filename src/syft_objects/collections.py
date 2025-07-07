@@ -461,19 +461,39 @@ Example Usage:
             white-space: nowrap;
         }}
         #{container_id} details {{
-            margin: 2px 0;
+            margin: 0 2px;
+            display: inline-block;
         }}
         #{container_id} summary {{
             cursor: pointer;
             padding: 2px 6px;
-            background: #e0e7ff;
             border-radius: 3px;
             font-size: 10px;
-            color: #4338ca;
             display: inline-block;
+            border: 1px solid transparent;
         }}
         #{container_id} summary:hover {{
-            background: #c7d2fe;
+            opacity: 0.8;
+        }}
+        #{container_id} details[data-type="info"] summary {{
+            background: #dbeafe;
+            color: #1e40af;
+            border-color: #bfdbfe;
+        }}
+        #{container_id} details[data-type="mock"] summary {{
+            background: #e0e7ff;
+            color: #4338ca;
+            border-color: #c7d2fe;
+        }}
+        #{container_id} details[data-type="private"] summary {{
+            background: #f3f4f6;
+            color: #374151;
+            border-color: #e5e7eb;
+        }}
+        #{container_id} details[data-type="code"] summary {{
+            background: #ede9fe;
+            color: #7c3aed;
+            border-color: #ddd6fe;
         }}
         #{container_id} .data-content {{
             background: #f3f4f6;
@@ -522,6 +542,9 @@ Example Usage:
                                    row.style.display = text.includes(term) ? '' : 'none';
                                }});
                            ">
+                    <span style="margin-left: 10px; font-size: 11px; color: #6b7280;">
+                        Filter by any field - name, email, UID, etc.
+                    </span>
                 </div>
                 <div class="table-container">
                     <table>
@@ -585,10 +608,10 @@ Example Usage:
                             <td class="truncate" title="{email}">{email}</td>
                             <td style="font-family: monospace; font-size: 10px;" title="{uid}">{uid[:8]}...</td>
                             <td style="font-size: 10px;">{created}</td>
-                            <td>
-                                <details>
+                            <td style="white-space: nowrap;">
+                                <details data-type="info" style="position: relative;">
                                     <summary>Info</summary>
-                                    <div class="data-content">
+                                    <div class="data-content" style="position: absolute; z-index: 100; background: white; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 400px;">
                                         <div class="info-row"><span class="info-label">Name:</span> {name}</div>
                                         <div class="info-row"><span class="info-label">UID:</span> {uid}</div>
                                         <div class="info-row"><span class="info-label">Admin:</span> {email}</div>
@@ -599,19 +622,19 @@ Example Usage:
                                     </div>
                                 </details>
                                 
-                                <details>
+                                <details data-type="mock" style="position: relative;">
                                     <summary>Mock</summary>
-                                    <div class="data-content">{mock_display}</div>
+                                    <div class="data-content" style="position: absolute; z-index: 100; background: white; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 400px; max-width: 600px;">{mock_display}</div>
                                 </details>
                                 
-                                <details>
+                                <details data-type="private" style="position: relative;">
                                     <summary>Private</summary>
-                                    <div class="data-content">{private_display}</div>
+                                    <div class="data-content" style="position: absolute; z-index: 100; background: white; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 400px; max-width: 600px;">{private_display}</div>
                                 </details>
                                 
-                                <details>
+                                <details data-type="code" style="position: relative;">
                                     <summary>Code</summary>
-                                    <div class="code-snippet"># Access this object
+                                    <div class="code-snippet" style="position: absolute; z-index: 100; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 300px;"># Access this object
 obj = so.objects[{i}]
 
 # Get data
