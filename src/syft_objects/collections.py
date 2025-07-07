@@ -338,6 +338,52 @@ Example Usage:
             # Server not available, use local HTML fallback immediately
             return self._generate_fallback_widget()
 
+    def _objects_data_json(self):
+        """Generate JSON representation of objects with their data for JavaScript access"""
+        import json
+        from pathlib import Path
+        
+        objects_data = []
+        for obj in self._objects:
+            obj_data = {
+                'name': obj.name or "Unnamed",
+                'uid': str(obj.uid),
+                'mock_data': None,
+                'private_data': None
+            }
+            
+            # Try to read mock data if available
+            try:
+                if hasattr(obj, 'mock_path') and obj.mock_path:
+                    mock_path = Path(obj.mock_path)
+                    if mock_path.exists() and mock_path.is_file():
+                        with open(mock_path, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                            # Limit content size for display
+                            if len(content) > 10000:
+                                content = content[:10000] + "\n\n... [Content truncated]"
+                            obj_data['mock_data'] = content
+            except Exception:
+                pass
+            
+            # Try to read private data if available (only in development/local mode)
+            try:
+                if hasattr(obj, 'private_path') and obj.private_path:
+                    private_path = Path(obj.private_path)
+                    if private_path.exists() and private_path.is_file():
+                        with open(private_path, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                            # Limit content size for display
+                            if len(content) > 10000:
+                                content = content[:10000] + "\n\n... [Content truncated]"
+                            obj_data['private_data'] = content
+            except Exception:
+                pass
+                
+            objects_data.append(obj_data)
+        
+        return json.dumps(objects_data)
+    
     def _generate_fallback_widget(self):
         """Generate a local HTML widget that matches the iframe UI when server is unavailable"""
         import uuid
@@ -605,6 +651,63 @@ Example Usage:
             align-items: center;
             gap: 0.25rem;
         }}
+        #{container_id} .modal {{
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }}
+        #{container_id} .modal-content {{
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }}
+        #{container_id} .modal-close {{
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 20px;
+        }}
+        #{container_id} .modal-close:hover,
+        #{container_id} .modal-close:focus {{
+            color: #000;
+        }}
+        #{container_id} .modal-title {{
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            color: #1f2937;
+        }}
+        #{container_id} .modal-data {{
+            background: #f3f4f6;
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.875rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: #374151;
+        }}
+        #{container_id} .modal-error {{
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 1rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }}
         </style>
         
         <div id="{container_id}">
@@ -701,8 +804,8 @@ Example Usage:
                             <td class="date-cell">{created_str}</td>
                             <td><span class="type-badge">{obj_type}</span></td>
                             <td onclick="event.stopPropagation()">
-                                <button class="file-button mock-btn" onclick="alert('Mock file access requires server connection')">Mock</button>
-                                <button class="file-button private-btn" onclick="alert('Private file access requires server connection')">Private</button>
+                                <button class="file-button mock-btn" onclick="showAccessCode_{container_id}({i}, 'mock')">Mock</button>
+                                <button class="file-button private-btn" onclick="showAccessCode_{container_id}({i}, 'private')">Private</button>
                             </td>
                             <td onclick="event.stopPropagation()">
                                 <button class="action-btn info-btn" onclick="showObjectInfo_{container_id}({i})">Info</button>
@@ -724,6 +827,15 @@ Example Usage:
             </div>
             <div class="status-bar" id="{container_id}-status">
                 0 objects selected
+            </div>
+            
+            <!-- Modal for displaying data -->
+            <div id="{container_id}-modal" class="modal">
+                <div class="modal-content">
+                    <span class="modal-close" onclick="closeModal_{container_id}()">&times;</span>
+                    <div class="modal-title" id="{container_id}-modal-title">Data Viewer</div>
+                    <div id="{container_id}-modal-body"></div>
+                </div>
             </div>
         </div>
         
@@ -862,6 +974,60 @@ Example Usage:
                 prompt('Copy this path:', path);
             }}
         }}
+        
+        function showAccessCode_{container_id}(index, type) {{
+            const modal = document.getElementById('{container_id}-modal');
+            const modalTitle = document.getElementById('{container_id}-modal-title');
+            const modalBody = document.getElementById('{container_id}-modal-body');
+            const row = document.querySelector(`#{container_id} tbody tr[data-index="${{index}}"]`);
+            
+            if (row) {{
+                const name = row.querySelector('.name-cell').textContent || 'Unnamed';
+                const uid = row.querySelector('.uid-cell').getAttribute('title') || 'Unknown';
+                
+                modalTitle.textContent = `${{type.charAt(0).toUpperCase() + type.slice(1)}} Data - ${{name}}`;
+                
+                // Try to get the data from the object
+                const objects = {self._objects_data_json()};
+                const obj = objects[index];
+                
+                if (obj && obj[type + '_data']) {{
+                    // Create text node to safely display content
+                    const dataDiv = document.createElement('div');
+                    dataDiv.className = 'modal-data';
+                    dataDiv.textContent = obj[type + '_data'];
+                    modalBody.innerHTML = '';
+                    modalBody.appendChild(dataDiv);
+                }} else {{
+                    modalBody.innerHTML = `
+                        <div class="modal-error">
+                            <strong>Data not available</strong><br><br>
+                            The ${{type}} data for this object is not cached locally. 
+                            To access this data, please ensure the syft-objects server is running.<br><br>
+                            <strong>Object Details:</strong><br>
+                            Name: ${{name}}<br>
+                            UID: ${{uid}}<br>
+                            Type: ${{type}}
+                        </div>
+                    `;
+                }}
+                
+                modal.style.display = 'block';
+            }}
+        }}
+        
+        function closeModal_{container_id}() {{
+            const modal = document.getElementById('{container_id}-modal');
+            modal.style.display = 'none';
+        }}
+        
+        // Close modal when clicking outside of it
+        window.addEventListener('click', function(event) {{
+            const modal = document.getElementById('{container_id}-modal');
+            if (event.target === modal) {{
+                modal.style.display = 'none';
+            }}
+        }});
         </script>
         """
         
