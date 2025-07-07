@@ -363,7 +363,6 @@ class SyftObject(BaseModel):
             else:
                 return self._delete_file_object()
         except Exception as e:
-            print(f"Error deleting object {self.uid}: {e}")
             return False
     
     def _delete_folder_object(self) -> bool:
@@ -380,7 +379,7 @@ class SyftObject(BaseModel):
                 syftobject_path = Path(self.syftobject_path)
                 if syftobject_path.exists():
                     folder_path = syftobject_path.parent
-                    print(f"🔍 Found folder path via syftobject_path: {folder_path}")
+                    pass  # Found folder path via syftobject_path
             
             # Strategy 2: For syft-queue jobs, search across all status directories
             if not folder_path and hasattr(self, 'metadata') and self.metadata and self.metadata.get('type') == 'SyftBox Job':
@@ -402,7 +401,7 @@ class SyftObject(BaseModel):
                                 for job_dir in status_path.parent.glob(f"jobs/{status_dir}/*"):
                                     if job_dir.is_dir() and job_uid in job_dir.name:
                                         folder_path = job_dir
-                                        print(f"🔍 Found syft-queue job folder: {folder_path}")
+                                        pass  # Found syft-queue job folder
                                         break
                                 if folder_path:
                                     break
@@ -416,26 +415,25 @@ class SyftObject(BaseModel):
                 private_path = Path(self.private_path)
                 if private_path.exists() and private_path.is_dir():
                     folder_path = private_path
-                    print(f"🔍 Found folder path via private_path (is_dir): {folder_path}")
+                    pass  # Found folder path via private_path (is_dir)
                 elif private_path.exists() and private_path.is_file():
                     # If private_path is a file, use its parent directory
                     folder_path = private_path.parent
-                    print(f"🔍 Found folder path via private_path parent: {folder_path}")
+                    pass  # Found folder path via private_path parent
             
             # Strategy 4: Check folder paths in metadata
             if not folder_path and hasattr(self, 'metadata') and self.metadata:
                 folder_paths = self.metadata.get('_folder_paths', {})
                 if 'private' in folder_paths:
                     metadata_path = Path(folder_paths['private'])
-                    print(f"🔍 Found folder path via metadata: {metadata_path}")
+                    pass  # Found folder path via metadata
                     
                     # Check if the metadata path actually exists
                     if metadata_path.exists() and metadata_path.is_dir():
                         folder_path = metadata_path
-                        print(f"✅ Metadata path exists and is valid")
+                        pass  # Metadata path exists and is valid
                     else:
-                        print(f"⚠️  Metadata path doesn't exist: {metadata_path}")
-                        print(f"   Checking if job moved to different status folder...")
+                        pass  # Metadata path doesn't exist, checking if job moved
                         
                         # The metadata path is stale - search for the job in current location
                         job_uid = str(self.uid)
@@ -452,7 +450,7 @@ class SyftObject(BaseModel):
                                         for job_dir in queue_dir.rglob(f"*/jobs/{status_dir}/*{job_uid}*"):
                                             if job_dir.is_dir():
                                                 folder_path = job_dir
-                                                print(f"🔍 Found job in {status_dir} folder: {folder_path}")
+                                                pass  # Found job in status folder
                                                 break
                                         if folder_path:
                                             break
@@ -462,9 +460,7 @@ class SyftObject(BaseModel):
                                 break
             
             if folder_path and folder_path.exists() and folder_path.is_dir():
-                print(f"🗑️  Deleting folder directory: {folder_path}")
                 shutil.rmtree(str(folder_path))
-                print(f"✅ Deleted folder directory: {folder_path}")
                 
                 # Refresh the objects collection
                 try:
@@ -475,19 +471,9 @@ class SyftObject(BaseModel):
                     pass
                 return True
             else:
-                # Debug info
-                print(f"⚠️  Could not find folder directory for {self.uid}")
-                print(f"   private_path: {self.private_path}")
-                print(f"   syftobject_path: {self.syftobject_path}")
-                print(f"   metadata: {getattr(self, 'metadata', {})}")
-                if folder_path:
-                    print(f"   folder_path found but invalid: {folder_path}")
-                    print(f"   exists: {folder_path.exists()}")
-                    print(f"   is_dir: {folder_path.is_dir() if folder_path.exists() else 'N/A'}")
                 return False
                 
         except Exception as e:
-            print(f"Error deleting folder object: {e}")
             return False
     
     def _delete_file_object(self) -> bool:
@@ -527,8 +513,6 @@ class SyftObject(BaseModel):
                     deleted_files.append("syftobject")
             
             if deleted_files:
-                print(f"✅ Deleted syft-object files: {', '.join(deleted_files)}")
-                
                 # Refresh the objects collection
                 try:
                     from .collections import objects
@@ -538,11 +522,9 @@ class SyftObject(BaseModel):
                     pass
                 return True
             else:
-                print(f"⚠️  No files found to delete for object {self.uid}")
                 return False
                 
         except Exception as e:
-            print(f"Error deleting file object: {e}")
             return False
     
  
