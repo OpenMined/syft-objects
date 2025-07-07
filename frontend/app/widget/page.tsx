@@ -36,8 +36,21 @@ export default function WidgetPage() {
   const [permissionsModalOpen, setPermissionsModalOpen] = useState(false)
   const [copiedItems, setCopiedItems] = useState<Set<string>>(new Set())
   
+  // Track when objects arrive in the UI for rainbow effect
+  const [objectArrivalTimes, setObjectArrivalTimes] = useState<Map<string, number>>(new Map())
+  
   // Track if component is mounted to prevent state updates after unmount
   const isMountedRef = useRef(true)
+  
+  // Function to check if object should have rainbow effect (first 2.5 seconds after UI arrival)
+  const shouldShowRainbow = useCallback((objectUid: string) => {
+    const arrivalTime = objectArrivalTimes.get(objectUid)
+    if (!arrivalTime) return false
+    
+    const now = Date.now()
+    const timeSinceArrival = (now - arrivalTime) / 1000 // Convert to seconds
+    return timeSinceArrival < 2.5 // Show rainbow for 2.5 seconds after arrival
+  }, [objectArrivalTimes])
   
   useEffect(() => {
     return () => {
@@ -71,6 +84,20 @@ export default function WidgetPage() {
         skip: (currentPage - 1) * itemsPerPage,
         limit: itemsPerPage
       })
+      
+      // Track arrival times for new objects
+      const now = Date.now()
+      setObjectArrivalTimes(prev => {
+        const newMap = new Map(prev)
+        result.objects.forEach(obj => {
+          // Only set arrival time if this is the first time we see this object
+          if (!newMap.has(obj.uid)) {
+            newMap.set(obj.uid, now)
+          }
+        })
+        return newMap
+      })
+      
       setObjects(result.objects)
       setTotalObjects(result.total)
     } catch (error) {
@@ -88,6 +115,34 @@ export default function WidgetPage() {
       return () => clearInterval(interval)
     }
   }, [fetchObjects, autoRefresh])
+
+  // Timer to trigger re-renders for rainbow effect updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Force a re-render to update rainbow effects
+      // Only if we have objects with recent arrival times
+      const now = Date.now()
+      const hasRecentObjects = Array.from(objectArrivalTimes.values()).some(
+        arrivalTime => (now - arrivalTime) / 1000 < 3 // Check slightly longer than rainbow duration
+      )
+      
+      if (hasRecentObjects) {
+        // Clean up old arrival times while we're at it
+        setObjectArrivalTimes(prev => {
+          const newMap = new Map()
+          for (const [uid, arrivalTime] of prev.entries()) {
+            // Keep times for the last 5 seconds to be safe
+            if ((now - arrivalTime) / 1000 < 5) {
+              newMap.set(uid, arrivalTime)
+            }
+          }
+          return newMap
+        })
+      }
+    }, 100) // Update every 100ms for smooth animation
+
+    return () => clearInterval(interval)
+  }, [objectArrivalTimes])
 
   // Handle search
   const handleSearch = (e: React.FormEvent) => {
@@ -384,7 +439,8 @@ export default function WidgetPage() {
                   key={object.uid} 
                   className={cn(
                     "border-b hover:bg-gray-50 cursor-pointer transition-colors",
-                    copiedItems.has(object.uid) && "bg-green-50"
+                    copiedItems.has(object.uid) && "bg-green-50",
+                    shouldShowRainbow(object.uid) && "rainbow-bg"
                   )}
                   onClick={(e) => handleRowClick(e, object)}
                 >

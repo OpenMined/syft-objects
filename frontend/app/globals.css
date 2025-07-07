@@ -87,6 +87,27 @@
   }
 }
 
+/* Rainbow background for new objects */
+.rainbow-bg {
+  background: linear-gradient(
+    45deg,
+    #ff0000,
+    #ff7f00,
+    #ffff00,
+    #00ff00,
+    #0000ff,
+    #4b0082,
+    #9400d3
+  );
+  background-size: 400% 400%;
+  animation: rainbow 3s ease-in-out infinite;
+  transition: all .3s ease;
+}
+
+.rainbow-bg:hover {
+  animation-duration: 1.5s;
+}
+
 /* Dialog animations */
 @keyframes fade-in {
   from {
