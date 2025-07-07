@@ -345,4 +345,131 @@ class SyftObject(BaseModel):
             elif self.syftobject:
                 set_file_permissions_wrapper(self.syftobject, self.syftobject_permissions)
         else:
-            raise ValueError(f"Invalid file_type: {file_type}. Must be 'mock', 'private', or 'syftobject'.") 
+            raise ValueError(f"Invalid file_type: {file_type}. Must be 'mock', 'private', or 'syftobject'.")
+    
+    def delete(self) -> bool:
+        """
+        Delete this syft-object and all its associated files.
+        
+        For syft-queue jobs, this will delegate to the syft-queue deletion API.
+        For regular syft-objects, this will delete the object files directly.
+        
+        Returns:
+            bool: True if deletion was successful, False otherwise
+        """
+        try:
+            # Check if this is a syft-queue job and delegate if so
+            if hasattr(self, 'metadata') and self.metadata and self.metadata.get('type') == 'SyftBox Job':
+                return self._delete_syft_queue_job()
+            else:
+                return self._delete_standard_object()
+        except Exception as e:
+            print(f"Error deleting object {self.uid}: {e}")
+            return False
+    
+    def _delete_syft_queue_job(self) -> bool:
+        """Delete a syft-queue job by calling the syft-queue API."""
+        try:
+            import requests
+            
+            # Try to find syft-queue server port
+            syft_queue_ports = [8005, 8006, 8007, 8008]  # Common syft-queue ports
+            
+            for port in syft_queue_ports:
+                try:
+                    response = requests.delete(f"http://localhost:{port}/api/jobs/{self.uid}", timeout=5.0)
+                    if response.status_code == 200:
+                        print(f"✅ Successfully deleted syft-queue job: {self.name if hasattr(self, 'name') else self.uid}")
+                        # Refresh the objects collection
+                        try:
+                            from .collections import objects
+                            if objects:
+                                objects.refresh()
+                        except ImportError:
+                            pass
+                        return True
+                    elif response.status_code == 404:
+                        # Job not found on this syft-queue instance, try next port
+                        continue
+                except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+                    # Server not running on this port, try next
+                    continue
+            
+            # If syft-queue API isn't available, fall back to manual deletion
+            print(f"⚠️  Could not reach syft-queue API, falling back to manual deletion")
+            return self._delete_job_directory()
+            
+        except Exception as e:
+            print(f"Error calling syft-queue API: {e}")
+            return self._delete_job_directory()
+    
+    def _delete_job_directory(self) -> bool:
+        """Manually delete a syft-queue job directory."""
+        try:
+            # Extract job directory from syftobject path
+            if hasattr(self, 'syftobject_path') and self.syftobject_path:
+                from pathlib import Path
+                job_dir = Path(self.syftobject_path).parent
+                if job_dir.exists() and job_dir.is_dir():
+                    import shutil
+                    shutil.rmtree(str(job_dir))
+                    print(f"✅ Deleted syft-queue job directory: {job_dir}")
+                    
+                    # Refresh the objects collection
+                    try:
+                        from .collections import objects
+                        if objects:
+                            objects.refresh()
+                    except ImportError:
+                        pass
+                    return True
+            return False
+        except Exception as e:
+            print(f"Error deleting job directory: {e}")
+            return False
+    
+    def _delete_standard_object(self) -> bool:
+        """Delete a standard syft-object by removing its files."""
+        try:
+            from pathlib import Path
+            deleted_files = []
+            
+            # Delete private file if it exists
+            if hasattr(self, 'private_path') and self.private_path:
+                private_path = Path(self.private_path)
+                if private_path.exists():
+                    private_path.unlink()
+                    deleted_files.append("private")
+            
+            # Delete mock file if it exists
+            if hasattr(self, 'mock_path') and self.mock_path:
+                mock_path = Path(self.mock_path)
+                if mock_path.exists():
+                    mock_path.unlink()
+                    deleted_files.append("mock")
+            
+            # Delete syftobject file if it exists
+            if hasattr(self, 'syftobject_path') and self.syftobject_path:
+                syftobject_path = Path(self.syftobject_path)
+                if syftobject_path.exists():
+                    syftobject_path.unlink()
+                    deleted_files.append("syftobject")
+            
+            if deleted_files:
+                print(f"✅ Deleted syft-object files: {', '.join(deleted_files)}")
+                
+                # Refresh the objects collection
+                try:
+                    from .collections import objects
+                    if objects:
+                        objects.refresh()
+                except ImportError:
+                    pass
+                return True
+            else:
+                print(f"⚠️  No files found to delete for object {self.uid}")
+                return False
+                
+        except Exception as e:
+            print(f"Error deleting standard object: {e}")
+            return False 
