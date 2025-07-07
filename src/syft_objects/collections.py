@@ -683,7 +683,9 @@ Example Usage:
         # Check if there's an error
         if self._load_error:
             error_msg = html_module.escape(self._load_error)
-            # No additional message needed since fallback is shown automatically
+            # Add helpful message for fetch errors
+            if "Failed to fetch" in self._load_error:
+                error_msg += " - please reload cell."
             
             html += f"""
                 <div class="error-container">
