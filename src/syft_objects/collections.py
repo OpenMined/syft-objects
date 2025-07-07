@@ -651,11 +651,17 @@ Example Usage:
                                 <th style="width: 10rem;">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="{container_id}-tbody">
         """
         
-        # Add rows
-        for i, obj in enumerate(self._objects):
+        # Prepare all rows data
+        items_per_page = 10
+        total_objects = len(self._objects)
+        total_pages = max(1, (total_objects + items_per_page - 1) // items_per_page)
+        
+        # Generate initial page
+        for i in range(min(items_per_page, total_objects)):
+            obj = self._objects[i]
             name = html_module.escape(obj.name or "Unnamed Object")
             email = html_module.escape(self._get_object_email(obj))
             uid = str(obj.uid)
@@ -670,7 +676,7 @@ Example Usage:
                     file_type = path.suffix
             
             html += f"""
-                        <tr>
+                        <tr onclick="copyObjectCode_{container_id}({i})" style="cursor: pointer;">
                             <td><input type="checkbox" class="checkbox" disabled></td>
                             <td>{i + 1}</td>
                             <td><div class="truncate" style="font-weight: 500;" title="{name}">{name}</div></td>
@@ -738,8 +744,120 @@ Example Usage:
                         </tbody>
                     </table>
                 </div>
+                <div class="pagination">
+                    <button onclick="changePage_{container_id}(-1)" id="{container_id}-prev" disabled>Previous</button>
+                    <span class="page-info" id="{container_id}-page-info">Page 1 of {total_pages}</span>
+                    <button onclick="changePage_{container_id}(1)" id="{container_id}-next" {'disabled' if total_pages <= 1 else ''}>Next</button>
+                </div>
             </div>
         </div>
+        
+        <!-- Toast for copy notification -->
+        <div id="{container_id}-toast" class="copy-toast">Python code copied to clipboard!</div>
+        
+        <script>
+        // Store objects data
+        window['{container_id}_objects'] = {self._objects_data_json()};
+        window['{container_id}_currentPage'] = 1;
+        window['{container_id}_itemsPerPage'] = {items_per_page};
+        window['{container_id}_totalObjects'] = {total_objects};
+        
+        function copyObjectCode_{container_id}(index) {{
+            var objects = window['{container_id}_objects'];
+            var obj = objects[index];
+            if (!obj) return;
+            
+            var code = 'obj = so.objects[' + index + ']\\n' +
+                       '# or by UID:\\n' +
+                       'obj = so.objects["' + obj.uid + '"]';
+            
+            // Copy to clipboard
+            var textarea = document.createElement('textarea');
+            textarea.value = code;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            
+            // Show toast
+            var toast = document.getElementById('{container_id}-toast');
+            toast.style.display = 'block';
+            setTimeout(function() {{
+                toast.style.display = 'none';
+            }}, 2000);
+        }}
+        
+        function changePage_{container_id}(direction) {{
+            var currentPage = window['{container_id}_currentPage'];
+            var itemsPerPage = window['{container_id}_itemsPerPage'];
+            var totalObjects = window['{container_id}_totalObjects'];
+            var totalPages = Math.max(1, Math.ceil(totalObjects / itemsPerPage));
+            
+            currentPage += direction;
+            if (currentPage < 1) currentPage = 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+            
+            window['{container_id}_currentPage'] = currentPage;
+            
+            // Update page info
+            document.getElementById('{container_id}-page-info').textContent = 'Page ' + currentPage + ' of ' + totalPages;
+            
+            // Update buttons
+            document.getElementById('{container_id}-prev').disabled = currentPage === 1;
+            document.getElementById('{container_id}-next').disabled = currentPage === totalPages;
+            
+            // Update table
+            var tbody = document.getElementById('{container_id}-tbody');
+            tbody.innerHTML = '';
+            
+            var start = (currentPage - 1) * itemsPerPage;
+            var end = Math.min(start + itemsPerPage, totalObjects);
+            var objects = window['{container_id}_objects'];
+            
+            for (var i = start; i < end; i++) {{
+                var obj = objects[i];
+                if (!obj) continue;
+                
+                var name = obj.name || 'Unnamed Object';
+                var uid = obj.uid || '';
+                var uidShort = uid.substring(0, 8) + '...';
+                var created = obj.created_at || 'Unknown';
+                var description = (obj.description || "Object '" + name + "' with explicit mock...").substring(0, 40) + '...';
+                
+                // Extract email from private_url
+                var email = 'unknown@example.com';
+                if (obj.private_url && obj.private_url.startsWith('syft://')) {{
+                    var parts = obj.private_url.split('/');
+                    if (parts.length >= 3) {{
+                        email = parts[2];
+                    }}
+                }}
+                
+                // Determine file type from metadata or default
+                var fileType = '.txt';
+                if (obj.metadata && obj.metadata.file_extension) {{
+                    fileType = obj.metadata.file_extension;
+                }}
+                
+                var tr = document.createElement('tr');
+                tr.onclick = function(idx) {{ return function() {{ copyObjectCode_{container_id}(idx); }}; }}(i);
+                tr.style.cursor = 'pointer';
+                tr.innerHTML = '<td><input type="checkbox" class="checkbox" disabled></td>' +
+                    '<td>' + (i + 1) + '</td>' +
+                    '<td><div class="truncate" style="font-weight: 500;" title="' + name + '">' + name + '</div></td>' +
+                    '<td><div class="truncate" style="color: #6b7280;" title="' + description + '">' + description + '</div></td>' +
+                    '<td><div class="admin-email"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span class="truncate">' + email + '</span></div></td>' +
+                    '<td><span class="uid-text">' + uidShort + '</span></td>' +
+                    '<td><div class="date-text"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg><span class="truncate">' + created + '</span></div></td>' +
+                    '<td><span class="type-badge">' + fileType + '</span></td>' +
+                    '<td><div style="display: flex; gap: 0.125rem;"><button class="btn btn-slate btn-disabled" title="Edit mock file"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" x2="22" y1="12" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg><span>Mock</span></button><button class="btn btn-gray btn-disabled" title="Edit private file"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Private</span></button></div></td>' +
+                    '<td><div style="display: flex; gap: 0.125rem;"><button class="btn btn-blue btn-disabled" title="View object details">Info</button><button class="btn btn-purple btn-disabled" title="Copy local file path">Path</button><button class="btn btn-red btn-disabled" title="Delete object"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg></button></div></td>';
+                tbody.appendChild(tr);
+            }}
+        }}
+        </script>
         """
         
         return html
