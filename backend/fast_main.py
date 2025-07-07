@@ -816,13 +816,48 @@ async def delete_object(object_uid: str) -> Dict[str, Any]:
         if is_folder:
             # For folder objects, delete the entire directory structure
             try:
-                # Try to get folder path from private_path (most reliable)
+                # Try to get folder path from syftobject_path first (most reliable)
                 folder_path = None
-                if target_obj.private_path:
-                    folder_path = PathLib(target_obj.private_path)
-                elif target_obj.syftobject_path:
-                    # Extract folder from syftobject path
-                    folder_path = PathLib(target_obj.syftobject_path).parent
+                if target_obj.syftobject_path:
+                    syftobject_path = PathLib(target_obj.syftobject_path)
+                    if syftobject_path.exists():
+                        folder_path = syftobject_path.parent
+                        logger.info(f"Found folder path via syftobject_path: {folder_path}")
+                
+                # For syft-queue jobs, search across all status directories
+                if not folder_path and hasattr(target_obj, 'metadata') and target_obj.metadata and target_obj.metadata.get('type') == 'SyftBox Job':
+                    job_uid = str(target_obj.uid)
+                    
+                    # Common syft-queue base paths
+                    potential_bases = [
+                        PathLib.home() / "SyftBox" / "datasites",
+                        PathLib("/tmp"),  # fallback
+                    ]
+                    
+                    for base in potential_bases:
+                        if base.exists():
+                            # Search for job directories with this UID across all status folders
+                            for queue_dir in base.rglob("**/syft-queues"):
+                                for status_dir in ["inbox", "running", "completed", "failed"]:
+                                    status_path = queue_dir / f"*_queue" / "jobs" / status_dir
+                                    for job_dir in status_path.parent.glob(f"jobs/{status_dir}/*"):
+                                        if job_dir.is_dir() and job_uid in job_dir.name:
+                                            folder_path = job_dir
+                                            logger.info(f"Found syft-queue job folder: {folder_path}")
+                                            break
+                                    if folder_path:
+                                        break
+                                if folder_path:
+                                    break
+                        if folder_path:
+                            break
+                
+                # Fallback to private_path if it's a directory
+                if not folder_path and target_obj.private_path:
+                    private_path = PathLib(target_obj.private_path)
+                    if private_path.exists() and private_path.is_dir():
+                        folder_path = private_path
+                        logger.info(f"Found folder path via private_path: {folder_path}")
                 
                 if folder_path and folder_path.exists() and folder_path.is_dir():
                     import shutil
@@ -832,6 +867,8 @@ async def delete_object(object_uid: str) -> Dict[str, Any]:
                 else:
                     # If we can't find the folder path, fall back to individual file deletion
                     logger.warning(f"Could not determine folder path for {object_uid}, falling back to individual file deletion")
+                    logger.warning(f"   private_path: {target_obj.private_path}")
+                    logger.warning(f"   syftobject_path: {target_obj.syftobject_path}")
                     is_folder = False
             except Exception as e:
                 logger.warning(f"Failed to delete folder directory: {e}")

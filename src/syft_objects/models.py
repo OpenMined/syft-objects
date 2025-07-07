@@ -372,15 +372,65 @@ class SyftObject(BaseModel):
             from pathlib import Path
             import shutil
             
-            # Try to get folder path from private_path (most reliable)
+            # Try multiple strategies to find the folder path
             folder_path = None
-            if self.private_path:
-                folder_path = Path(self.private_path)
-            elif self.syftobject_path:
-                # Extract folder from syftobject path
-                folder_path = Path(self.syftobject_path).parent
+            
+            # Strategy 1: Use syftobject_path parent directory (most reliable for syft-queue jobs)
+            if self.syftobject_path:
+                syftobject_path = Path(self.syftobject_path)
+                if syftobject_path.exists():
+                    folder_path = syftobject_path.parent
+                    print(f"🔍 Found folder path via syftobject_path: {folder_path}")
+            
+            # Strategy 2: For syft-queue jobs, search across all status directories
+            if not folder_path and hasattr(self, 'metadata') and self.metadata and self.metadata.get('type') == 'SyftBox Job':
+                # Search in syft-queues directories for this job UID
+                job_uid = str(self.uid)
+                
+                # Common syft-queue base paths
+                potential_bases = [
+                    Path.home() / "SyftBox" / "datasites",
+                    Path("/tmp"),  # fallback
+                ]
+                
+                for base in potential_bases:
+                    if base.exists():
+                        # Search for job directories with this UID across all status folders
+                        for queue_dir in base.rglob("**/syft-queues"):
+                            for status_dir in ["inbox", "running", "completed", "failed"]:
+                                status_path = queue_dir / f"*_queue" / "jobs" / status_dir
+                                for job_dir in status_path.parent.glob(f"jobs/{status_dir}/*"):
+                                    if job_dir.is_dir() and job_uid in job_dir.name:
+                                        folder_path = job_dir
+                                        print(f"🔍 Found syft-queue job folder: {folder_path}")
+                                        break
+                                if folder_path:
+                                    break
+                            if folder_path:
+                                break
+                    if folder_path:
+                        break
+            
+            # Strategy 3: Check if private_path is a directory
+            if not folder_path and self.private_path:
+                private_path = Path(self.private_path)
+                if private_path.exists() and private_path.is_dir():
+                    folder_path = private_path
+                    print(f"🔍 Found folder path via private_path (is_dir): {folder_path}")
+                elif private_path.exists() and private_path.is_file():
+                    # If private_path is a file, use its parent directory
+                    folder_path = private_path.parent
+                    print(f"🔍 Found folder path via private_path parent: {folder_path}")
+            
+            # Strategy 4: Check folder paths in metadata
+            if not folder_path and hasattr(self, 'metadata') and self.metadata:
+                folder_paths = self.metadata.get('_folder_paths', {})
+                if 'private' in folder_paths:
+                    folder_path = Path(folder_paths['private'])
+                    print(f"🔍 Found folder path via metadata: {folder_path}")
             
             if folder_path and folder_path.exists() and folder_path.is_dir():
+                print(f"🗑️  Deleting folder directory: {folder_path}")
                 shutil.rmtree(str(folder_path))
                 print(f"✅ Deleted folder directory: {folder_path}")
                 
@@ -393,7 +443,11 @@ class SyftObject(BaseModel):
                     pass
                 return True
             else:
+                # Debug info
                 print(f"⚠️  Could not find folder directory for {self.uid}")
+                print(f"   private_path: {self.private_path}")
+                print(f"   syftobject_path: {self.syftobject_path}")
+                print(f"   metadata: {getattr(self, 'metadata', {})}")
                 return False
                 
         except Exception as e:
