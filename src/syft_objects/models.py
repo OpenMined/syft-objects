@@ -426,8 +426,40 @@ class SyftObject(BaseModel):
             if not folder_path and hasattr(self, 'metadata') and self.metadata:
                 folder_paths = self.metadata.get('_folder_paths', {})
                 if 'private' in folder_paths:
-                    folder_path = Path(folder_paths['private'])
-                    print(f"🔍 Found folder path via metadata: {folder_path}")
+                    metadata_path = Path(folder_paths['private'])
+                    print(f"🔍 Found folder path via metadata: {metadata_path}")
+                    
+                    # Check if the metadata path actually exists
+                    if metadata_path.exists() and metadata_path.is_dir():
+                        folder_path = metadata_path
+                        print(f"✅ Metadata path exists and is valid")
+                    else:
+                        print(f"⚠️  Metadata path doesn't exist: {metadata_path}")
+                        print(f"   Checking if job moved to different status folder...")
+                        
+                        # The metadata path is stale - search for the job in current location
+                        job_uid = str(self.uid)
+                        potential_bases = [
+                            Path.home() / "SyftBox" / "datasites",
+                            Path("/tmp"),  # fallback
+                        ]
+                        
+                        for base in potential_bases:
+                            if base.exists():
+                                # Search for job directories with this UID across all status folders
+                                for queue_dir in base.rglob("**/syft-queues"):
+                                    for status_dir in ["running", "completed", "failed", "inbox"]:  # prioritize current status
+                                        for job_dir in queue_dir.rglob(f"*/jobs/{status_dir}/*{job_uid}*"):
+                                            if job_dir.is_dir():
+                                                folder_path = job_dir
+                                                print(f"🔍 Found job in {status_dir} folder: {folder_path}")
+                                                break
+                                        if folder_path:
+                                            break
+                                    if folder_path:
+                                        break
+                            if folder_path:
+                                break
             
             if folder_path and folder_path.exists() and folder_path.is_dir():
                 print(f"🗑️  Deleting folder directory: {folder_path}")
@@ -448,6 +480,10 @@ class SyftObject(BaseModel):
                 print(f"   private_path: {self.private_path}")
                 print(f"   syftobject_path: {self.syftobject_path}")
                 print(f"   metadata: {getattr(self, 'metadata', {})}")
+                if folder_path:
+                    print(f"   folder_path found but invalid: {folder_path}")
+                    print(f"   exists: {folder_path.exists()}")
+                    print(f"   is_dir: {folder_path.is_dir() if folder_path.exists() else 'N/A'}")
                 return False
                 
         except Exception as e:
