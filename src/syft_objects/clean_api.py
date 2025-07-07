@@ -61,6 +61,16 @@ class CleanSyftObject:
             return "folder"
         return self._obj.file_type or "unknown"
     
+    @property
+    def file_type(self) -> str:
+        """Alias for type property to match backend expectations"""
+        return self.type
+    
+    @property
+    def is_folder(self) -> bool:
+        """Check if this object represents a folder"""
+        return self._obj.is_folder
+    
     # === DATA ACCESS ===
     
     @property
@@ -99,6 +109,32 @@ class CleanSyftObject:
             "private_read": list(self._obj.private_permissions or []),
             "private_write": list(self._obj.private_write_permissions or [])
         }
+    
+    # Individual permission properties for backend compatibility
+    @property
+    def syftobject_permissions(self) -> List[str]:
+        """Who can discover this object"""
+        return list(self._obj.syftobject_permissions or [])
+    
+    @property
+    def mock_permissions(self) -> List[str]:
+        """Who can read the mock data"""
+        return list(self._obj.mock_permissions or [])
+    
+    @property
+    def mock_write_permissions(self) -> List[str]:
+        """Who can write the mock data"""
+        return list(self._obj.mock_write_permissions or [])
+    
+    @property
+    def private_permissions(self) -> List[str]:
+        """Who can read the private data"""
+        return list(self._obj.private_permissions or [])
+    
+    @property
+    def private_write_permissions(self) -> List[str]:
+        """Who can write the private data"""
+        return list(self._obj.private_write_permissions or [])
     
     def set_permissions(self, **kwargs) -> None:
         """Update permissions for this object.
@@ -148,6 +184,22 @@ class CleanSyftObject:
             "metadata": self._obj.syftobject
         }
     
+    # Individual URL properties for backend compatibility
+    @property
+    def private_url(self) -> str:
+        """Syft:// URL for private data"""
+        return self._obj.private_url
+    
+    @property
+    def mock_url(self) -> str:
+        """Syft:// URL for mock data"""
+        return self._obj.mock_url
+    
+    @property
+    def syftobject(self) -> str:
+        """Syft:// URL for metadata file"""
+        return self._obj.syftobject
+    
     @property
     def paths(self) -> Dict[str, Optional[str]]:
         """Get local filesystem paths for all components"""
@@ -156,6 +208,22 @@ class CleanSyftObject:
             "private": self._obj.private_path,
             "metadata": self._obj.syftobject_path
         }
+    
+    # Individual path properties
+    @property
+    def mock_path(self) -> Optional[str]:
+        """Local filesystem path for mock data"""
+        return self._obj.mock_path
+    
+    @property
+    def private_path(self) -> Optional[str]:
+        """Local filesystem path for private data"""
+        return self._obj.private_path
+    
+    @property
+    def syftobject_path(self) -> Optional[str]:
+        """Local filesystem path for metadata file"""
+        return self._obj.syftobject_path
     
     # === ACTIONS ===
     
@@ -201,7 +269,11 @@ class CleanSyftObject:
         """Human-readable string"""
         return f"SyftObject '{self.name}' ({self.type})"
     
-    # === PRIVATE HELPER ===
+    # === PRIVATE HELPERS ===
+    
+    def _check_file_exists(self, url: str) -> bool:
+        """Check if a file exists at the given syft:// URL (internal use)"""
+        return self._obj._check_file_exists(url)
     
     def _raw(self):
         """Access the underlying raw SyftObject (for advanced users only)"""

@@ -671,10 +671,15 @@ Example Usage:
         
         # Check if there's an error
         if self._load_error:
+            error_msg = html_module.escape(self._load_error)
+            # Add helpful message for fetch errors
+            if "Failed to fetch objects:" in self._load_error:
+                error_msg += '<br><br>For a static table, please call <code style="background: #fee2e2; padding: 2px 6px; border-radius: 3px; font-family: monospace;">so.objects.static</code>'
+            
             html += f"""
                 <div class="error-container">
                     <div class="error-title">Error</div>
-                    <div class="error-message">{html_module.escape(self._load_error)}</div>
+                    <div class="error-message">{error_msg}</div>
                 </div>
             </div>
         </div>
