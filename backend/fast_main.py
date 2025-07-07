@@ -807,39 +807,102 @@ async def delete_object(object_uid: str) -> Dict[str, Any]:
         if not target_obj:
             raise HTTPException(status_code=404, detail="Object not found")
         
-        # Delete the object files
+        # Check if this is a syft-queue job and delegate to syft-queue API
+        is_syft_queue_job = False
+        if hasattr(target_obj, 'metadata') and target_obj.metadata:
+            job_type = target_obj.metadata.get('type', '')
+            if job_type == 'SyftBox Job':
+                is_syft_queue_job = True
+        
+        if is_syft_queue_job:
+            # This is a syft-queue job - delegate to syft-queue API
+            try:
+                import httpx
+                import os
+                
+                # Try to find syft-queue server port
+                syft_queue_ports = [8005, 8006, 8007, 8008]  # Common syft-queue ports
+                
+                for port in syft_queue_ports:
+                    try:
+                        async with httpx.AsyncClient(timeout=5.0) as client:
+                            response = await client.delete(f"http://localhost:{port}/api/jobs/{object_uid}")
+                            if response.status_code == 200:
+                                # Success - refresh objects and return
+                                objects.refresh()
+                                result = response.json()
+                                return {
+                                    "message": f"Syft-queue job {object_uid} deleted successfully",
+                                    "syft_queue_response": result,
+                                    "timestamp": datetime.now()
+                                }
+                            elif response.status_code == 404:
+                                # Job not found on this syft-queue instance, try next port
+                                continue
+                    except (httpx.ConnectError, httpx.TimeoutException):
+                        # Server not running on this port, try next
+                        continue
+                
+                # If we get here, syft-queue API wasn't available
+                logger.warning(f"Could not reach syft-queue API for job deletion: {object_uid}")
+                # Fall back to manual file deletion for syft-queue jobs
+                
+            except Exception as e:
+                logger.warning(f"Error delegating to syft-queue API: {e}")
+                # Fall back to manual deletion
+        
+        # Standard object deletion (or fallback for syft-queue jobs)
         deleted_files = []
         
-        # Delete private file if it exists
-        if target_obj.private_path and PathLib(target_obj.private_path).exists():
+        # For syft-queue jobs, try to delete the entire job directory
+        if is_syft_queue_job:
             try:
-                PathLib(target_obj.private_path).unlink()
-                deleted_files.append("private")
+                # Extract job directory from syftobject_path
+                if target_obj.syftobject_path:
+                    job_dir = PathLib(target_obj.syftobject_path).parent
+                    if job_dir.exists() and job_dir.is_dir():
+                        import shutil
+                        shutil.rmtree(str(job_dir))
+                        deleted_files.append("job_directory")
+                        logger.info(f"Deleted syft-queue job directory: {job_dir}")
             except Exception as e:
-                logger.warning(f"Failed to delete private file: {e}")
+                logger.warning(f"Failed to delete job directory: {e}")
+                # Fall back to individual file deletion
         
-        # Delete mock file if it exists
-        if target_obj.mock_path and PathLib(target_obj.mock_path).exists():
-            try:
-                PathLib(target_obj.mock_path).unlink()
-                deleted_files.append("mock")
-            except Exception as e:
-                logger.warning(f"Failed to delete mock file: {e}")
-        
-        # Delete syftobject file if it exists
-        if target_obj.syftobject_path and PathLib(target_obj.syftobject_path).exists():
-            try:
-                PathLib(target_obj.syftobject_path).unlink()
-                deleted_files.append("syftobject")
-            except Exception as e:
-                logger.warning(f"Failed to delete syftobject file: {e}")
+        # Delete individual files (standard objects or fallback)
+        if not deleted_files:  # Only if we didn't delete the whole directory
+            # Delete private file if it exists
+            if target_obj.private_path and PathLib(target_obj.private_path).exists():
+                try:
+                    PathLib(target_obj.private_path).unlink()
+                    deleted_files.append("private")
+                except Exception as e:
+                    logger.warning(f"Failed to delete private file: {e}")
+            
+            # Delete mock file if it exists
+            if target_obj.mock_path and PathLib(target_obj.mock_path).exists():
+                try:
+                    PathLib(target_obj.mock_path).unlink()
+                    deleted_files.append("mock")
+                except Exception as e:
+                    logger.warning(f"Failed to delete mock file: {e}")
+            
+            # Delete syftobject file if it exists
+            if target_obj.syftobject_path and PathLib(target_obj.syftobject_path).exists():
+                try:
+                    PathLib(target_obj.syftobject_path).unlink()
+                    deleted_files.append("syftobject")
+                except Exception as e:
+                    logger.warning(f"Failed to delete syftobject file: {e}")
         
         # Refresh the objects collection to reflect the deletion
         objects.refresh()
         
+        object_type = "syft-queue job" if is_syft_queue_job else "syft object"
         return {
-            "message": f"Object {object_uid} deleted successfully",
+            "message": f"{object_type.title()} {object_uid} deleted successfully",
             "deleted_files": deleted_files,
+            "object_type": object_type,
             "timestamp": datetime.now()
         }
     
