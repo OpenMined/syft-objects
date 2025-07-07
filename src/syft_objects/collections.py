@@ -184,8 +184,8 @@ class ObjectsCollection:
             email = self._get_object_email(syft_obj)
             name = syft_obj.name or ""
             desc = syft_obj.description or ""
-            created_str = syft_obj.created_at.strftime("%Y-%m-%d %H:%M") if getattr(syft_obj, 'created_at', None) else ""
-            updated_str = syft_obj.updated_at.strftime("%Y-%m-%d %H:%M") if getattr(syft_obj, 'updated_at', None) else ""
+            created_str = syft_obj.created_at.strftime("%Y-%m-%d %H:%M UTC") if getattr(syft_obj, 'created_at', None) else ""
+            updated_str = syft_obj.updated_at.strftime("%Y-%m-%d %H:%M UTC") if getattr(syft_obj, 'updated_at', None) else ""
             system_keys = {"_file_operations"}
             meta_values = [str(v).lower() for k, v in syft_obj.metadata.items() if k not in system_keys]
             
@@ -239,7 +239,9 @@ class ObjectsCollection:
         # Only ensure loaded if this is not a cached search result
         if not self._cached:
             self._ensure_loaded()
-        return list(self._objects)
+        # Wrap each object in clean API
+        from .clean_api import wrap_syft_object
+        return [wrap_syft_object(obj) for obj in self._objects]
 
     def get_by_indices(self, indices):
         """Get objects by list of indices"""
@@ -272,7 +274,10 @@ class ObjectsCollection:
         
         # For integer indices, objects are sorted by created_at (oldest first)
         # so objects[0] returns oldest, objects[-1] returns newest
-        return self._objects[index]
+        obj = self._objects[index]
+        # Wrap in clean API
+        from .clean_api import wrap_syft_object
+        return wrap_syft_object(obj)
 
     def __len__(self):
         if not self._cached:
@@ -282,7 +287,9 @@ class ObjectsCollection:
     def __iter__(self):
         if not self._cached:
             self._ensure_loaded()
-        return iter(self._objects)
+        # Wrap each object in clean API
+        from .clean_api import wrap_syft_object
+        return (wrap_syft_object(obj) for obj in self._objects)
 
     def __str__(self):
         """Display objects as a nice table"""
@@ -385,6 +392,8 @@ Example Usage:
             obj_data = {
                 'name': obj.name or "Unnamed",
                 'uid': str(obj.uid),
+                'created_at': obj.created_at.strftime("%m/%d/%Y, %H:%M:%S UTC") if hasattr(obj, 'created_at') and obj.created_at else "Unknown",
+                'description': getattr(obj, 'description', ''),
                 'mock_data': None,
                 'private_data': None,
                 'private_url': getattr(obj, 'private_url', ''),
@@ -681,7 +690,7 @@ Example Usage:
             name = html_module.escape(obj.name or "Unnamed Object")
             email = html_module.escape(self._get_object_email(obj))
             uid = str(obj.uid)
-            created = obj.created_at.strftime("%m/%d/%Y, %H:%M:%S") if hasattr(obj, 'created_at') and obj.created_at else "Unknown"
+            created = obj.created_at.strftime("%m/%d/%Y, %H:%M:%S UTC") if hasattr(obj, 'created_at') and obj.created_at else "Unknown"
             description = html_module.escape(obj.description or f"Object '{name}' with explicit mock...")[:40] + "..."
             
             # Determine file type
@@ -1911,8 +1920,8 @@ Example Usage:
             system_keys = {"_file_operations"}
             meta_items = [f"{k}={v}" for k, v in syft_obj.metadata.items() if k not in system_keys]
             meta_str = ", ".join(meta_items) if meta_items else ""
-            created_str = syft_obj.created_at.strftime("%Y-%m-%d %H:%M") if getattr(syft_obj, 'created_at', None) else ""
-            updated_str = syft_obj.updated_at.strftime("%Y-%m-%d %H:%M") if getattr(syft_obj, 'updated_at', None) else ""
+            created_str = syft_obj.created_at.strftime("%Y-%m-%d %H:%M UTC") if getattr(syft_obj, 'created_at', None) else ""
+            updated_str = syft_obj.updated_at.strftime("%Y-%m-%d %H:%M UTC") if getattr(syft_obj, 'updated_at', None) else ""
             desc_str = syft_obj.description or ""
             html += f"""
             <tr data-email="{email.lower()}" data-name="{name.lower()}" data-index="{i}" data-meta="{meta_str.lower()}" data-desc="{desc_str.lower()}" data-created="{created_str.lower()}" data-updated="{updated_str.lower()}">
