@@ -378,25 +378,16 @@ Example Usage:
         """
         print(help_text)
 
-    def static(self):
-        """Return a static HTML table widget directly, bypassing server checks.
-        
-        This is useful when the server is unavailable or when you want a simple
-        static view of your syft objects without any dynamic functionality.
-        
-        Returns:
-            HTML string containing the static table widget
-            
-        Example:
-            # Display static table in Jupyter
-            from IPython.display import HTML
-            HTML(so.objects.static())
-        """
-        return self._generate_fallback_widget()
-
     def _repr_html_(self):
         """HTML representation for Jupyter notebooks - shows iframe or fallback"""
-        # Quick check without waiting for server startup for immediate display
+        # First ensure objects are loaded to detect any errors
+        self._ensure_loaded()
+        
+        # If there was an error loading objects, show fallback with error
+        if self._load_error:
+            return self._generate_fallback_widget()
+        
+        # Otherwise check if server is available
         from .auto_install import _check_health_endpoint
         if _check_health_endpoint():
             # Server is available, use iframe
@@ -688,9 +679,7 @@ Example Usage:
         # Check if there's an error
         if self._load_error:
             error_msg = html_module.escape(self._load_error)
-            # Add helpful message for fetch errors
-            if "Failed to fetch objects:" in self._load_error:
-                error_msg += '<br><br>For a static table, please call <code style="background: #fee2e2; padding: 2px 6px; border-radius: 3px; font-family: monospace;">so.objects.static</code>'
+            # No additional message needed since fallback is shown automatically
             
             html += f"""
                 <div class="error-container">
