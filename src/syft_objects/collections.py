@@ -328,15 +328,14 @@ Example Usage:
 
     def _repr_html_(self):
         """HTML representation for Jupyter notebooks - shows iframe or fallback"""
-        self._ensure_server_ready()
-        
-        # Check if server is actually available
+        # Quick check without waiting for server startup for immediate display
         from .auto_install import _check_health_endpoint
         if _check_health_endpoint():
             # Server is available, use iframe
+            self._ensure_server_ready()  # Only ensure ready if server is already up
             return self.widget()
         else:
-            # Server not available, use local HTML fallback
+            # Server not available, use local HTML fallback immediately
             return self._generate_fallback_widget()
 
     def _generate_fallback_widget(self):

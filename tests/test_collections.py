@@ -519,7 +519,8 @@ class TestObjectsCollection:
         collection = ObjectsCollection()
         result = collection._repr_html_()
         
-        mock_ensure.assert_called_once()
+        # _ensure_server_ready should NOT be called when server is unhealthy
+        mock_ensure.assert_not_called()
         mock_fallback.assert_called_once()
         assert result == "<div>fallback widget</div>"
     
