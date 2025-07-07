@@ -391,80 +391,201 @@ Example Usage:
         """Generate a simple, reliable fallback widget for Jupyter"""
         import uuid
         import html as html_module
+        from pathlib import Path
         
         container_id = f"syft-widget-{uuid.uuid4().hex[:8]}"
         self._ensure_loaded()
         
-        # Simple styles
+        # Styles that match the real widget
         html = f"""
         <style>
         #{container_id} {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             font-size: 12px;
+            background: #ffffff;
         }}
         #{container_id} .widget-container {{
             border: 1px solid #e5e7eb;
-            border-radius: 6px;
-            overflow: visible;
+            border-radius: 0.375rem;
+            overflow: hidden;
             min-height: 400px;
+            display: flex;
+            flex-direction: column;
         }}
         #{container_id} .header {{
-            background: #f9fafb;
-            padding: 10px 15px;
+            background: #ffffff;
             border-bottom: 1px solid #e5e7eb;
-            font-weight: 600;
+            padding: 0.5rem;
+        }}
+        #{container_id} .search-controls {{
+            display: flex;
+            gap: 0.25rem;
+            flex-wrap: wrap;
+            padding: 0.5rem;
+            background: #ffffff;
+            border-radius: 0.25rem;
+            border: 1px solid #e5e7eb;
         }}
         #{container_id} .table-container {{
-            overflow-x: auto;
-            overflow-y: visible;
-            max-height: none;
-            position: relative;
+            flex: 1;
+            overflow: auto;
+            background: #ffffff;
+            border-radius: 0.25rem;
+            border: 1px solid #e5e7eb;
         }}
         #{container_id} table {{
             width: 100%;
             border-collapse: collapse;
-            font-size: 11px;
+            font-size: 0.75rem;
+        }}
+        #{container_id} thead {{
+            background: rgba(0, 0, 0, 0.03);
+            border-bottom: 1px solid #e5e7eb;
         }}
         #{container_id} th {{
-            background: #f9fafb;
-            padding: 8px;
             text-align: left;
-            font-weight: 600;
-            border-bottom: 2px solid #e5e7eb;
+            padding: 0.375rem 0.25rem;
+            font-weight: 500;
+            font-size: 0.75rem;
+            border-bottom: 1px solid #e5e7eb;
             position: sticky;
             top: 0;
+            background: rgba(0, 0, 0, 0.03);
             z-index: 10;
         }}
         #{container_id} td {{
-            padding: 6px 8px;
+            padding: 0.375rem 0.25rem;
             border-bottom: 1px solid #f3f4f6;
             vertical-align: top;
+            font-size: 0.75rem;
         }}
-        #{container_id} tr:hover {{
-            background: #f9fafb;
+        #{container_id} tbody tr {{
+            transition: background-color 0.15s;
+            cursor: pointer;
+        }}
+        #{container_id} tbody tr:hover {{
+            background: rgba(0, 0, 0, 0.03);
         }}
         #{container_id} .truncate {{
-            max-width: 200px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }}
+        #{container_id} .btn {{
+            padding: 0.125rem 0.375rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            border: none;
+            cursor: not-allowed;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.125rem;
+            opacity: 0.5;
+        }}
+        #{container_id} .btn-disabled {{
+            background: #e5e7eb;
+            color: #9ca3af;
+        }}
+        #{container_id} .btn-blue {{
+            background: #dbeafe;
+            color: #3b82f6;
+        }}
+        #{container_id} .btn-purple {{
+            background: #e9d5ff;
+            color: #a855f7;
+        }}
+        #{container_id} .btn-red {{
+            background: #fee2e2;
+            color: #ef4444;
+        }}
+        #{container_id} .btn-green {{
+            background: #d1fae5;
+            color: #10b981;
+        }}
+        #{container_id} .btn-gray {{
+            background: #f3f4f6;
+            color: #6b7280;
+        }}
+        #{container_id} .btn-slate {{
+            background: #e2e8f0;
+            color: #475569;
+        }}
+        #{container_id} .icon {{
+            width: 0.5rem;
+            height: 0.5rem;
+        }}
+        #{container_id} .checkbox {{
+            width: 0.75rem;
+            height: 0.75rem;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }}
+        #{container_id} .type-badge {{
+            display: inline-flex;
+            align-items: center;
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background: #f3f4f6;
+            color: #374151;
+        }}
+        #{container_id} .admin-email {{
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: #374151;
+        }}
+        #{container_id} .uid-text {{
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: #374151;
+        }}
+        #{container_id} .date-text {{
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.75rem;
+            color: #6b7280;
+        }}
         </style>
         
-        <div id="{container_id}" style="margin-bottom: 200px;">
+        <div id="{container_id}">
             <div class="widget-container">
                 <div class="header">
-                    🔐 Objects Collection ({len(self._objects)} total)
+                    <div class="search-controls">
+                        <div style="flex: 1; min-width: 150px;">
+                            <input placeholder="Search objects..." disabled style="width: 100%; padding: 0.25rem 0.5rem 0.25rem 1.75rem; border: 1px solid #d1d5db; border-radius: 0.25rem; font-size: 0.75rem; opacity: 0.5; cursor: not-allowed;">
+                        </div>
+                        <div style="flex: 1; min-width: 150px;">
+                            <input placeholder="Filter by Admin..." disabled style="width: 100%; padding: 0.25rem 0.5rem 0.25rem 1.75rem; border: 1px solid #d1d5db; border-radius: 0.25rem; font-size: 0.75rem; opacity: 0.5; cursor: not-allowed;">
+                        </div>
+                        <div style="display: flex; gap: 0.25rem;">
+                            <button class="btn btn-blue btn-disabled">Search</button>
+                            <button class="btn btn-gray btn-disabled">Clear</button>
+                            <button class="btn btn-green btn-disabled">New</button>
+                            <button class="btn btn-blue btn-disabled">Select All</button>
+                            <button class="btn btn-gray btn-disabled" title="Open widget in separate window">Open in Window</button>
+                            <button class="btn btn-gray btn-disabled" style="padding: 0.25rem;" title="Reinstall SyftBox app">🔄</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="table-container">
                     <table>
                         <thead>
                             <tr>
-                                <th style="width: 40px;">#</th>
-                                <th>Name</th>
-                                <th>Admin</th>
-                                <th style="width: 120px;">UID</th>
-                                <th>Created</th>
+                                <th style="width: 1.5rem;"><input type="checkbox" class="checkbox" disabled></th>
+                                <th style="width: 2rem;">#</th>
+                                <th style="width: 6rem;">Name</th>
+                                <th style="width: 8rem;">Description</th>
+                                <th style="width: 8rem;">Admin</th>
+                                <th style="width: 5rem;">UID</th>
+                                <th style="width: 7rem;">Created</th>
+                                <th style="width: 2.5rem;">Type</th>
+                                <th style="width: 5rem;">Files</th>
+                                <th style="width: 10rem;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -475,15 +596,78 @@ Example Usage:
             name = html_module.escape(obj.name or "Unnamed Object")
             email = html_module.escape(self._get_object_email(obj))
             uid = str(obj.uid)
-            created = obj.created_at.strftime("%m/%d/%Y %H:%M") if hasattr(obj, 'created_at') and obj.created_at else "Unknown"
+            created = obj.created_at.strftime("%m/%d/%Y, %H:%M:%S") if hasattr(obj, 'created_at') and obj.created_at else "Unknown"
+            description = html_module.escape(obj.description or f"Object '{name}' with explicit mock...")[:40] + "..."
+            
+            # Determine file type
+            file_type = ".txt"  # Default
+            if hasattr(obj, 'mock_path') and obj.mock_path:
+                path = Path(obj.mock_path)
+                if path.suffix:
+                    file_type = path.suffix
             
             html += f"""
                         <tr>
-                            <td style="text-align: center; font-weight: 600;">{i + 1}</td>
-                            <td class="truncate" title="{name}"><strong>{name}</strong></td>
-                            <td class="truncate" title="{email}">{email}</td>
-                            <td style="font-family: monospace; font-size: 10px;" title="{uid}">{uid[:8]}...</td>
-                            <td style="font-size: 10px;">{created}</td>
+                            <td><input type="checkbox" class="checkbox" disabled></td>
+                            <td>{i + 1}</td>
+                            <td><div class="truncate" style="font-weight: 500;" title="{name}">{name}</div></td>
+                            <td><div class="truncate" style="color: #6b7280;" title="{description}">{description}</div></td>
+                            <td>
+                                <div class="admin-email">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
+                                    <span class="truncate">{email}</span>
+                                </div>
+                            </td>
+                            <td><span class="uid-text">{uid[:8]}...</span></td>
+                            <td>
+                                <div class="date-text">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+                                        <line x1="16" x2="16" y1="2" y2="6"></line>
+                                        <line x1="8" x2="8" y1="2" y2="6"></line>
+                                        <line x1="3" x2="21" y1="10" y2="10"></line>
+                                    </svg>
+                                    <span class="truncate">{created}</span>
+                                </div>
+                            </td>
+                            <td><span class="type-badge">{file_type}</span></td>
+                            <td>
+                                <div style="display: flex; gap: 0.125rem;">
+                                    <button class="btn btn-slate btn-disabled" title="Edit mock file">
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <line x1="2" x2="22" y1="12" y2="12"></line>
+                                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                                        </svg>
+                                        <span>Mock</span>
+                                    </button>
+                                    <button class="btn btn-gray btn-disabled" title="Edit private file">
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                        </svg>
+                                        <span>Private</span>
+                                    </button>
+                                </div>
+                            </td>
+                            <td>
+                                <div style="display: flex; gap: 0.125rem;">
+                                    <button class="btn btn-blue btn-disabled" title="View object details">Info</button>
+                                    <button class="btn btn-purple btn-disabled" title="Copy local file path">Path</button>
+                                    <button class="btn btn-red btn-disabled" title="Delete object">
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M3 6h18"></path>
+                                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                            <line x1="10" x2="10" y1="11" y2="17"></line>
+                                            <line x1="14" x2="14" y1="11" y2="17"></line>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
                         </tr>
             """
         
