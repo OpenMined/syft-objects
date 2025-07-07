@@ -469,7 +469,7 @@ Example Usage:
             border: 1px solid #e5e7eb;
             border-radius: 0.375rem;
             overflow: hidden;
-            min-height: 400px;
+            height: 400px;
             display: flex;
             flex-direction: column;
         }}
@@ -477,6 +477,7 @@ Example Usage:
             background: #ffffff;
             border-bottom: 1px solid #e5e7eb;
             padding: 0.5rem;
+            flex-shrink: 0;
         }}
         #{container_id} .search-controls {{
             display: flex;
@@ -489,10 +490,12 @@ Example Usage:
         }}
         #{container_id} .table-container {{
             flex: 1;
-            overflow: auto;
+            overflow-y: auto;
+            overflow-x: auto;
             background: #ffffff;
             border-radius: 0.25rem;
             border: 1px solid #e5e7eb;
+            min-height: 0;
         }}
         #{container_id} table {{
             width: 100%;
@@ -548,6 +551,7 @@ Example Usage:
             padding: 0.5rem;
             border-top: 1px solid #e5e7eb;
             background: rgba(0, 0, 0, 0.02);
+            flex-shrink: 0;
         }}
         #{container_id} .pagination button {{
             padding: 0.25rem 0.5rem;
@@ -934,7 +938,7 @@ Example Usage:
                 var escapedEmail = escapeHtml_{container_id}(email);
                 
                 tr.innerHTML = '<td><input type="checkbox" class="checkbox" disabled></td>' +
-                    '<td>' + (i + 1) + '</td>' +
+                    '<td>' + i + '</td>' +
                     '<td><div class="truncate" style="font-weight: 500;" title="' + escapedName + '">' + escapedName + '</div></td>' +
                     '<td><div class="truncate" style="color: #6b7280;" title="' + escapedDesc + '">' + escapedDesc + '</div></td>' +
                     '<td><div class="admin-email"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span class="truncate">' + escapedEmail + '</span></div></td>' +
@@ -1755,7 +1759,7 @@ Example Usage:
                     // Re-index remaining rows
                     const rows = document.querySelectorAll('#{container_id} tbody tr');
                     rows.forEach((r, i) => {{
-                        r.querySelector('.index-cell').textContent = i + 1;
+                        r.querySelector('.index-cell').textContent = i;
                     }});
                 }}, 300);
             }}
