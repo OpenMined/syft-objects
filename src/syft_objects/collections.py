@@ -378,6 +378,22 @@ Example Usage:
         """
         print(help_text)
 
+    def static(self):
+        """Return a static HTML table widget directly, bypassing server checks.
+        
+        This is useful when the server is unavailable or when you want a simple
+        static view of your syft objects without any dynamic functionality.
+        
+        Returns:
+            HTML string containing the static table widget
+            
+        Example:
+            # Display static table in Jupyter
+            from IPython.display import HTML
+            HTML(so.objects.static())
+        """
+        return self._generate_fallback_widget()
+
     def _repr_html_(self):
         """HTML representation for Jupyter notebooks - shows iframe or fallback"""
         # Quick check without waiting for server startup for immediate display
