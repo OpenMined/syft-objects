@@ -674,10 +674,10 @@ Example Usage:
                 obj_type = obj.file_extension or "—"
             
             # Escape HTML in strings
-            import html
-            name_escaped = html.escape(name)
-            desc_escaped = html.escape(description)
-            email_escaped = html.escape(email)
+            import html as html_module
+            name_escaped = html_module.escape(name)
+            desc_escaped = html_module.escape(description)
+            email_escaped = html_module.escape(email)
             
             html += f"""
                         <tr data-index="{i}" data-name="{name_escaped.lower()}" data-email="{email_escaped.lower()}" 
@@ -706,7 +706,7 @@ Example Usage:
                             </td>
                             <td onclick="event.stopPropagation()">
                                 <button class="action-btn info-btn" onclick="showObjectInfo_{container_id}({i})">Info</button>
-                                <button class="action-btn path-btn" onclick="copyPath_{container_id}('{html.escape(str(obj.private_path))}')">Path</button>
+                                <button class="action-btn path-btn" onclick="copyPath_{container_id}('{html_module.escape(str(obj.private_path))}')">Path</button>
                                 <button class="action-btn delete-btn" onclick="alert('Delete requires server connection')">
                                     <svg style="width: 0.75rem; height: 0.75rem; display: inline;" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path d="M3 6h18"></path>
