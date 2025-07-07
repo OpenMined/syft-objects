@@ -258,6 +258,18 @@ class ObjectsCollection:
                 if str(obj.uid) == index:
                     return obj
             raise KeyError(f"Object with UID '{index}' not found")
+        
+        # Warn about negative indices due to race conditions
+        if isinstance(index, int) and index < 0:
+            import warnings
+            warnings.warn(
+                f"⚠️  Negative index access (objects[{index}]) may be subject to race conditions. "
+                "New objects from other processes or network sources could shift positions. "
+                "Consider using objects['<uid>'] for stable access.",
+                UserWarning,
+                stacklevel=2
+            )
+        
         # For integer indices, objects are sorted by created_at (oldest first)
         # so objects[0] returns oldest, objects[-1] returns newest
         return self._objects[index]

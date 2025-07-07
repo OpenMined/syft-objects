@@ -1,6 +1,7 @@
 """Test the new indexing behavior for ObjectsCollection"""
 
 import pytest
+import warnings
 from datetime import datetime, timezone, timedelta
 from uuid import uuid4
 from unittest.mock import MagicMock, patch
@@ -40,7 +41,16 @@ class TestObjectsCollectionIndexing:
         # Verify sorting happens on access
         assert collection[0].name == "oldest"
         assert collection[1].name == "middle"
-        assert collection[-1].name == "newest"
+        
+        # Test negative index with warning
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = collection[-1]
+            assert result.name == "newest"
+            assert len(w) == 1
+            assert "race conditions" in str(w[0].message)
+            assert "objects[-1]" in str(w[0].message)
+            assert "objects['<uid>']" in str(w[0].message)
     
     def test_uid_lookup(self):
         """Test that objects['uid'] works for UID lookup"""
@@ -88,8 +98,12 @@ class TestObjectsCollectionIndexing:
         assert collection[0].name == "obj0"  # Oldest
         assert collection[2].name == "obj2"  # Middle
         assert collection[4].name == "obj4"  # Same as -1
-        assert collection[-1].name == "obj4"  # Newest
-        assert collection[-2].name == "obj3"  # Second newest
+        
+        # Test negative indices (with warning suppression for this test)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            assert collection[-1].name == "obj4"  # Newest
+            assert collection[-2].name == "obj3"  # Second newest
     
     def test_empty_collection(self):
         """Test indexing on empty collection"""
@@ -136,6 +150,33 @@ class TestObjectsCollectionIndexing:
         assert collection[0].name == "no_timestamp"
         assert collection[1].name == "has_updated"
         assert collection[2].name == "has_created"
+    
+    def test_negative_index_warning(self):
+        """Test that negative indices trigger a warning about race conditions"""
+        now = datetime.now(timezone.utc)
+        objects = [
+            create_test_object(f"obj{i}", now - timedelta(hours=3-i))
+            for i in range(3)
+        ]
+        
+        collection = ObjectsCollection(objects=objects)
+        
+        # Test various negative indices trigger warnings
+        negative_indices = [-1, -2, -3]
+        for idx in negative_indices:
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                _ = collection[idx]
+                assert len(w) == 1
+                assert "race conditions" in str(w[0].message)
+                assert f"objects[{idx}]" in str(w[0].message)
+        
+        # Test positive indices don't trigger warnings
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            _ = collection[0]
+            _ = collection[1]
+            assert len(w) == 0
     
     @patch('syft_objects.collections.get_syftbox_client')
     def test_load_and_sort(self, mock_client):

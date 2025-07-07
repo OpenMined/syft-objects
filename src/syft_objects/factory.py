@@ -398,7 +398,9 @@ def syobj(
         if create_syftbox_permissions:
             syft_obj._create_syftbox_permissions(Path(final_syftobj_path))
     
-    return syft_obj
+    # Return wrapped object with clean API
+    from .clean_api import wrap_syft_object
+    return wrap_syft_object(syft_obj)
 
 
 def _create_mock_folder_structure(source: Path, target: Path):
