@@ -742,7 +742,7 @@ Example Usage:
         """
         
         # Prepare all rows data
-        items_per_page = 10
+        items_per_page = 50
         total_objects = len(self._objects)
         total_pages = max(1, (total_objects + items_per_page - 1) // items_per_page)
         
@@ -849,6 +849,13 @@ Example Usage:
         window['{container_id}_itemsPerPage'] = {items_per_page};
         window['{container_id}_totalObjects'] = {total_objects};
         
+        // Helper function to escape HTML
+        function escapeHtml_{container_id}(text) {{
+            var div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }}
+        
         function copyObjectCode_{container_id}(index) {{
             var objects = window['{container_id}_objects'];
             var obj = objects[index];
@@ -931,11 +938,17 @@ Example Usage:
                 var tr = document.createElement('tr');
                 tr.onclick = function(idx) {{ return function() {{ copyObjectCode_{container_id}(idx); }}; }}(i);
                 tr.style.cursor = 'pointer';
+                
+                // Escape all user-provided content
+                var escapedName = escapeHtml_{container_id}(name);
+                var escapedDesc = escapeHtml_{container_id}(description);
+                var escapedEmail = escapeHtml_{container_id}(email);
+                
                 tr.innerHTML = '<td><input type="checkbox" class="checkbox" disabled></td>' +
                     '<td>' + (i + 1) + '</td>' +
-                    '<td><div class="truncate" style="font-weight: 500;" title="' + name + '">' + name + '</div></td>' +
-                    '<td><div class="truncate" style="color: #6b7280;" title="' + description + '">' + description + '</div></td>' +
-                    '<td><div class="admin-email"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span class="truncate">' + email + '</span></div></td>' +
+                    '<td><div class="truncate" style="font-weight: 500;" title="' + escapedName + '">' + escapedName + '</div></td>' +
+                    '<td><div class="truncate" style="color: #6b7280;" title="' + escapedDesc + '">' + escapedDesc + '</div></td>' +
+                    '<td><div class="admin-email"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span class="truncate">' + escapedEmail + '</span></div></td>' +
                     '<td><span class="uid-text">' + uidShort + '</span></td>' +
                     '<td><div class="date-text"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg><span class="truncate">' + created + '</span></div></td>' +
                     '<td><span class="type-badge">' + fileType + '</span></td>' +
