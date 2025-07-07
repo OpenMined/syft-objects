@@ -454,7 +454,7 @@ Example Usage:
         import html as html_module
         from pathlib import Path
         
-        container_id = f"syft-widget-{uuid.uuid4().hex[:8]}"
+        container_id = f"syft_widget_{uuid.uuid4().hex[:8]}"
         self._ensure_loaded()
         
         # Styles that match the real widget
@@ -754,7 +754,7 @@ Example Usage:
             html += f"""
                         <tr onclick="copyObjectCode_{container_id}({i})" style="cursor: pointer;">
                             <td><input type="checkbox" class="checkbox" disabled></td>
-                            <td>{i + 1}</td>
+                            <td>{i}</td>
                             <td><div class="truncate" style="font-weight: 500;" title="{name}">{name}</div></td>
                             <td><div class="truncate" style="color: #6b7280;" title="{description}">{description}</div></td>
                             <td>
@@ -956,7 +956,7 @@ Example Usage:
         import uuid
         from datetime import datetime
         
-        container_id = f"syft-widget-{uuid.uuid4().hex[:8]}"
+        container_id = f"syft_widget_{uuid.uuid4().hex[:8]}"
         
         # Ensure objects are loaded
         self._ensure_loaded()
@@ -1351,7 +1351,7 @@ Example Usage:
                             <td class="checkbox-cell" onclick="event.stopPropagation()">
                                 <input type="checkbox" onchange="updateSelection_{container_id}()">
                             </td>
-                            <td class="index-cell">{i + 1}</td>
+                            <td class="index-cell">{i}</td>
                             <td class="name-cell truncate" title="{name_escaped}">{name_escaped}</td>
                             <td class="truncate" title="{desc_escaped}">{desc_escaped}</td>
                             <td class="admin-cell truncate" title="{email_escaped}">
