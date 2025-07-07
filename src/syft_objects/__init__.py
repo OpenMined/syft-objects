@@ -1,36 +1,36 @@
 # syft-objects - Distributed file discovery and addressing system 
 
-__version__ = "0.6.24"
+__version__ = "0.6.26"
 
-# Core imports
-from .models import SyftObject
-from .data_accessor import DataAccessor
+# Internal imports (hidden from public API)
+from . import models as _models
+from . import data_accessor as _data_accessor
+from . import factory as _factory
+from . import collections as _collections
+from . import utils as _utils
+from . import client as _client
+from . import auto_install as _auto_install
+from . import permissions as _permissions
+from . import file_ops as _file_ops
+from . import display as _display
+
+# Public API - only expose essential user-facing functionality
 from .factory import syobj
 from .collections import ObjectsCollection
-from .utils import scan_for_syft_objects, load_syft_objects_from_directory
-from .client import check_syftbox_status, get_syft_objects_port, get_syft_objects_url
-from .auto_install import ensure_syftbox_app_installed
 
 # Create global objects collection instance
 objects = ObjectsCollection()
 
-# Export main classes and functions
+# Export only the essential public API
 __all__ = [
-    "SyftObject", 
-    "DataAccessor",
-    "syobj", 
-    "objects", 
-    "ObjectsCollection",
-    "scan_for_syft_objects",
-    "load_syft_objects_from_directory",
-    "get_syft_objects_port",
-    "get_syft_objects_url"
+    "syobj",     # Factory function for creating objects
+    "objects",   # Global collection instance
 ]
 
-# Check SyftBox status - only show banner if there are issues or delays
-check_syftbox_status()
-ensure_syftbox_app_installed(silent=True)
+# Internal setup (hidden from user)
+_client.check_syftbox_status()
+_auto_install.ensure_syftbox_app_installed(silent=True)
 
-# Import _print_startup_banner here to avoid circular imports
+# Import startup banner (hidden)
 from .client import _print_startup_banner
 _print_startup_banner(only_if_needed=True)

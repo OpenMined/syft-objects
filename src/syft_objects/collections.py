@@ -391,7 +391,6 @@ Example Usage:
         """Generate a simple, reliable fallback widget for Jupyter"""
         import uuid
         import html as html_module
-        from pathlib import Path
         
         container_id = f"syft-widget-{uuid.uuid4().hex[:8]}"
         self._ensure_loaded()
@@ -414,18 +413,6 @@ Example Usage:
             padding: 10px 15px;
             border-bottom: 1px solid #e5e7eb;
             font-weight: 600;
-        }}
-        #{container_id} .controls {{
-            padding: 10px 15px;
-            background: white;
-            border-bottom: 1px solid #e5e7eb;
-        }}
-        #{container_id} .search-box {{
-            padding: 6px 10px;
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
-            width: 300px;
-            font-size: 12px;
         }}
         #{container_id} .table-container {{
             overflow-x: auto;
@@ -462,142 +449,12 @@ Example Usage:
             text-overflow: ellipsis;
             white-space: nowrap;
         }}
-        #{container_id} details {{
-            margin: 0 2px;
-            display: inline-block;
-        }}
-        #{container_id} summary {{
-            cursor: pointer;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 10px;
-            display: inline-block;
-            border: 1px solid transparent;
-        }}
-        #{container_id} summary:hover {{
-            opacity: 0.8;
-        }}
-        #{container_id} details[data-type="info"] summary {{
-            background: #dbeafe;
-            color: #1e40af;
-            border-color: #bfdbfe;
-        }}
-        #{container_id} details[data-type="mock"] summary {{
-            background: #e0e7ff;
-            color: #4338ca;
-            border-color: #c7d2fe;
-        }}
-        #{container_id} details[data-type="private"] summary {{
-            background: #f3f4f6;
-            color: #374151;
-            border-color: #e5e7eb;
-        }}
-        #{container_id} details[data-type="code"] summary {{
-            background: #ede9fe;
-            color: #7c3aed;
-            border-color: #ddd6fe;
-        }}
-        #{container_id} .data-content {{
-            background: #f3f4f6;
-            padding: 8px;
-            margin: 4px 0;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 10px;
-            max-height: 200px;
-            overflow: auto;
-            white-space: pre-wrap;
-            word-break: break-all;
-        }}
-        #{container_id} .code-snippet {{
-            background: #1e293b;
-            color: #e2e8f0;
-            padding: 8px;
-            margin: 4px 0;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 10px;
-            overflow-x: auto;
-        }}
-        #{container_id} .info-row {{
-            margin: 2px 0;
-            font-size: 11px;
-        }}
-        #{container_id} .info-label {{
-            font-weight: 600;
-            color: #4b5563;
-        }}
-        #{container_id} .modal {{
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.4);
-        }}
-        #{container_id} .modal-content {{
-            background-color: #fefefe;
-            margin: 5% auto;
-            padding: 20px;
-            border: 1px solid #888;
-            border-radius: 8px;
-            width: 80%;
-            max-width: 800px;
-            max-height: 80vh;
-            overflow-y: auto;
-            position: relative;
-        }}
-        #{container_id} .modal-close {{
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-            line-height: 20px;
-        }}
-        #{container_id} .modal-close:hover {{
-            color: #000;
-        }}
-        #{container_id} .modal-title {{
-            font-size: 1.2rem;
-            font-weight: bold;
-            margin-bottom: 1rem;
-            color: #1f2937;
-        }}
-        #{container_id} .modal-data {{
-            background: #f3f4f6;
-            padding: 1rem;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 0.875rem;
-            white-space: pre-wrap;
-            word-break: break-all;
-            color: #374151;
-            max-height: 500px;
-            overflow-y: auto;
-        }}
         </style>
         
         <div id="{container_id}" style="margin-bottom: 200px;">
             <div class="widget-container">
                 <div class="header">
                     🔐 Objects Collection ({len(self._objects)} total)
-                </div>
-                <div class="controls">
-                    <input type="text" class="search-box" placeholder="Type to filter objects..." 
-                           oninput="
-                               var term = this.value.toLowerCase();
-                               var rows = document.querySelectorAll('#{container_id} tbody tr');
-                               rows.forEach(function(row) {{
-                                   var text = row.textContent.toLowerCase();
-                                   row.style.display = text.includes(term) ? '' : 'none';
-                               }});
-                           ">
-                    <span style="margin-left: 10px; font-size: 11px; color: #6b7280;">
-                        Filter by any field - name, email, UID, etc.
-                    </span>
                 </div>
                 <div class="table-container">
                     <table>
@@ -608,7 +465,6 @@ Example Usage:
                                 <th>Admin</th>
                                 <th style="width: 120px;">UID</th>
                                 <th>Created</th>
-                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -621,39 +477,6 @@ Example Usage:
             uid = str(obj.uid)
             created = obj.created_at.strftime("%m/%d/%Y %H:%M") if hasattr(obj, 'created_at') and obj.created_at else "Unknown"
             
-            # Try to read data files
-            mock_content = None
-            private_content = None
-            
-            try:
-                if hasattr(obj, 'mock_path') and obj.mock_path:
-                    path = Path(obj.mock_path)
-                    if path.exists() and path.is_file():
-                        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
-                            mock_content = f.read(2000)
-                            if len(mock_content) == 2000:
-                                mock_content += "\n\n[... truncated ...]"
-            except:
-                mock_content = "Error reading mock file"
-            
-            try:
-                if hasattr(obj, 'private_path') and obj.private_path:
-                    path = Path(obj.private_path)
-                    if path.exists() and path.is_file():
-                        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
-                            private_content = f.read(2000)
-                            if len(private_content) == 2000:
-                                private_content += "\n\n[... truncated ...]"
-            except:
-                private_content = "Error reading private file"
-            
-            # Escape content for HTML
-            mock_display = html_module.escape(mock_content) if mock_content else "No mock data available"
-            private_display = html_module.escape(private_content) if private_content else "No private data available"
-            
-            # Object info
-            desc = html_module.escape(obj.description or "No description")
-            
             html += f"""
                         <tr>
                             <td style="text-align: center; font-weight: 600;">{i + 1}</td>
@@ -661,12 +484,6 @@ Example Usage:
                             <td class="truncate" title="{email}">{email}</td>
                             <td style="font-family: monospace; font-size: 10px;" title="{uid}">{uid[:8]}...</td>
                             <td style="font-size: 10px;">{created}</td>
-                            <td style="white-space: nowrap;">
-                                <button onclick="showModal_{container_id}({i}, 'info')" style="padding: 2px 6px; border-radius: 3px; font-size: 10px; border: 1px solid #bfdbfe; background: #dbeafe; color: #1e40af; cursor: pointer;">Info</button>
-                                <button onclick="showModal_{container_id}({i}, 'mock')" style="padding: 2px 6px; border-radius: 3px; font-size: 10px; border: 1px solid #c7d2fe; background: #e0e7ff; color: #4338ca; cursor: pointer;">Mock</button>
-                                <button onclick="showModal_{container_id}({i}, 'private')" style="padding: 2px 6px; border-radius: 3px; font-size: 10px; border: 1px solid #e5e7eb; background: #f3f4f6; color: #374151; cursor: pointer;">Private</button>
-                                <button onclick="showModal_{container_id}({i}, 'code')" style="padding: 2px 6px; border-radius: 3px; font-size: 10px; border: 1px solid #ddd6fe; background: #ede9fe; color: #7c3aed; cursor: pointer;">Code</button>
-                            </td>
                         </tr>
             """
         
@@ -675,76 +492,7 @@ Example Usage:
                     </table>
                 </div>
             </div>
-            
-            <!-- Modal for displaying data -->
-            <div id="{container_id}-modal" class="modal" onclick="if (event.target === this) this.style.display='none'">
-                <div class="modal-content">
-                    <span class="modal-close" onclick="document.getElementById('{container_id}-modal').style.display='none'">&times;</span>
-                    <div class="modal-title" id="{container_id}-modal-title">Data Viewer</div>
-                    <div id="{container_id}-modal-body"></div>
-                </div>
-            </div>
         </div>
-        
-        <script>
-        // Store data for modal access
-        window['{container_id}_objects'] = {self._objects_data_json()};
-        
-        function showModal_{container_id}(index, type) {{
-            var modal = document.getElementById('{container_id}-modal');
-            var modalTitle = document.getElementById('{container_id}-modal-title');
-            var modalBody = document.getElementById('{container_id}-modal-body');
-            var objects = window['{container_id}_objects'];
-            var obj = objects[index];
-            
-            if (!obj) return;
-            
-            if (type === 'info') {{
-                modalTitle.textContent = 'Object Information - ' + obj.name;
-                modalBody.innerHTML = `
-                    <div style="font-size: 0.9rem; line-height: 1.6;">
-                        <div><strong>Name:</strong> ${{obj.name}}</div>
-                        <div><strong>UID:</strong> <code style="background: #f3f4f6; padding: 2px 4px; border-radius: 3px;">${{obj.uid}}</code></div>
-                        <div><strong>Created:</strong> ${{obj.created_at || 'Unknown'}}</div>
-                        <div><strong>Description:</strong> ${{obj.description || 'No description'}}</div>
-                        <div><strong>Private URL:</strong> <code style="background: #f3f4f6; padding: 2px 4px; border-radius: 3px; word-break: break-all;">${{obj.private_url || 'N/A'}}</code></div>
-                        <div><strong>Mock URL:</strong> <code style="background: #f3f4f6; padding: 2px 4px; border-radius: 3px; word-break: break-all;">${{obj.mock_url || 'N/A'}}</code></div>
-                    </div>
-                `;
-            }} else if (type === 'mock') {{
-                modalTitle.textContent = 'Mock Data - ' + obj.name;
-                var content = obj.mock_data || 'No mock data available';
-                var div = document.createElement('div');
-                div.className = 'modal-data';
-                div.textContent = content;
-                modalBody.innerHTML = '';
-                modalBody.appendChild(div);
-            }} else if (type === 'private') {{
-                modalTitle.textContent = 'Private Data - ' + obj.name;
-                var content = obj.private_data || 'No private data available';
-                var div = document.createElement('div');
-                div.className = 'modal-data';
-                div.textContent = content;
-                modalBody.innerHTML = '';
-                modalBody.appendChild(div);
-            }} else if (type === 'code') {{
-                modalTitle.textContent = 'Access Code - ' + obj.name;
-                modalBody.innerHTML = `
-                    <pre style="background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 4px; overflow-x: auto;"># Access this object
-obj = so.objects[${{index}}]
-
-# Get data
-mock_data = obj.mock
-private_data = obj.private
-
-# Or access by UID
-obj = so.objects["${{obj.uid}}"]</pre>
-                `;
-            }}
-            
-            modal.style.display = 'block';
-        }}
-        </script>
         """
         
         return html
