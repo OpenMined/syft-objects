@@ -22,16 +22,23 @@ uv venv --python 3.12
 export VIRTUAL_ENV="$(pwd)/.venv"
 export PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Install only core dependencies needed for the server
+# Install only core dependencies needed for the server and library
 echo "📦 Installing minimal server dependencies..."
 # Install syft-objects package without dependencies
 uv pip install -e . --no-deps
-# Install only the minimal server dependencies
+# Install minimal dependencies for server + syft-objects core functionality
 uv pip install \
     "fastapi>=0.104.0" \
     "uvicorn>=0.24.0" \
     "loguru>=0.7.0" \
-    "pydantic>=2.0.0"
+    "pydantic>=2.0.0" \
+    "pyyaml>=6.0" \
+    "syft-perm>=0.1.0" \
+    "syft-core>=0.2.5" \
+    "requests>=2.32.4" \
+    "python-multipart>=0.0.20" \
+    "build>=1.2.2.post1" \
+    "twine>=6.1.0"
 # Install optional performance enhancements if available (but don't fail if not)
 echo "📦 Installing optional performance enhancements..."
 uv pip install "uvloop>=0.17.0" "httptools>=0.6.0" || echo "⚠️  Optional performance dependencies skipped"
@@ -57,7 +64,7 @@ echo "🚀 Starting 100% Python FastAPI server with integrated HTML generation..
 # Check if optional performance dependencies are available
 if python -c "import uvloop" 2>/dev/null && python -c "import httptools" 2>/dev/null; then
     echo "✅ Running with performance optimizations (uvloop + httptools)"
-    uv run uvicorn backend.fast_main:app \
+    uv run --no-sync uvicorn backend.fast_main:app \
         --host 0.0.0.0 \
         --port $SYFTBOX_ASSIGNED_PORT \
         --reload \
@@ -69,7 +76,7 @@ if python -c "import uvloop" 2>/dev/null && python -c "import httptools" 2>/dev/
         --date-header
 else
     echo "⚡ Running with standard event loop"
-    uv run uvicorn backend.fast_main:app \
+    uv run --no-sync uvicorn backend.fast_main:app \
         --host 0.0.0.0 \
         --port $SYFTBOX_ASSIGNED_PORT \
         --reload \
