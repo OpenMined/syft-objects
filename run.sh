@@ -22,23 +22,19 @@ uv venv --python 3.12
 export VIRTUAL_ENV="$(pwd)/.venv"
 export PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Install only core dependencies needed for the server (no data libraries)
+# Install only core dependencies needed for the server
 echo "📦 Installing minimal server dependencies..."
-# Use pip to install only the main dependencies, not dev/optional ones
+# Install syft-objects package without dependencies
 uv pip install -e . --no-deps
-# Then install only the required dependencies from pyproject.toml
+# Install only the minimal server dependencies
 uv pip install \
-    "pydantic>=2.0.0" \
-    "pyyaml>=6.0" \
-    "syft-perm>=0.1.0" \
     "fastapi>=0.104.0" \
-    "uvicorn[standard]>=0.24.0" \
+    "uvicorn>=0.24.0" \
     "loguru>=0.7.0" \
-    "syft-core>=0.2.5" \
-    "requests>=2.32.4" \
-    "uvloop>=0.17.0" \
-    "httptools>=0.6.0" \
-    "python-multipart>=0.0.20"
+    "pydantic>=2.0.0"
+# Install optional performance enhancements if available (but don't fail if not)
+echo "📦 Installing optional performance enhancements..."
+uv pip install "uvloop>=0.17.0" "httptools>=0.6.0" || echo "⚠️  Optional performance dependencies skipped"
 
 # NO FRONTEND BUILD NEEDED - Pure Python serves HTML directly!
 echo "✅ Pure Python implementation - No frontend build required!"
@@ -57,14 +53,28 @@ echo "$SYFTBOX_ASSIGNED_PORT" > ~/.syftbox/syft_objects.config
 echo "🌐 Starting Pure Python Syft Objects UI on port $SYFTBOX_ASSIGNED_PORT..."
 echo "🚀 Starting 100% Python FastAPI server with integrated HTML generation..."
 
-# Pure Python FastAPI server startup with optimizations and hot reload
-uv run uvicorn backend.fast_main:app \
-    --host 0.0.0.0 \
-    --port $SYFTBOX_ASSIGNED_PORT \
-    --reload \
-    --loop uvloop \
-    --http httptools \
-    --access-log \
-    --use-colors \
-    --server-header \
-    --date-header 
+# Pure Python FastAPI server startup with hot reload
+# Check if optional performance dependencies are available
+if python -c "import uvloop" 2>/dev/null && python -c "import httptools" 2>/dev/null; then
+    echo "✅ Running with performance optimizations (uvloop + httptools)"
+    uv run uvicorn backend.fast_main:app \
+        --host 0.0.0.0 \
+        --port $SYFTBOX_ASSIGNED_PORT \
+        --reload \
+        --loop uvloop \
+        --http httptools \
+        --access-log \
+        --use-colors \
+        --server-header \
+        --date-header
+else
+    echo "⚡ Running with standard event loop"
+    uv run uvicorn backend.fast_main:app \
+        --host 0.0.0.0 \
+        --port $SYFTBOX_ASSIGNED_PORT \
+        --reload \
+        --access-log \
+        --use-colors \
+        --server-header \
+        --date-header
+fi 

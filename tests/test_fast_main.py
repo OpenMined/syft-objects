@@ -456,6 +456,10 @@ class TestFastAPIEndpoints:
         mock_obj.private_path = str(private_file)
         mock_obj.mock_path = str(mock_file)
         mock_obj.syftobject_path = str(syftobj_file)
+        # Ensure it's not detected as a folder
+        mock_obj.is_folder = False
+        mock_obj.object_type = 'file'
+        mock_obj.metadata = {}
         
         mock_objects.__iter__ = Mock(return_value=iter([mock_obj]))
         
