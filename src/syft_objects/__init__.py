@@ -34,3 +34,19 @@ _auto_install.ensure_syftbox_app_installed(silent=True)
 # Import startup banner (hidden)
 from .client import _print_startup_banner
 _print_startup_banner(only_if_needed=True)
+
+# Clean up namespace - remove any accidentally exposed internal modules
+import sys
+_current_module = sys.modules[__name__]
+_internal_modules = ['models', 'data_accessor', 'factory', 'collections', 'utils', 
+                     'client', 'auto_install', 'permissions', 'file_ops', 'display',
+                     'ObjectsCollection', 'sys']  # Hide all internal modules and classes
+for _attr_name in _internal_modules:
+    if hasattr(_current_module, _attr_name):
+        delattr(_current_module, _attr_name)
+
+# Update __all__ to only include the two essential items
+__all__ = [
+    "syobj",     # Factory function for creating objects
+    "objects",   # Global collection instance
+]
