@@ -388,6 +388,254 @@ Example Usage:
         return json.dumps(objects_data)
     
     def _generate_fallback_widget(self):
+        """Generate a simple, reliable fallback widget for Jupyter"""
+        import uuid
+        import html as html_module
+        from pathlib import Path
+        
+        container_id = f"syft-widget-{uuid.uuid4().hex[:8]}"
+        self._ensure_loaded()
+        
+        # Simple styles
+        html = f"""
+        <style>
+        #{container_id} {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 12px;
+        }}
+        #{container_id} .widget-container {{
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            overflow: hidden;
+            max-height: 400px;
+        }}
+        #{container_id} .header {{
+            background: #f9fafb;
+            padding: 10px 15px;
+            border-bottom: 1px solid #e5e7eb;
+            font-weight: 600;
+        }}
+        #{container_id} .controls {{
+            padding: 10px 15px;
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+        }}
+        #{container_id} .search-box {{
+            padding: 6px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            width: 300px;
+            font-size: 12px;
+        }}
+        #{container_id} .table-container {{
+            overflow: auto;
+            max-height: 300px;
+        }}
+        #{container_id} table {{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }}
+        #{container_id} th {{
+            background: #f9fafb;
+            padding: 8px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #e5e7eb;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }}
+        #{container_id} td {{
+            padding: 6px 8px;
+            border-bottom: 1px solid #f3f4f6;
+            vertical-align: top;
+        }}
+        #{container_id} tr:hover {{
+            background: #f9fafb;
+        }}
+        #{container_id} .truncate {{
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }}
+        #{container_id} details {{
+            margin: 2px 0;
+        }}
+        #{container_id} summary {{
+            cursor: pointer;
+            padding: 2px 6px;
+            background: #e0e7ff;
+            border-radius: 3px;
+            font-size: 10px;
+            color: #4338ca;
+            display: inline-block;
+        }}
+        #{container_id} summary:hover {{
+            background: #c7d2fe;
+        }}
+        #{container_id} .data-content {{
+            background: #f3f4f6;
+            padding: 8px;
+            margin: 4px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 10px;
+            max-height: 200px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }}
+        #{container_id} .code-snippet {{
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 8px;
+            margin: 4px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 10px;
+            overflow-x: auto;
+        }}
+        #{container_id} .info-row {{
+            margin: 2px 0;
+            font-size: 11px;
+        }}
+        #{container_id} .info-label {{
+            font-weight: 600;
+            color: #4b5563;
+        }}
+        </style>
+        
+        <div id="{container_id}">
+            <div class="widget-container">
+                <div class="header">
+                    🔐 Objects Collection ({len(self._objects)} total)
+                </div>
+                <div class="controls">
+                    <input type="text" class="search-box" placeholder="Type to filter objects..." 
+                           oninput="
+                               var term = this.value.toLowerCase();
+                               var rows = document.querySelectorAll('#{container_id} tbody tr');
+                               rows.forEach(function(row) {{
+                                   var text = row.textContent.toLowerCase();
+                                   row.style.display = text.includes(term) ? '' : 'none';
+                               }});
+                           ">
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">#</th>
+                                <th>Name</th>
+                                <th>Admin</th>
+                                <th style="width: 120px;">UID</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        """
+        
+        # Add rows
+        for i, obj in enumerate(self._objects):
+            name = html_module.escape(obj.name or "Unnamed Object")
+            email = html_module.escape(self._get_object_email(obj))
+            uid = str(obj.uid)
+            created = obj.created_at.strftime("%m/%d/%Y %H:%M") if hasattr(obj, 'created_at') and obj.created_at else "Unknown"
+            
+            # Try to read data files
+            mock_content = None
+            private_content = None
+            
+            try:
+                if hasattr(obj, 'mock_path') and obj.mock_path:
+                    path = Path(obj.mock_path)
+                    if path.exists() and path.is_file():
+                        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+                            mock_content = f.read(2000)
+                            if len(mock_content) == 2000:
+                                mock_content += "\n\n[... truncated ...]"
+            except:
+                mock_content = "Error reading mock file"
+            
+            try:
+                if hasattr(obj, 'private_path') and obj.private_path:
+                    path = Path(obj.private_path)
+                    if path.exists() and path.is_file():
+                        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+                            private_content = f.read(2000)
+                            if len(private_content) == 2000:
+                                private_content += "\n\n[... truncated ...]"
+            except:
+                private_content = "Error reading private file"
+            
+            # Escape content for HTML
+            mock_display = html_module.escape(mock_content) if mock_content else "No mock data available"
+            private_display = html_module.escape(private_content) if private_content else "No private data available"
+            
+            # Object info
+            desc = html_module.escape(obj.description or "No description")
+            
+            html += f"""
+                        <tr>
+                            <td style="text-align: center; font-weight: 600;">{i + 1}</td>
+                            <td class="truncate" title="{name}"><strong>{name}</strong></td>
+                            <td class="truncate" title="{email}">{email}</td>
+                            <td style="font-family: monospace; font-size: 10px;" title="{uid}">{uid[:8]}...</td>
+                            <td style="font-size: 10px;">{created}</td>
+                            <td>
+                                <details>
+                                    <summary>Info</summary>
+                                    <div class="data-content">
+                                        <div class="info-row"><span class="info-label">Name:</span> {name}</div>
+                                        <div class="info-row"><span class="info-label">UID:</span> {uid}</div>
+                                        <div class="info-row"><span class="info-label">Admin:</span> {email}</div>
+                                        <div class="info-row"><span class="info-label">Created:</span> {created}</div>
+                                        <div class="info-row"><span class="info-label">Description:</span> {desc}</div>
+                                        <div class="info-row"><span class="info-label">Private URL:</span> {getattr(obj, 'private_url', 'N/A')}</div>
+                                        <div class="info-row"><span class="info-label">Mock URL:</span> {getattr(obj, 'mock_url', 'N/A')}</div>
+                                    </div>
+                                </details>
+                                
+                                <details>
+                                    <summary>Mock</summary>
+                                    <div class="data-content">{mock_display}</div>
+                                </details>
+                                
+                                <details>
+                                    <summary>Private</summary>
+                                    <div class="data-content">{private_display}</div>
+                                </details>
+                                
+                                <details>
+                                    <summary>Code</summary>
+                                    <div class="code-snippet"># Access this object
+obj = so.objects[{i}]
+
+# Get data
+mock_data = obj.mock
+private_data = obj.private
+
+# Or access by UID
+obj = so.objects["{uid}"]</div>
+                                </details>
+                            </td>
+                        </tr>
+            """
+        
+        html += """
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        """
+        
+        return html
+    
+    def _generate_fallback_widget_broken(self):
         """Generate a local HTML widget that matches the iframe UI when server is unavailable"""
         import uuid
         from datetime import datetime
@@ -721,23 +969,21 @@ Example Usage:
                             <circle cx="11" cy="11" r="8"></circle>
                             <path d="m21 21-4.3-4.3"></path>
                         </svg>
-                        <input type="text" class="search-input" placeholder="Search objects..." 
-                               onkeyup="filterFallbackTable_{container_id}(this.value)">
+                        <input type="text" class="search-input" placeholder="Search objects..." id="{container_id}-search">
                     </div>
                     <div class="filter-wrapper">
                         <svg class="filter-icon" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                         </svg>
-                        <input type="text" class="filter-input" placeholder="Filter by Admin..." 
-                               onkeyup="filterByAdmin_{container_id}(this.value)">
+                        <input type="text" class="filter-input" placeholder="Filter by Admin..." id="{container_id}-filter">
                     </div>
-                    <button class="btn-primary" onclick="searchFallback_{container_id}()">Search</button>
-                    <button class="btn-secondary" onclick="clearFallback_{container_id}()">Clear</button>
-                    <button class="btn-success" onclick="alert('New object creation requires server connection')">New</button>
-                    <button class="btn-primary" onclick="selectAllFallback_{container_id}()">Select All</button>
-                    <button class="btn-primary" onclick="generateCode_{container_id}()">Generate Code</button>
-                    <button class="btn-gray" onclick="alert('Open in window requires server connection')">Open in Window</button>
-                    <button class="btn-gray" title="Reinstall requires server connection" onclick="alert('Reinstall requires server connection')">🔄</button>
+                    <button class="btn-primary" data-action="search">Search</button>
+                    <button class="btn-secondary" data-action="clear">Clear</button>
+                    <button class="btn-success" data-action="new">New</button>
+                    <button class="btn-primary" data-action="selectAll">Select All</button>
+                    <button class="btn-primary" data-action="generateCode">Generate Code</button>
+                    <button class="btn-gray" data-action="openWindow">Open in Window</button>
+                    <button class="btn-gray" title="Reinstall requires server connection" data-action="reinstall">🔄</button>
                 </div>
             </div>
             <div class="table-container">
@@ -841,8 +1087,14 @@ Example Usage:
         </div>
         
         <script>
-        // Search and filter functions
-        function filterFallbackTable_{container_id}(searchTerm) {{
+        // Immediately execute to set up the widget
+        (function() {{
+            console.log('Setting up widget {container_id}');
+            
+            // Make functions globally available for onclick handlers
+            window.syftWidget_{container_id} = {{
+                filterTable: function(searchTerm) {{
+                    console.log('Filtering table with:', searchTerm);
             const rows = document.querySelectorAll('#{container_id} tbody tr');
             const term = searchTerm.toLowerCase();
             
