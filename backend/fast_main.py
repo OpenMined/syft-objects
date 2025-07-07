@@ -852,6 +852,45 @@ async def delete_object(object_uid: str) -> Dict[str, Any]:
                         if folder_path:
                             break
                 
+                # Strategy 3: Check folder paths in metadata with validation
+                if not folder_path and hasattr(target_obj, 'metadata') and target_obj.metadata:
+                    folder_paths = target_obj.metadata.get('_folder_paths', {})
+                    if 'private' in folder_paths:
+                        metadata_path = PathLib(folder_paths['private'])
+                        logger.info(f"Found folder path via metadata: {metadata_path}")
+                        
+                        # Check if the metadata path actually exists
+                        if metadata_path.exists() and metadata_path.is_dir():
+                            folder_path = metadata_path
+                            logger.info(f"Metadata path exists and is valid")
+                        else:
+                            logger.warning(f"Metadata path doesn't exist: {metadata_path}")
+                            logger.info(f"Checking if job moved to different status folder...")
+                            
+                            # The metadata path is stale - search for the job in current location
+                            job_uid = str(target_obj.uid)
+                            potential_bases = [
+                                PathLib.home() / "SyftBox" / "datasites",
+                                PathLib("/tmp"),  # fallback
+                            ]
+                            
+                            for base in potential_bases:
+                                if base.exists():
+                                    # Search for job directories with this UID across all status folders
+                                    for queue_dir in base.rglob("**/syft-queues"):
+                                        for status_dir in ["running", "completed", "failed", "inbox"]:  # prioritize current status
+                                            for job_dir in queue_dir.rglob(f"*/jobs/{status_dir}/*{job_uid}*"):
+                                                if job_dir.is_dir():
+                                                    folder_path = job_dir
+                                                    logger.info(f"Found job in {status_dir} folder: {folder_path}")
+                                                    break
+                                            if folder_path:
+                                                break
+                                        if folder_path:
+                                            break
+                                if folder_path:
+                                    break
+                
                 # Fallback to private_path if it's a directory
                 if not folder_path and target_obj.private_path:
                     private_path = PathLib(target_obj.private_path)
@@ -869,6 +908,11 @@ async def delete_object(object_uid: str) -> Dict[str, Any]:
                     logger.warning(f"Could not determine folder path for {object_uid}, falling back to individual file deletion")
                     logger.warning(f"   private_path: {target_obj.private_path}")
                     logger.warning(f"   syftobject_path: {target_obj.syftobject_path}")
+                    logger.warning(f"   metadata: {getattr(target_obj, 'metadata', {})}")
+                    if folder_path:
+                        logger.warning(f"   folder_path found but invalid: {folder_path}")
+                        logger.warning(f"   exists: {folder_path.exists()}")
+                        logger.warning(f"   is_dir: {folder_path.is_dir() if folder_path.exists() else 'N/A'}")
                     is_folder = False
             except Exception as e:
                 logger.warning(f"Failed to delete folder directory: {e}")
