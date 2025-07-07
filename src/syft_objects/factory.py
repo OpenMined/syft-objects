@@ -192,7 +192,7 @@ def syobj(
             metadata=clean_metadata,
             syftobject_permissions=discovery_read or ["public"],
             mock_permissions=mock_read or ["public"],
-            mock_write_permissions=mock_write or [],
+            mock_write_permissions=mock_write or [email],  # Admin should have write access to mock by default
             private_permissions=private_read or [email],
             private_write_permissions=private_write or [email]
         )
@@ -287,7 +287,7 @@ def syobj(
     # === PERMISSION HANDLING ===
     final_discovery_read = discovery_read or ["public"]
     final_mock_read = mock_read or ["public"]
-    final_mock_write = mock_write or []
+    final_mock_write = mock_write or [email]  # Admin should have write access to mock by default
     final_private_read = private_read or [email]
     final_private_write = private_write or [email]
     
