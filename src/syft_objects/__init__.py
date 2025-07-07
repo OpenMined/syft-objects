@@ -1,6 +1,6 @@
 # syft-objects - Distributed file discovery and addressing system 
 
-__version__ = "0.6.27"
+__version__ = "0.6.28"
 
 # Internal imports (hidden from public API)
 from . import models as _models
@@ -46,52 +46,39 @@ def create_object(name=None, **kwargs):
     Returns:
         SyftObject: The newly created object
     """
-    return syobj(name, **kwargs)
+    # Use the internal factory module's syobj function
+    return _factory.syobj(name, **kwargs)
 
-def delete_object(identifier):
-    """Delete a SyftObject by index or UID.
+def delete_object(uid):
+    """Delete a SyftObject by UID.
     
     Args:
-        identifier: Either an integer index or string UID
+        uid: String UID of the object to delete
         
     Returns:
         bool: True if deletion was successful, False otherwise
         
     Raises:
-        IndexError: If index is out of range
         KeyError: If UID is not found
-        TypeError: If identifier is not int or str
+        TypeError: If uid is not a string
     """
-    if isinstance(identifier, int):
-        # Delete by index
-        if 0 <= identifier < len(objects):
-            obj = objects[identifier]
-            result = obj.delete()
-            if result:
-                # Refresh the collection after successful deletion
-                objects.refresh()
-            return result
-        else:
-            raise IndexError(f"Index {identifier} out of range. Collection has {len(objects)} objects.")
-    elif isinstance(identifier, str):
-        # Delete by UID
-        try:
-            obj = objects[identifier]  # This uses the UID lookup
-            result = obj.delete()
-            if result:
-                # Refresh the collection after successful deletion
-                objects.refresh()
-            return result
-        except KeyError:
-            raise KeyError(f"Object with UID '{identifier}' not found")
-    else:
-        raise TypeError(f"Identifier must be int (index) or str (UID), not {type(identifier).__name__}")
+    if not isinstance(uid, str):
+        raise TypeError(f"UID must be str, not {type(uid).__name__}")
+    
+    try:
+        obj = objects[uid]  # This uses the UID lookup
+        result = obj.delete()
+        if result:
+            # Refresh the collection after successful deletion
+            objects.refresh()
+        return result
+    except KeyError:
+        raise KeyError(f"Object with UID '{uid}' not found")
 
 # Export the essential public API
 __all__ = [
-    "syobj",         # Original factory function (kept for compatibility)
-    "create_object", # Clearer name for creating objects
-    "delete_object", # Explicit deletion function
+    "create_object", # Function for creating objects
+    "delete_object", # Function for deleting objects
     "objects",       # Global collection instance
 ]
 
@@ -108,7 +95,7 @@ import sys
 _current_module = sys.modules[__name__]
 _internal_modules = ['models', 'data_accessor', 'factory', 'collections', 'utils', 
                      'client', 'auto_install', 'permissions', 'file_ops', 'display',
-                     'ObjectsCollection', 'sys']  # Hide all internal modules and classes
+                     'ObjectsCollection', 'sys', 'syobj']  # Hide all internal modules and factory function
 for _attr_name in _internal_modules:
     if hasattr(_current_module, _attr_name):
         delattr(_current_module, _attr_name)
