@@ -19,11 +19,13 @@ class ObjectsCollection:
             self._search_info = None
             self._cached = False
             self._server_ready = False  # Track server readiness
+            self._load_error = None  # Track loading errors
         else:
             self._objects = objects
             self._search_info = search_info
             self._cached = True
             self._server_ready = False
+            self._load_error = None
             # Sort objects by created_at when provided
             self._sort_objects()
 
@@ -72,13 +74,16 @@ class ObjectsCollection:
     def _load_objects(self):
         """Load all available syft objects from connected datasites"""
         self._objects = []
+        self._load_error = None
         
         try:
             if not SYFTBOX_AVAILABLE:
+                self._load_error = "SyftBox not available"
                 return
 
             syftbox_client = get_syftbox_client()
             if not syftbox_client:
+                self._load_error = "Unable to connect to SyftBox client"
                 return
 
             try:
@@ -88,6 +93,7 @@ class ObjectsCollection:
             except Exception as e:
                 if "DEBUG_SYFT_OBJECTS" in os.environ:
                     print(f"Debug: Error getting datasites: {e}")
+                self._load_error = f"Failed to fetch objects: {str(e)}"
                 return
 
             for email in datasites:
@@ -157,8 +163,10 @@ class ObjectsCollection:
                 except Exception:
                     continue
 
-        except Exception:
-            pass
+        except Exception as e:
+            self._load_error = f"Failed to fetch objects: Internal Server Error"
+            if "DEBUG_SYFT_OBJECTS" in os.environ:
+                print(f"Debug: Critical error in _load_objects: {e}")
         
         # Sort objects by created_at (oldest first)
         # This ensures objects[0] returns the oldest and objects[-1] returns the newest
@@ -638,10 +646,43 @@ Example Usage:
             font-size: 0.75rem;
             color: #6b7280;
         }}
+        #{container_id} .error-container {{
+            padding: 2rem;
+            text-align: center;
+            color: #dc2626;
+            background: #fee2e2;
+            border-radius: 0.375rem;
+            margin: 1rem;
+        }}
+        #{container_id} .error-title {{
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }}
+        #{container_id} .error-message {{
+            font-size: 0.875rem;
+            color: #991b1b;
+        }}
         </style>
         
         <div id="{container_id}">
             <div class="widget-container">
+        """
+        
+        # Check if there's an error
+        if self._load_error:
+            html += f"""
+                <div class="error-container">
+                    <div class="error-title">Error</div>
+                    <div class="error-message">{html_module.escape(self._load_error)}</div>
+                </div>
+            </div>
+        </div>
+        """
+            return html
+        
+        # Normal content continues here
+        html += f"""
                 <div class="header">
                     <div class="search-controls">
                         <div style="flex: 1; min-width: 150px;">
