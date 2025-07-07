@@ -15,7 +15,8 @@ from loguru import logger
 from fastapi.staticfiles import StaticFiles
 
 try:
-    from syft_objects import objects, ObjectsCollection
+    from syft_objects import objects
+    from syft_objects.collections import ObjectsCollection
     from syft_objects.models import SyftObject
     from syft_objects.client import get_syftbox_client, SYFTBOX_AVAILABLE
 except ImportError:
