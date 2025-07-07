@@ -527,6 +527,57 @@ Example Usage:
             font-weight: 600;
             color: #4b5563;
         }}
+        #{container_id} .modal {{
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+        }}
+        #{container_id} .modal-content {{
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }}
+        #{container_id} .modal-close {{
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 20px;
+        }}
+        #{container_id} .modal-close:hover {{
+            color: #000;
+        }}
+        #{container_id} .modal-title {{
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            color: #1f2937;
+        }}
+        #{container_id} .modal-data {{
+            background: #f3f4f6;
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.875rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: #374151;
+            max-height: 500px;
+            overflow-y: auto;
+        }}
         </style>
         
         <div id="{container_id}" style="margin-bottom: 200px;">
@@ -611,51 +662,89 @@ Example Usage:
                             <td style="font-family: monospace; font-size: 10px;" title="{uid}">{uid[:8]}...</td>
                             <td style="font-size: 10px;">{created}</td>
                             <td style="white-space: nowrap;">
-                                <details data-type="info" style="position: relative;">
-                                    <summary>Info</summary>
-                                    <div class="data-content" style="position: absolute; right: 0; top: 100%; z-index: 100; background: white; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 400px; margin-top: 2px;">
-                                        <div class="info-row"><span class="info-label">Name:</span> {name}</div>
-                                        <div class="info-row"><span class="info-label">UID:</span> {uid}</div>
-                                        <div class="info-row"><span class="info-label">Admin:</span> {email}</div>
-                                        <div class="info-row"><span class="info-label">Created:</span> {created}</div>
-                                        <div class="info-row"><span class="info-label">Description:</span> {desc}</div>
-                                        <div class="info-row"><span class="info-label">Private URL:</span> {getattr(obj, 'private_url', 'N/A')}</div>
-                                        <div class="info-row"><span class="info-label">Mock URL:</span> {getattr(obj, 'mock_url', 'N/A')}</div>
-                                    </div>
-                                </details>
-                                
-                                <details data-type="mock" style="position: relative;">
-                                    <summary>Mock</summary>
-                                    <div class="data-content" style="position: absolute; right: 0; top: 100%; z-index: 100; background: white; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 400px; max-width: 600px; margin-top: 2px;">{mock_display}</div>
-                                </details>
-                                
-                                <details data-type="private" style="position: relative;">
-                                    <summary>Private</summary>
-                                    <div class="data-content" style="position: absolute; right: 0; top: 100%; z-index: 100; background: white; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 400px; max-width: 600px; margin-top: 2px;">{private_display}</div>
-                                </details>
-                                
-                                <details data-type="code" style="position: relative;">
-                                    <summary>Code</summary>
-                                    <div class="code-snippet" style="position: absolute; right: 0; top: 100%; z-index: 100; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 300px; margin-top: 2px;"># Access this object
-obj = so.objects[{i}]
+                                <button onclick="showModal_{container_id}({i}, 'info')" style="padding: 2px 6px; border-radius: 3px; font-size: 10px; border: 1px solid #bfdbfe; background: #dbeafe; color: #1e40af; cursor: pointer;">Info</button>
+                                <button onclick="showModal_{container_id}({i}, 'mock')" style="padding: 2px 6px; border-radius: 3px; font-size: 10px; border: 1px solid #c7d2fe; background: #e0e7ff; color: #4338ca; cursor: pointer;">Mock</button>
+                                <button onclick="showModal_{container_id}({i}, 'private')" style="padding: 2px 6px; border-radius: 3px; font-size: 10px; border: 1px solid #e5e7eb; background: #f3f4f6; color: #374151; cursor: pointer;">Private</button>
+                                <button onclick="showModal_{container_id}({i}, 'code')" style="padding: 2px 6px; border-radius: 3px; font-size: 10px; border: 1px solid #ddd6fe; background: #ede9fe; color: #7c3aed; cursor: pointer;">Code</button>
+                            </td>
+                        </tr>
+            """
+        
+        html += f"""
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Modal for displaying data -->
+            <div id="{container_id}-modal" class="modal" onclick="if (event.target === this) this.style.display='none'">
+                <div class="modal-content">
+                    <span class="modal-close" onclick="document.getElementById('{container_id}-modal').style.display='none'">&times;</span>
+                    <div class="modal-title" id="{container_id}-modal-title">Data Viewer</div>
+                    <div id="{container_id}-modal-body"></div>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+        // Store data for modal access
+        window['{container_id}_objects'] = {self._objects_data_json()};
+        
+        function showModal_{container_id}(index, type) {{
+            var modal = document.getElementById('{container_id}-modal');
+            var modalTitle = document.getElementById('{container_id}-modal-title');
+            var modalBody = document.getElementById('{container_id}-modal-body');
+            var objects = window['{container_id}_objects'];
+            var obj = objects[index];
+            
+            if (!obj) return;
+            
+            if (type === 'info') {{
+                modalTitle.textContent = 'Object Information - ' + obj.name;
+                modalBody.innerHTML = `
+                    <div style="font-size: 0.9rem; line-height: 1.6;">
+                        <div><strong>Name:</strong> ${{obj.name}}</div>
+                        <div><strong>UID:</strong> <code style="background: #f3f4f6; padding: 2px 4px; border-radius: 3px;">${{obj.uid}}</code></div>
+                        <div><strong>Created:</strong> ${{obj.created_at || 'Unknown'}}</div>
+                        <div><strong>Description:</strong> ${{obj.description || 'No description'}}</div>
+                        <div><strong>Private URL:</strong> <code style="background: #f3f4f6; padding: 2px 4px; border-radius: 3px; word-break: break-all;">${{obj.private_url || 'N/A'}}</code></div>
+                        <div><strong>Mock URL:</strong> <code style="background: #f3f4f6; padding: 2px 4px; border-radius: 3px; word-break: break-all;">${{obj.mock_url || 'N/A'}}</code></div>
+                    </div>
+                `;
+            }} else if (type === 'mock') {{
+                modalTitle.textContent = 'Mock Data - ' + obj.name;
+                var content = obj.mock_data || 'No mock data available';
+                var div = document.createElement('div');
+                div.className = 'modal-data';
+                div.textContent = content;
+                modalBody.innerHTML = '';
+                modalBody.appendChild(div);
+            }} else if (type === 'private') {{
+                modalTitle.textContent = 'Private Data - ' + obj.name;
+                var content = obj.private_data || 'No private data available';
+                var div = document.createElement('div');
+                div.className = 'modal-data';
+                div.textContent = content;
+                modalBody.innerHTML = '';
+                modalBody.appendChild(div);
+            }} else if (type === 'code') {{
+                modalTitle.textContent = 'Access Code - ' + obj.name;
+                modalBody.innerHTML = `
+                    <pre style="background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 4px; overflow-x: auto;"># Access this object
+obj = so.objects[${{index}}]
 
 # Get data
 mock_data = obj.mock
 private_data = obj.private
 
 # Or access by UID
-obj = so.objects["{uid}"]</div>
-                                </details>
-                            </td>
-                        </tr>
-            """
-        
-        html += """
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+obj = so.objects["${{obj.uid}}"]</pre>
+                `;
+            }}
+            
+            modal.style.display = 'block';
+        }}
+        </script>
         """
         
         return html
