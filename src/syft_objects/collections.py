@@ -349,7 +349,10 @@ Example Usage:
                 'name': obj.name or "Unnamed",
                 'uid': str(obj.uid),
                 'mock_data': None,
-                'private_data': None
+                'private_data': None,
+                'private_url': getattr(obj, 'private_url', ''),
+                'mock_url': getattr(obj, 'mock_url', ''),
+                'metadata': getattr(obj, 'metadata', {})
             }
             
             # Try to read mock data if available
@@ -711,9 +714,6 @@ Example Usage:
         </style>
         
         <div id="{container_id}">
-            <div class="server-warning">
-                ⚠️ Server not available - showing cached data. Some features may be limited.
-            </div>
             <div class="widget-header">
                 <div class="search-controls">
                     <div class="search-wrapper">
@@ -735,6 +735,7 @@ Example Usage:
                     <button class="btn-secondary" onclick="clearFallback_{container_id}()">Clear</button>
                     <button class="btn-success" onclick="alert('New object creation requires server connection')">New</button>
                     <button class="btn-primary" onclick="selectAllFallback_{container_id}()">Select All</button>
+                    <button class="btn-primary" onclick="generateCode_{container_id}()">Generate Code</button>
                     <button class="btn-gray" onclick="alert('Open in window requires server connection')">Open in Window</button>
                     <button class="btn-gray" title="Reinstall requires server connection" onclick="alert('Reinstall requires server connection')">🔄</button>
                 </div>
@@ -810,7 +811,7 @@ Example Usage:
                             <td onclick="event.stopPropagation()">
                                 <button class="action-btn info-btn" onclick="showObjectInfo_{container_id}({i})">Info</button>
                                 <button class="action-btn path-btn" onclick="copyPath_{container_id}('{html_module.escape(str(obj.private_path))}')">Path</button>
-                                <button class="action-btn delete-btn" onclick="alert('Delete requires server connection')">
+                                <button class="action-btn delete-btn" onclick="confirmDelete_{container_id}({i})">
                                     <svg style="width: 0.75rem; height: 0.75rem; display: inline;" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path d="M3 6h18"></path>
                                         <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
@@ -950,15 +951,48 @@ Example Usage:
         }}
         
         function showObjectInfo_{container_id}(index) {{
-            // Find the row and extract info from data attributes
+            const modal = document.getElementById('{container_id}-modal');
+            const modalTitle = document.getElementById('{container_id}-modal-title');
+            const modalBody = document.getElementById('{container_id}-modal-body');
             const row = document.querySelector(`#{container_id} tbody tr[data-index="${{index}}"]`);
+            
             if (row) {{
                 const name = row.querySelector('.name-cell').textContent || 'Unnamed';
                 const uid = row.querySelector('.uid-cell').getAttribute('title') || 'Unknown';
                 const created = row.querySelector('.date-cell').textContent || 'Unknown';
                 const desc = row.querySelector('td:nth-child(4)').getAttribute('title') || 'No description';
+                const email = row.querySelector('.admin-cell').textContent.trim() || 'Unknown';
+                const type = row.querySelector('.type-badge').textContent || '—';
                 
-                alert(`Object Info:\\n\\nName: ${{name}}\\nUID: ${{uid}}\\nCreated: ${{created}}\\nDescription: ${{desc}}`);
+                modalTitle.textContent = `Object Information - ${{name}}`;
+                
+                const objects = {self._objects_data_json()};
+                const obj = objects[index];
+                
+                let metadataHtml = '';
+                if (obj && obj.metadata) {{
+                    metadataHtml = '<strong>Metadata:</strong><br>';
+                    for (const [key, value] of Object.entries(obj.metadata)) {{
+                        metadataHtml += `${{key}}: ${{value}}<br>`;
+                    }}
+                }}
+                
+                modalBody.innerHTML = `
+                    <div style="font-size: 0.9rem; line-height: 1.6;">
+                        <strong>Name:</strong> ${{name}}<br>
+                        <strong>UID:</strong> <code style="background: #f3f4f6; padding: 2px 4px; border-radius: 3px;">${{uid}}</code><br>
+                        <strong>Admin Email:</strong> ${{email}}<br>
+                        <strong>Created:</strong> ${{created}}<br>
+                        <strong>File Type:</strong> ${{type}}<br>
+                        <strong>Description:</strong> ${{desc}}<br><br>
+                        ${{metadataHtml}}
+                        <br>
+                        <strong>Private URL:</strong> <code style="background: #f3f4f6; padding: 2px 4px; border-radius: 3px; word-break: break-all;">${{obj ? obj.private_url : 'N/A'}}</code><br>
+                        <strong>Mock URL:</strong> <code style="background: #f3f4f6; padding: 2px 4px; border-radius: 3px; word-break: break-all;">${{obj ? obj.mock_url : 'N/A'}}</code>
+                    </div>
+                `;
+                
+                modal.style.display = 'block';
             }}
         }}
         
@@ -1028,6 +1062,141 @@ Example Usage:
                 modal.style.display = 'none';
             }}
         }});
+        
+        function generateCode_{container_id}() {{
+            const selectedCheckboxes = document.querySelectorAll(`#{container_id} tbody input[type="checkbox"]:checked`);
+            const selectedIndices = [];
+            
+            selectedCheckboxes.forEach(cb => {{
+                const row = cb.closest('tr');
+                if (row) {{
+                    const index = parseInt(row.dataset.index);
+                    selectedIndices.push(index);
+                }}
+            }});
+            
+            if (selectedIndices.length === 0) {{
+                alert('Please select at least one object to generate code.');
+                return;
+            }}
+            
+            // Generate Python code
+            let code = '';
+            if (selectedIndices.length === 1) {{
+                code = `# Access single object\\nobj = so.objects[${{selectedIndices[0]}}]\\n\\n# Access data\\nobj.private  # Private data\\nobj.mock     # Mock data`;
+            }} else {{
+                const indicesStr = '[' + selectedIndices.join(', ') + ']';
+                code = `# Access multiple objects\\nselected_objects = so.objects.get_by_indices(${{indicesStr}})\\n\\n# Access data for each object\\nfor obj in selected_objects:\\n    print(f"Object: {{obj.name}}")\\n    # obj.private  # Private data\\n    # obj.mock     # Mock data`;
+            }}
+            
+            // Show code in modal
+            const modal = document.getElementById('{container_id}-modal');
+            const modalTitle = document.getElementById('{container_id}-modal-title');
+            const modalBody = document.getElementById('{container_id}-modal-body');
+            
+            modalTitle.textContent = 'Generated Code';
+            modalBody.innerHTML = `
+                <div style="margin-bottom: 10px;">
+                    <button onclick="copyGeneratedCode_{container_id}()" style="padding: 5px 10px; background: #dbeafe; color: #1e40af; border: none; border-radius: 4px; cursor: pointer;">
+                        Copy to Clipboard
+                    </button>
+                </div>
+                <pre style="background: #f3f4f6; padding: 1rem; border-radius: 4px; overflow-x: auto;">
+<code id="{container_id}-generated-code">${{code}}</code>
+                </pre>
+            `;
+            
+            modal.style.display = 'block';
+        }}
+        
+        function copyGeneratedCode_{container_id}() {{
+            const codeElement = document.getElementById('{container_id}-generated-code');
+            const code = codeElement.textContent;
+            
+            if (navigator.clipboard) {{
+                navigator.clipboard.writeText(code).then(() => {{
+                    alert('Code copied to clipboard!');
+                }}).catch(() => {{
+                    fallbackCopy(code);
+                }});
+            }} else {{
+                fallbackCopy(code);
+            }}
+            
+            function fallbackCopy(text) {{
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {{
+                    document.execCommand('copy');
+                    alert('Code copied to clipboard!');
+                }} catch (err) {{
+                    prompt('Copy this code:', text);
+                }}
+                document.body.removeChild(textarea);
+            }}
+        }}
+        
+        function confirmDelete_{container_id}(index) {{
+            const row = document.querySelector(`#{container_id} tbody tr[data-index="${{index}}"]`);
+            if (!row) return;
+            
+            const name = row.querySelector('.name-cell').textContent || 'Unnamed Object';
+            const uid = row.querySelector('.uid-cell').getAttribute('title') || 'Unknown';
+            
+            const modal = document.getElementById('{container_id}-modal');
+            const modalTitle = document.getElementById('{container_id}-modal-title');
+            const modalBody = document.getElementById('{container_id}-modal-body');
+            
+            modalTitle.textContent = 'Confirm Deletion';
+            modalBody.innerHTML = `
+                <div style="font-size: 0.9rem;">
+                    <p style="margin-bottom: 1rem;">Are you sure you want to delete this object?</p>
+                    <div style="background: #fee2e2; padding: 1rem; border-radius: 4px; margin-bottom: 1rem;">
+                        <strong>Object to delete:</strong><br>
+                        Name: ${{name}}<br>
+                        UID: ${{uid}}
+                    </div>
+                    <p style="color: #dc2626; font-weight: bold;">This action cannot be undone!</p>
+                    <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                        <button onclick="closeModal_{container_id}()" style="padding: 0.5rem 1rem; background: #e5e7eb; color: #374151; border: none; border-radius: 4px; cursor: pointer;">
+                            Cancel
+                        </button>
+                        <button onclick="deleteObject_{container_id}(${{index}})" style="padding: 0.5rem 1rem; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            modal.style.display = 'block';
+        }}
+        
+        function deleteObject_{container_id}(index) {{
+            // In offline mode, we can only remove from display
+            const row = document.querySelector(`#{container_id} tbody tr[data-index="${{index}}"]`);
+            if (row) {{
+                row.style.transition = 'opacity 0.3s';
+                row.style.opacity = '0';
+                setTimeout(() => {{
+                    row.remove();
+                    updateSelection_{container_id}();
+                    // Re-index remaining rows
+                    const rows = document.querySelectorAll('#{container_id} tbody tr');
+                    rows.forEach((r, i) => {{
+                        r.querySelector('.index-cell').textContent = i + 1;
+                    }});
+                }}, 300);
+            }}
+            
+            closeModal_{container_id}();
+            
+            // Show notification
+            alert('Object marked for deletion. Note: Actual deletion requires server connection.');
+        }}
         </script>
         """
         
