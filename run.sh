@@ -22,9 +22,23 @@ uv venv --python 3.12
 export VIRTUAL_ENV="$(pwd)/.venv"
 export PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Install dependencies using uv sync (which respects the virtual environment)
-echo "📦 Installing Python dependencies..."
-uv sync
+# Install only core dependencies needed for the server (no data libraries)
+echo "📦 Installing minimal server dependencies..."
+# Use pip to install only the main dependencies, not dev/optional ones
+uv pip install -e . --no-deps
+# Then install only the required dependencies from pyproject.toml
+uv pip install \
+    "pydantic>=2.0.0" \
+    "pyyaml>=6.0" \
+    "syft-perm>=0.1.0" \
+    "fastapi>=0.104.0" \
+    "uvicorn[standard]>=0.24.0" \
+    "loguru>=0.7.0" \
+    "syft-core>=0.2.5" \
+    "requests>=2.32.4" \
+    "uvloop>=0.17.0" \
+    "httptools>=0.6.0" \
+    "python-multipart>=0.0.20"
 
 # NO FRONTEND BUILD NEEDED - Pure Python serves HTML directly!
 echo "✅ Pure Python implementation - No frontend build required!"

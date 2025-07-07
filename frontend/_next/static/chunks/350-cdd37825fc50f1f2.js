@@ -1352,7 +1352,7 @@
                       children: ["Delete Selected (", V.size, ")"]
                     }), (0, a.jsx)("button", {
                       onClick: () => {
-                        let e = I.filter(e => V.has(e.uid)).map(e => `syo.objects["${e.uid}"]`),
+                        let e = I.filter(e => V.has(e.uid)).map(e => `so.objects["${e.uid}"]`),
                           t = Math.floor(Math.random() * 100),
                           s = `results_${t} = [${e.join(", ")}]`;
                         (async () => {
@@ -1564,7 +1564,7 @@
                         onClick: t => {
                           if (t.target === t.currentTarget || t.target.closest("td:not(.actions-cell):not([data-no-click])")) {
                             let t = e.name.replace(/[^a-zA-Z0-9_]/g, "_").replace(/^[0-9]/, "_$&");
-                            eA("".concat(t, ' = syo.objects["').concat(e.uid, '"]')), eg(t => new Set(t).add(e.uid)), setTimeout(() => {
+                            eA("".concat(t, ' = so.objects["').concat(e.uid, '"]')), eg(t => new Set(t).add(e.uid)), setTimeout(() => {
                               eg(t => {
                                 let s = new Set(t);
                                 return s.delete(e.uid), s
