@@ -807,85 +807,66 @@ async def delete_object(object_uid: str) -> Dict[str, Any]:
         if not target_obj:
             raise HTTPException(status_code=404, detail="Object not found")
         
-        # Check if this is a syft-queue job and delegate to syft-queue API
-        is_syft_queue_job = False
-        if hasattr(target_obj, 'metadata') and target_obj.metadata:
-            job_type = target_obj.metadata.get('type', '')
-            if job_type == 'SyftBox Job':
-                is_syft_queue_job = True
-        
-        if is_syft_queue_job:
-            # This is a syft-queue job - delegate to syft-queue API
-            try:
-                import httpx
-                import os
-                
-                # Try to find syft-queue server port
-                syft_queue_ports = [8005, 8006, 8007, 8008]  # Common syft-queue ports
-                
-                for port in syft_queue_ports:
-                    try:
-                        async with httpx.AsyncClient(timeout=5.0) as client:
-                            response = await client.delete(f"http://localhost:{port}/api/jobs/{object_uid}")
-                            if response.status_code == 200:
-                                # Success - refresh objects and return
-                                objects.refresh()
-                                result = response.json()
-                                return {
-                                    "message": f"Syft-queue job {object_uid} deleted successfully",
-                                    "syft_queue_response": result,
-                                    "timestamp": datetime.now()
-                                }
-                            elif response.status_code == 404:
-                                # Job not found on this syft-queue instance, try next port
-                                continue
-                    except (httpx.ConnectError, httpx.TimeoutException):
-                        # Server not running on this port, try next
-                        continue
-                
-                # If we get here, syft-queue API wasn't available
-                logger.warning(f"Could not reach syft-queue API for job deletion: {object_uid}")
-                # Fall back to manual file deletion for syft-queue jobs
-                
-            except Exception as e:
-                logger.warning(f"Error delegating to syft-queue API: {e}")
-                # Fall back to manual deletion
-        
-        # Standard object deletion (or fallback for syft-queue jobs)
+        # Generic deletion logic for both file and folder objects
         deleted_files = []
         
-        # For syft-queue jobs, try to delete the entire job directory
-        if is_syft_queue_job:
-            try:
-                # Extract job directory from syftobject_path
-                if target_obj.syftobject_path:
-                    job_dir = PathLib(target_obj.syftobject_path).parent
-                    if job_dir.exists() and job_dir.is_dir():
-                        import shutil
-                        shutil.rmtree(str(job_dir))
-                        deleted_files.append("job_directory")
-                        logger.info(f"Deleted syft-queue job directory: {job_dir}")
-            except Exception as e:
-                logger.warning(f"Failed to delete job directory: {e}")
-                # Fall back to individual file deletion
+        # Check if this is a folder-type object
+        is_folder = getattr(target_obj, 'is_folder', False) or getattr(target_obj, 'object_type', '') == 'folder'
         
-        # Delete individual files (standard objects or fallback)
-        if not deleted_files:  # Only if we didn't delete the whole directory
+        if is_folder:
+            # For folder objects, delete the entire directory structure
+            try:
+                # Try to get folder path from private_path (most reliable)
+                folder_path = None
+                if target_obj.private_path:
+                    folder_path = PathLib(target_obj.private_path)
+                elif target_obj.syftobject_path:
+                    # Extract folder from syftobject path
+                    folder_path = PathLib(target_obj.syftobject_path).parent
+                
+                if folder_path and folder_path.exists() and folder_path.is_dir():
+                    import shutil
+                    shutil.rmtree(str(folder_path))
+                    deleted_files.append("folder_directory")
+                    logger.info(f"Deleted folder directory: {folder_path}")
+                else:
+                    # If we can't find the folder path, fall back to individual file deletion
+                    logger.warning(f"Could not determine folder path for {object_uid}, falling back to individual file deletion")
+                    is_folder = False
+            except Exception as e:
+                logger.warning(f"Failed to delete folder directory: {e}")
+                # Fall back to individual file deletion
+                is_folder = False
+        
+        # Delete individual files (for non-folder objects or fallback)
+        if not is_folder:
             # Delete private file if it exists
             if target_obj.private_path and PathLib(target_obj.private_path).exists():
                 try:
-                    PathLib(target_obj.private_path).unlink()
-                    deleted_files.append("private")
+                    private_path = PathLib(target_obj.private_path)
+                    if private_path.is_file():
+                        private_path.unlink()
+                        deleted_files.append("private")
+                    elif private_path.is_dir():
+                        import shutil
+                        shutil.rmtree(str(private_path))
+                        deleted_files.append("private_directory")
                 except Exception as e:
-                    logger.warning(f"Failed to delete private file: {e}")
+                    logger.warning(f"Failed to delete private file/directory: {e}")
             
             # Delete mock file if it exists
             if target_obj.mock_path and PathLib(target_obj.mock_path).exists():
                 try:
-                    PathLib(target_obj.mock_path).unlink()
-                    deleted_files.append("mock")
+                    mock_path = PathLib(target_obj.mock_path)
+                    if mock_path.is_file():
+                        mock_path.unlink()
+                        deleted_files.append("mock")
+                    elif mock_path.is_dir():
+                        import shutil
+                        shutil.rmtree(str(mock_path))
+                        deleted_files.append("mock_directory")
                 except Exception as e:
-                    logger.warning(f"Failed to delete mock file: {e}")
+                    logger.warning(f"Failed to delete mock file/directory: {e}")
             
             # Delete syftobject file if it exists
             if target_obj.syftobject_path and PathLib(target_obj.syftobject_path).exists():
@@ -898,9 +879,9 @@ async def delete_object(object_uid: str) -> Dict[str, Any]:
         # Refresh the objects collection to reflect the deletion
         objects.refresh()
         
-        object_type = "syft-queue job" if is_syft_queue_job else "syft object"
+        object_type = "folder" if is_folder else "file"
         return {
-            "message": f"{object_type.title()} {object_uid} deleted successfully",
+            "message": f"Syft object {object_uid} deleted successfully",
             "deleted_files": deleted_files,
             "object_type": object_type,
             "timestamp": datetime.now()
