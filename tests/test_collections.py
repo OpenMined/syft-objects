@@ -493,11 +493,13 @@ class TestObjectsCollection:
             assert "so.objects.search" in help_text
             assert "so.objects.refresh()" in help_text
     
+    @patch('syft_objects.auto_install._check_health_endpoint')
     @patch.object(ObjectsCollection, '_ensure_server_ready')
     @patch.object(ObjectsCollection, 'widget')
-    def test_repr_html(self, mock_widget, mock_ensure):
-        """Test _repr_html_ method"""
+    def test_repr_html(self, mock_widget, mock_ensure, mock_health_check):
+        """Test _repr_html_ method with server available"""
         mock_widget.return_value = "<iframe>test</iframe>"
+        mock_health_check.return_value = True  # Server is healthy
         
         collection = ObjectsCollection()
         result = collection._repr_html_()
@@ -505,6 +507,21 @@ class TestObjectsCollection:
         mock_ensure.assert_called_once()
         mock_widget.assert_called_once()
         assert result == "<iframe>test</iframe>"
+    
+    @patch('syft_objects.auto_install._check_health_endpoint')
+    @patch.object(ObjectsCollection, '_ensure_server_ready')
+    @patch.object(ObjectsCollection, '_generate_fallback_widget')
+    def test_repr_html_fallback(self, mock_fallback, mock_ensure, mock_health_check):
+        """Test _repr_html_ method with server unavailable"""
+        mock_fallback.return_value = "<div>fallback widget</div>"
+        mock_health_check.return_value = False  # Server is not healthy
+        
+        collection = ObjectsCollection()
+        result = collection._repr_html_()
+        
+        mock_ensure.assert_called_once()
+        mock_fallback.assert_called_once()
+        assert result == "<div>fallback widget</div>"
     
     @patch('syft_objects.collections.get_syft_objects_url')
     @patch.object(ObjectsCollection, '_ensure_server_ready')

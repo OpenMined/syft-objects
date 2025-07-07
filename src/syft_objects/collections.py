@@ -327,9 +327,546 @@ Example Usage:
         print(help_text)
 
     def _repr_html_(self):
-        """HTML representation for Jupyter notebooks - now shows widget iframe"""
+        """HTML representation for Jupyter notebooks - shows iframe or fallback"""
         self._ensure_server_ready()
-        return self.widget()
+        
+        # Check if server is actually available
+        from .auto_install import _check_health_endpoint
+        if _check_health_endpoint():
+            # Server is available, use iframe
+            return self.widget()
+        else:
+            # Server not available, use local HTML fallback
+            return self._generate_fallback_widget()
+
+    def _generate_fallback_widget(self):
+        """Generate a local HTML widget that matches the iframe UI when server is unavailable"""
+        import uuid
+        from datetime import datetime
+        
+        container_id = f"syft-widget-{uuid.uuid4().hex[:8]}"
+        
+        # Ensure objects are loaded
+        self._ensure_loaded()
+        
+        html = f"""
+        <style>
+        #{container_id} {{
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-height: 400px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }}
+        #{container_id} .widget-header {{
+            background: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 0.5rem;
+        }}
+        #{container_id} .search-controls {{
+            display: flex;
+            gap: 0.25rem;
+            flex-wrap: wrap;
+        }}
+        #{container_id} .search-input {{
+            flex: 1;
+            min-width: 150px;
+            padding: 0.25rem 0.5rem 0.25rem 1.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            position: relative;
+        }}
+        #{container_id} .search-wrapper {{
+            position: relative;
+            flex: 1;
+            min-width: 150px;
+        }}
+        #{container_id} .search-icon {{
+            position: absolute;
+            left: 0.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 0.75rem;
+            height: 0.75rem;
+            color: #9ca3af;
+        }}
+        #{container_id} .filter-input {{
+            flex: 1;
+            min-width: 150px;
+            padding: 0.25rem 0.5rem 0.25rem 1.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+        }}
+        #{container_id} .filter-wrapper {{
+            position: relative;
+            flex: 1;
+            min-width: 150px;
+        }}
+        #{container_id} .filter-icon {{
+            position: absolute;
+            left: 0.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 0.75rem;
+            height: 0.75rem;
+            color: #9ca3af;
+        }}
+        #{container_id} button {{
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }}
+        #{container_id} .btn-primary {{
+            background: #dbeafe;
+            color: #1e40af;
+        }}
+        #{container_id} .btn-primary:hover {{
+            background: #bfdbfe;
+        }}
+        #{container_id} .btn-secondary {{
+            background: #f3f4f6;
+            color: #374151;
+        }}
+        #{container_id} .btn-secondary:hover {{
+            background: #e5e7eb;
+        }}
+        #{container_id} .btn-success {{
+            background: #d1fae5;
+            color: #065f46;
+        }}
+        #{container_id} .btn-success:hover {{
+            background: #a7f3d0;
+        }}
+        #{container_id} .btn-gray {{
+            background: #f3f4f6;
+            color: #1f2937;
+        }}
+        #{container_id} .btn-gray:hover {{
+            background: #e5e7eb;
+        }}
+        #{container_id} .table-container {{
+            flex: 1;
+            overflow: auto;
+            border-bottom: 1px solid #e5e7eb;
+        }}
+        #{container_id} table {{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+            min-width: 1200px;
+        }}
+        #{container_id} thead {{
+            background: #fafafa;
+            border-bottom: 1px solid #e5e7eb;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }}
+        #{container_id} th {{
+            text-align: left;
+            padding: 0.375rem 0.25rem;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            user-select: none;
+        }}
+        #{container_id} th:hover {{
+            background: #f3f4f6;
+        }}
+        #{container_id} tbody tr {{
+            border-bottom: 1px solid #f3f4f6;
+            transition: background-color 0.15s;
+            cursor: pointer;
+        }}
+        #{container_id} tbody tr:hover {{
+            background: #fafafa;
+        }}
+        #{container_id} tbody tr.selected {{
+            background: #dbeafe;
+        }}
+        #{container_id} td {{
+            padding: 0.375rem 0.25rem;
+            color: #374151;
+        }}
+        #{container_id} .checkbox-cell {{
+            width: 1.5rem;
+            text-align: center;
+        }}
+        #{container_id} .index-cell {{
+            width: 2rem;
+            text-align: center;
+            font-weight: 500;
+        }}
+        #{container_id} .name-cell {{
+            font-weight: 500;
+            color: #111827;
+        }}
+        #{container_id} .truncate {{
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 200px;
+        }}
+        #{container_id} .admin-cell {{
+            font-family: monospace;
+            font-size: 0.75rem;
+        }}
+        #{container_id} .uid-cell {{
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: #6b7280;
+        }}
+        #{container_id} .date-cell {{
+            color: #6b7280;
+            font-size: 0.7rem;
+        }}
+        #{container_id} .type-badge {{
+            display: inline-block;
+            padding: 0.125rem 0.25rem;
+            background: #f3f4f6;
+            color: #1f2937;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }}
+        #{container_id} .file-button {{
+            padding: 0.125rem 0.375rem;
+            margin-right: 0.125rem;
+            border-radius: 0.25rem;
+            font-size: 0.7rem;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }}
+        #{container_id} .mock-btn {{
+            background: #e0e7ff;
+            color: #4338ca;
+        }}
+        #{container_id} .mock-btn:hover {{
+            background: #c7d2fe;
+        }}
+        #{container_id} .private-btn {{
+            background: #f3f4f6;
+            color: #374151;
+        }}
+        #{container_id} .private-btn:hover {{
+            background: #e5e7eb;
+        }}
+        #{container_id} .action-btn {{
+            padding: 0.125rem 0.375rem;
+            margin-right: 0.125rem;
+            border-radius: 0.25rem;
+            font-size: 0.7rem;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }}
+        #{container_id} .info-btn {{
+            background: #dbeafe;
+            color: #1e40af;
+        }}
+        #{container_id} .info-btn:hover {{
+            background: #bfdbfe;
+        }}
+        #{container_id} .path-btn {{
+            background: #ede9fe;
+            color: #7c3aed;
+        }}
+        #{container_id} .path-btn:hover {{
+            background: #ddd6fe;
+        }}
+        #{container_id} .delete-btn {{
+            background: #fee2e2;
+            color: #dc2626;
+        }}
+        #{container_id} .delete-btn:hover {{
+            background: #fecaca;
+        }}
+        #{container_id} .status-bar {{
+            padding: 0.5rem;
+            background: #fafafa;
+            font-size: 0.75rem;
+            color: #6b7280;
+            display: none;
+        }}
+        #{container_id} .server-warning {{
+            background: #fef3c7;
+            color: #92400e;
+            padding: 0.5rem;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }}
+        </style>
+        
+        <div id="{container_id}">
+            <div class="server-warning">
+                ⚠️ Server not available - showing cached data. Some features may be limited.
+            </div>
+            <div class="widget-header">
+                <div class="search-controls">
+                    <div class="search-wrapper">
+                        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.3-4.3"></path>
+                        </svg>
+                        <input type="text" class="search-input" placeholder="Search objects..." 
+                               onkeyup="filterFallbackTable_{container_id}(this.value)">
+                    </div>
+                    <div class="filter-wrapper">
+                        <svg class="filter-icon" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg>
+                        <input type="text" class="filter-input" placeholder="Filter by Admin..." 
+                               onkeyup="filterByAdmin_{container_id}(this.value)">
+                    </div>
+                    <button class="btn-primary" onclick="searchFallback_{container_id}()">Search</button>
+                    <button class="btn-secondary" onclick="clearFallback_{container_id}()">Clear</button>
+                    <button class="btn-success" onclick="alert('New object creation requires server connection')">New</button>
+                    <button class="btn-primary" onclick="selectAllFallback_{container_id}()">Select All</button>
+                    <button class="btn-gray" onclick="alert('Open in window requires server connection')">Open in Window</button>
+                    <button class="btn-gray" title="Reinstall requires server connection" onclick="alert('Reinstall requires server connection')">🔄</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="checkbox-cell">
+                                <input type="checkbox" onchange="toggleAllCheckboxes_{container_id}(this)">
+                            </th>
+                            <th class="index-cell">#</th>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>Admin</th>
+                            <th>UID</th>
+                            <th>Created</th>
+                            <th>Type</th>
+                            <th>Files</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        """
+        
+        # Add rows for each object
+        for i, obj in enumerate(self._objects):
+            email = self._get_object_email(obj)
+            name = obj.name or "Unnamed Object"
+            description = obj.description or f"Auto-generated object: {name}"
+            uid = str(obj.uid)
+            uid_short = uid[:8] + "..."
+            
+            # Format dates
+            created_str = obj.created_at.strftime("%m/%d/%Y, %H:%M:%S") if hasattr(obj, 'created_at') and obj.created_at else ""
+            
+            # Determine type (simplified)
+            obj_type = "—"
+            if hasattr(obj, 'file_extension'):
+                obj_type = obj.file_extension or "—"
+            
+            # Escape HTML in strings
+            import html
+            name_escaped = html.escape(name)
+            desc_escaped = html.escape(description)
+            email_escaped = html.escape(email)
+            
+            html += f"""
+                        <tr data-index="{i}" data-name="{name_escaped.lower()}" data-email="{email_escaped.lower()}" 
+                            data-desc="{desc_escaped.lower()}" onclick="toggleRowSelect_{container_id}(this, event)">
+                            <td class="checkbox-cell" onclick="event.stopPropagation()">
+                                <input type="checkbox" onchange="updateSelection_{container_id}()">
+                            </td>
+                            <td class="index-cell">{i + 1}</td>
+                            <td class="name-cell truncate" title="{name_escaped}">{name_escaped}</td>
+                            <td class="truncate" title="{desc_escaped}">{desc_escaped}</td>
+                            <td class="admin-cell truncate" title="{email_escaped}">
+                                <span style="display: inline-flex; align-items: center; gap: 0.25rem;">
+                                    <svg style="width: 0.75rem; height: 0.75rem;" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
+                                    {email_escaped}
+                                </span>
+                            </td>
+                            <td class="uid-cell" title="{uid}">{uid_short}</td>
+                            <td class="date-cell">{created_str}</td>
+                            <td><span class="type-badge">{obj_type}</span></td>
+                            <td onclick="event.stopPropagation()">
+                                <button class="file-button mock-btn" onclick="alert('Mock file access requires server connection')">Mock</button>
+                                <button class="file-button private-btn" onclick="alert('Private file access requires server connection')">Private</button>
+                            </td>
+                            <td onclick="event.stopPropagation()">
+                                <button class="action-btn info-btn" onclick="showObjectInfo_{container_id}({i})">Info</button>
+                                <button class="action-btn path-btn" onclick="copyPath_{container_id}('{html.escape(str(obj.private_path))}')">Path</button>
+                                <button class="action-btn delete-btn" onclick="alert('Delete requires server connection')">
+                                    <svg style="width: 0.75rem; height: 0.75rem; display: inline;" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path d="M3 6h18"></path>
+                                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+            """
+        
+        html += f"""
+                    </tbody>
+                </table>
+            </div>
+            <div class="status-bar" id="{container_id}-status">
+                0 objects selected
+            </div>
+        </div>
+        
+        <script>
+        // Search and filter functions
+        function filterFallbackTable_{container_id}(searchTerm) {{
+            const rows = document.querySelectorAll('#{container_id} tbody tr');
+            const term = searchTerm.toLowerCase();
+            
+            rows.forEach(row => {{
+                const name = row.dataset.name || '';
+                const email = row.dataset.email || '';
+                const desc = row.dataset.desc || '';
+                const visible = !term || name.includes(term) || email.includes(term) || desc.includes(term);
+                row.style.display = visible ? '' : 'none';
+            }});
+            
+            updateSelection_{container_id}();
+        }}
+        
+        function filterByAdmin_{container_id}(adminTerm) {{
+            const rows = document.querySelectorAll('#{container_id} tbody tr');
+            const term = adminTerm.toLowerCase();
+            
+            rows.forEach(row => {{
+                const email = row.dataset.email || '';
+                const visible = !term || email.includes(term);
+                row.style.display = visible ? '' : 'none';
+            }});
+            
+            updateSelection_{container_id}();
+        }}
+        
+        function searchFallback_{container_id}() {{
+            const searchInput = document.querySelector('#{container_id} .search-input');
+            const filterInput = document.querySelector('#{container_id} .filter-input');
+            
+            if (searchInput.value) {{
+                filterFallbackTable_{container_id}(searchInput.value);
+            }}
+            if (filterInput.value) {{
+                filterByAdmin_{container_id}(filterInput.value);
+            }}
+        }}
+        
+        function clearFallback_{container_id}() {{
+            document.querySelector('#{container_id} .search-input').value = '';
+            document.querySelector('#{container_id} .filter-input').value = '';
+            filterFallbackTable_{container_id}('');
+            
+            // Clear all selections
+            document.querySelectorAll('#{container_id} tbody input[type="checkbox"]').forEach(cb => {{
+                cb.checked = false;
+            }});
+            document.querySelectorAll('#{container_id} tbody tr').forEach(row => {{
+                row.classList.remove('selected');
+            }});
+            updateSelection_{container_id}();
+        }}
+        
+        function selectAllFallback_{container_id}() {{
+            const visibleRows = document.querySelectorAll('#{container_id} tbody tr:not([style*="display: none"])');
+            const visibleCheckboxes = [];
+            visibleRows.forEach(row => {{
+                const cb = row.querySelector('input[type="checkbox"]');
+                if (cb) visibleCheckboxes.push(cb);
+            }});
+            
+            const allChecked = visibleCheckboxes.every(cb => cb.checked);
+            
+            visibleCheckboxes.forEach(cb => {{
+                cb.checked = !allChecked;
+                cb.closest('tr').classList.toggle('selected', !allChecked);
+            }});
+            
+            updateSelection_{container_id}();
+        }}
+        
+        function toggleAllCheckboxes_{container_id}(source) {{
+            const checkboxes = document.querySelectorAll('#{container_id} tbody input[type="checkbox"]');
+            checkboxes.forEach(cb => {{
+                if (cb.closest('tr').style.display !== 'none') {{
+                    cb.checked = source.checked;
+                    cb.closest('tr').classList.toggle('selected', source.checked);
+                }}
+            }});
+            updateSelection_{container_id}();
+        }}
+        
+        function toggleRowSelect_{container_id}(row, event) {{
+            if (event.target.tagName === 'TD' && !event.target.classList.contains('checkbox-cell')) {{
+                const checkbox = row.querySelector('input[type="checkbox"]');
+                if (checkbox) {{
+                    checkbox.checked = !checkbox.checked;
+                    row.classList.toggle('selected', checkbox.checked);
+                    updateSelection_{container_id}();
+                }}
+            }}
+        }}
+        
+        function updateSelection_{container_id}() {{
+            const selected = document.querySelectorAll('#{container_id} tbody input[type="checkbox"]:checked').length;
+            const total = document.querySelectorAll('#{container_id} tbody tr:not([style*="display: none"])').length;
+            const statusBar = document.getElementById('{container_id}-status');
+            
+            if (selected > 0) {{
+                statusBar.style.display = 'block';
+                statusBar.textContent = `${{selected}} object(s) selected out of ${{total}} visible`;
+            }} else {{
+                statusBar.style.display = 'none';
+            }}
+        }}
+        
+        function showObjectInfo_{container_id}(index) {{
+            // Find the row and extract info from data attributes
+            const row = document.querySelector(`#{container_id} tbody tr[data-index="${{index}}"]`);
+            if (row) {{
+                const name = row.querySelector('.name-cell').textContent || 'Unnamed';
+                const uid = row.querySelector('.uid-cell').getAttribute('title') || 'Unknown';
+                const created = row.querySelector('.date-cell').textContent || 'Unknown';
+                const desc = row.querySelector('td:nth-child(4)').getAttribute('title') || 'No description';
+                
+                alert(`Object Info:\\n\\nName: ${{name}}\\nUID: ${{uid}}\\nCreated: ${{created}}\\nDescription: ${{desc}}`);
+            }}
+        }}
+        
+        function copyPath_{container_id}(path) {{
+            // Try to copy to clipboard
+            if (navigator.clipboard) {{
+                navigator.clipboard.writeText(path).then(() => {{
+                    alert('Path copied to clipboard: ' + path);
+                }}).catch(() => {{
+                    prompt('Copy this path:', path);
+                }});
+            }} else {{
+                prompt('Copy this path:', path);
+            }}
+        }}
+        </script>
+        """
+        
+        return html
 
     def widget(self, width="100%", height="400px", url=None):
         """Display the syft-objects widget in an iframe"""
