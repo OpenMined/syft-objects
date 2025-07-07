@@ -34,6 +34,7 @@ export default function WidgetPage() {
   const [infoModalOpen, setInfoModalOpen] = useState(false)
   const [pathModalOpen, setPathModalOpen] = useState(false)
   const [permissionsModalOpen, setPermissionsModalOpen] = useState(false)
+  const [copiedItems, setCopiedItems] = useState<Set<string>>(new Set())
   
   // Track if component is mounted to prevent state updates after unmount
   const isMountedRef = useRef(true)
@@ -221,6 +222,38 @@ export default function WidgetPage() {
     setPermissionsModalOpen(true)
   }
 
+  // Handle row click to copy Python code
+  const handleRowClick = async (e: React.MouseEvent<HTMLTableRowElement>, object: SyftObject) => {
+    // Only handle clicks on the row itself or non-action cells
+    const target = e.target as HTMLElement
+    if (target.closest('.actions-cell') || target.closest('input[type="checkbox"]')) {
+      return
+    }
+
+    // Sanitize object name for Python variable
+    const varName = object.name
+      .replace(/[^a-zA-Z0-9_]/g, '_')
+      .replace(/^[0-9]/, '_$&')
+    
+    const code = `${varName} = so.objects["${object.uid}"]`
+    
+    try {
+      await navigator.clipboard.writeText(code)
+      
+      // Add visual feedback
+      setCopiedItems(prev => new Set(prev).add(object.uid))
+      setTimeout(() => {
+        setCopiedItems(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(object.uid)
+          return newSet
+        })
+      }, 2000)
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err)
+    }
+  }
+
   return (
     <div 
       className="min-h-screen bg-gray-50 p-4"
@@ -347,7 +380,14 @@ export default function WidgetPage() {
               </tr>
             ) : (
               objects.map((object) => (
-                <tr key={object.uid} className="border-b hover:bg-gray-50">
+                <tr 
+                  key={object.uid} 
+                  className={cn(
+                    "border-b hover:bg-gray-50 cursor-pointer transition-colors",
+                    copiedItems.has(object.uid) && "bg-green-50"
+                  )}
+                  onClick={(e) => handleRowClick(e, object)}
+                >
                   <td className="p-2">
                     <input
                       type="checkbox"
@@ -392,7 +432,7 @@ export default function WidgetPage() {
                       </span>
                     </button>
                   </td>
-                  <td className="p-2">
+                  <td className="p-2 actions-cell">
                     <div className="flex gap-1">
                       <Button 
                         size="sm" 

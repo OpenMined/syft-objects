@@ -490,8 +490,8 @@ class TestObjectsCollection:
             
             assert "Syft Objects Collection Help" in help_text
             assert "import syft_objects as syo" in help_text
-            assert "syo.objects.search" in help_text
-            assert "syo.objects.refresh()" in help_text
+            assert "so.objects.search" in help_text
+            assert "so.objects.refresh()" in help_text
     
     @patch.object(ObjectsCollection, '_ensure_server_ready')
     @patch.object(ObjectsCollection, 'widget')
@@ -522,7 +522,7 @@ class TestObjectsCollection:
         assert '<iframe' in result
         assert 'src="http://localhost:8004/widget"' in result
         assert 'width="100%"' in result
-        assert 'height="600px"' in result
+        assert 'height="400px"' in result
         
         # Custom parameters
         result = collection.widget(width="800px", height="400px", url="http://custom.url")

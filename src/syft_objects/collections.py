@@ -285,44 +285,44 @@ Import Convention:
   import syft_objects as syo
 
 Interactive UI:
-  syo.objects              # Show interactive table with search & selection
+  so.objects              # Show interactive table with search & selection
   • Use search box to filter in real-time
   • Check boxes to select objects  
   • Click "Generate Code" for copy-paste Python code
 
 Programmatic Usage:
-  syo.objects[0]           # Get first object
-  syo.objects[:3]          # Get first 3 objects
-  len(syo.objects)         # Count objects
+  so.objects[0]           # Get first object
+  so.objects[:3]          # Get first 3 objects
+  len(so.objects)         # Count objects
 
 Search & Filter:
-  syo.objects.search("financial")        # Search for 'financial' in names/emails
-  syo.objects.filter_by_email("andrew")  # Filter by email containing 'andrew'
-  syo.objects.get_by_indices([0,1,5])    # Get specific objects by index
+  so.objects.search("financial")        # Search for 'financial' in names/emails
+  so.objects.filter_by_email("andrew")  # Filter by email containing 'andrew'
+  so.objects.get_by_indices([0,1,5])    # Get specific objects by index
   
 Utility Methods:
-  syo.objects.list_unique_emails()       # List all unique emails
-  syo.objects.list_unique_names()        # List all unique object names
-  syo.objects.refresh()                  # Manually refresh the collection
+  so.objects.list_unique_emails()       # List all unique emails
+  so.objects.list_unique_names()        # List all unique object names
+  so.objects.refresh()                  # Manually refresh the collection
   
 Example Usage:
   import syft_objects as syo
   
   # Browse and select objects interactively
-  syo.objects
+  so.objects
   
   # Selected objects:
-  objects = [syo.objects[i] for i in [0, 1, 16, 20, 23]]
+  objects = [so.objects[i] for i in [0, 1, 16, 20, 23]]
   
   # Access object properties:
-  obj = syo.objects[0]
+  obj = so.objects[0]
   print(obj.name)           # Object name
               print(obj.private_url)        # Private syft:// URL
     print(obj.mock_url)           # Mock syft:// URL
   print(obj.description)    # Object description
   
   # Refresh after creating new objects:
-  syo.objects.refresh()
+  so.objects.refresh()
         """
         print(help_text)
 
@@ -661,11 +661,11 @@ Example Usage:
             let code;
             if (selectedIndices.length === 1) {{
                 code = `# Selected object:
-obj = syo.objects[${{selectedIndices[0]}}]`;
+obj = so.objects[${{selectedIndices[0]}}]`;
             }} else {{
                 const indicesStr = selectedIndices.join(', ');
                 code = `# Selected objects:
-objects = [syo.objects[i] for i in [${{indicesStr}}]]`;
+objects = [so.objects[i] for i in [${{indicesStr}}]]`;
             }}
             
             // Copy to clipboard
