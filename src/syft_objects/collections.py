@@ -331,7 +331,7 @@ Example Usage:
         self._ensure_server_ready()
         return self.widget()
 
-    def widget(self, width="100%", height="600px", url=None):
+    def widget(self, width="100%", height="400px", url=None):
         """Display the syft-objects widget in an iframe"""
         
         self._ensure_server_ready()
