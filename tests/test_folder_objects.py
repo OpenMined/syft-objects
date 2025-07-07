@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 from uuid import UUID
 
-from syft_objects import syobj
+from syft_objects import create_object
 from syft_objects.models import SyftObject
 from syft_objects.data_accessor import FolderAccessor
 
@@ -34,7 +34,7 @@ class TestFolderObjects:
     
     def test_folder_object_creation(self, temp_folder):
         """Test creating a folder SyftObject"""
-        obj = syobj(
+        obj = create_object(
             name="test_job",
             private_folder=str(temp_folder),
             mock_read=["public"],
@@ -72,7 +72,7 @@ class TestFolderObjects:
     def test_folder_file_parameter_conflict(self, temp_folder):
         """Test that mixing folder and file params raises error"""
         with pytest.raises(ValueError, match="Cannot mix folder and file parameters"):
-            syobj(
+            create_object(
                 name="test",
                 private_folder=str(temp_folder),
                 mock_file="some_file.txt"
@@ -117,7 +117,7 @@ class TestFolderObjects:
     
     def test_data_accessor_returns_folder_accessor(self, temp_folder):
         """Test that DataAccessor returns FolderAccessor for folders"""
-        obj = syobj(
+        obj = create_object(
             name="test_job",
             private_folder=str(temp_folder)
         )
@@ -131,7 +131,7 @@ class TestFolderObjects:
     
     def test_auto_mock_folder_generation(self, temp_folder):
         """Test automatic mock folder generation from private"""
-        obj = syobj(
+        obj = create_object(
             name="auto_mock_test",
             private_folder=str(temp_folder)
         )
@@ -159,7 +159,7 @@ class TestFolderObjects:
         (mock_folder / "data.csv").write_text("id,value\n1,MOCK\n2,MOCK")
         
         try:
-            obj = syobj(
+            obj = create_object(
                 name="both_folders",
                 private_folder=str(temp_folder),
                 mock_folder=str(mock_folder)
@@ -178,7 +178,7 @@ class TestFolderObjects:
     
     def test_folder_object_serialization(self, temp_folder):
         """Test saving and loading folder objects"""
-        obj = syobj(
+        obj = create_object(
             name="serialization_test",
             private_folder=str(temp_folder),
             metadata={"job_type": "analysis"}
@@ -209,7 +209,7 @@ class TestFolderObjects:
     def test_nonexistent_folder_error(self):
         """Test error when folder doesn't exist"""
         with pytest.raises(ValueError, match="Private folder not found"):
-            syobj(
+            create_object(
                 name="test",
                 private_folder="/nonexistent/folder"
             )
@@ -219,7 +219,7 @@ class TestFolderObjects:
         empty_folder = temp_dir / "empty"
         empty_folder.mkdir()
         
-        obj = syobj(
+        obj = create_object(
             name="empty_test",
             private_folder=str(empty_folder)
         )

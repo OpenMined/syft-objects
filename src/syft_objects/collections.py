@@ -1,6 +1,7 @@
 # syft-objects collections - ObjectsCollection class for managing multiple objects
 
 import os
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, List, Optional
 
 if TYPE_CHECKING:
@@ -23,7 +24,19 @@ class ObjectsCollection:
             self._search_info = search_info
             self._cached = True
             self._server_ready = False
+            # Sort objects by created_at when provided
+            self._sort_objects()
 
+    def _sort_objects(self):
+        """Sort objects by created_at timestamp (oldest first)"""
+        self._objects.sort(
+            key=lambda obj: (
+                obj.created_at if hasattr(obj, 'created_at') and obj.created_at
+                else obj.updated_at if hasattr(obj, 'updated_at') and obj.updated_at
+                else datetime.min.replace(tzinfo=timezone.utc)
+            )
+        )
+    
     def _ensure_server_ready(self):
         """Ensure syft-objects server is ready before UI operations"""
         
@@ -142,6 +155,10 @@ class ObjectsCollection:
 
         except Exception:
             pass
+        
+        # Sort objects by created_at (oldest first)
+        # This ensures objects[0] returns the oldest and objects[-1] returns the newest
+        self._sort_objects()
 
     def refresh(self):
         """Manually refresh the objects collection"""
@@ -226,7 +243,7 @@ class ObjectsCollection:
         return [self._objects[i] for i in indices if 0 <= i < len(self._objects)]
 
     def __getitem__(self, index):
-        """Allow indexing like objects[0], slicing like objects[:3], or by UID like objects["uid-string"]"""
+        """Allow indexing like objects[0] (oldest), objects[-1] (newest), slicing like objects[:3], or by UID like objects["uid-string"]"""
         self._ensure_loaded()
         if isinstance(index, slice):
             slice_info = f"{self._search_info} (slice {index})" if self._search_info else None
@@ -237,6 +254,8 @@ class ObjectsCollection:
                 if str(obj.uid) == index:
                     return obj
             raise KeyError(f"Object with UID '{index}' not found")
+        # For integer indices, objects are sorted by created_at (oldest first)
+        # so objects[0] returns oldest, objects[-1] returns newest
         return self._objects[index]
 
     def __len__(self):
@@ -291,8 +310,10 @@ Interactive UI:
   • Click "Generate Code" for copy-paste Python code
 
 Programmatic Usage:
-  so.objects[0]           # Get first object
-  so.objects[:3]          # Get first 3 objects
+  so.objects[0]           # Get oldest object (by creation date)
+  so.objects[-1]          # Get newest object (by creation date)
+  so.objects['<uid>']     # Get object by its UID
+  so.objects[:3]          # Get first 3 objects (oldest first)
   len(so.objects)         # Count objects
 
 Search & Filter:
@@ -465,6 +486,48 @@ Example Usage:
         }}
         #{container_id} tbody tr:hover {{
             background: rgba(0, 0, 0, 0.03);
+        }}
+        #{container_id} .copy-toast {{
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }}
+        #{container_id} .pagination {{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            border-top: 1px solid #e5e7eb;
+            background: rgba(0, 0, 0, 0.02);
+        }}
+        #{container_id} .pagination button {{
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            border: 1px solid #e5e7eb;
+            background: white;
+            cursor: pointer;
+            transition: all 0.15s;
+        }}
+        #{container_id} .pagination button:hover:not(:disabled) {{
+            background: #f3f4f6;
+        }}
+        #{container_id} .pagination button:disabled {{
+            opacity: 0.5;
+            cursor: not-allowed;
+        }}
+        #{container_id} .pagination .page-info {{
+            font-size: 0.75rem;
+            color: #6b7280;
         }}
         #{container_id} .truncate {{
             overflow: hidden;
