@@ -406,8 +406,8 @@ Example Usage:
         #{container_id} .widget-container {{
             border: 1px solid #e5e7eb;
             border-radius: 6px;
-            overflow: hidden;
-            max-height: 400px;
+            overflow: visible;
+            min-height: 400px;
         }}
         #{container_id} .header {{
             background: #f9fafb;
@@ -428,8 +428,10 @@ Example Usage:
             font-size: 12px;
         }}
         #{container_id} .table-container {{
-            overflow: auto;
-            max-height: 300px;
+            overflow-x: auto;
+            overflow-y: visible;
+            max-height: none;
+            position: relative;
         }}
         #{container_id} table {{
             width: 100%;
@@ -527,7 +529,7 @@ Example Usage:
         }}
         </style>
         
-        <div id="{container_id}">
+        <div id="{container_id}" style="margin-bottom: 200px;">
             <div class="widget-container">
                 <div class="header">
                     🔐 Objects Collection ({len(self._objects)} total)
@@ -611,7 +613,7 @@ Example Usage:
                             <td style="white-space: nowrap;">
                                 <details data-type="info" style="position: relative;">
                                     <summary>Info</summary>
-                                    <div class="data-content" style="position: absolute; z-index: 100; background: white; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 400px;">
+                                    <div class="data-content" style="position: absolute; right: 0; top: 100%; z-index: 100; background: white; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 400px; margin-top: 2px;">
                                         <div class="info-row"><span class="info-label">Name:</span> {name}</div>
                                         <div class="info-row"><span class="info-label">UID:</span> {uid}</div>
                                         <div class="info-row"><span class="info-label">Admin:</span> {email}</div>
@@ -624,17 +626,17 @@ Example Usage:
                                 
                                 <details data-type="mock" style="position: relative;">
                                     <summary>Mock</summary>
-                                    <div class="data-content" style="position: absolute; z-index: 100; background: white; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 400px; max-width: 600px;">{mock_display}</div>
+                                    <div class="data-content" style="position: absolute; right: 0; top: 100%; z-index: 100; background: white; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 400px; max-width: 600px; margin-top: 2px;">{mock_display}</div>
                                 </details>
                                 
                                 <details data-type="private" style="position: relative;">
                                     <summary>Private</summary>
-                                    <div class="data-content" style="position: absolute; z-index: 100; background: white; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 400px; max-width: 600px;">{private_display}</div>
+                                    <div class="data-content" style="position: absolute; right: 0; top: 100%; z-index: 100; background: white; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 400px; max-width: 600px; margin-top: 2px;">{private_display}</div>
                                 </details>
                                 
                                 <details data-type="code" style="position: relative;">
                                     <summary>Code</summary>
-                                    <div class="code-snippet" style="position: absolute; z-index: 100; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 300px;"># Access this object
+                                    <div class="code-snippet" style="position: absolute; right: 0; top: 100%; z-index: 100; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 300px; margin-top: 2px;"># Access this object
 obj = so.objects[{i}]
 
 # Get data
