@@ -682,6 +682,42 @@ async def save_file_content(
         if not target_obj:
             raise HTTPException(status_code=404, detail="Object not found")
         
+        # Get the raw object if this is a CleanSyftObject
+        raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+        
+        # Check write permissions for the file type
+        try:
+            from syft_objects.client import get_syftbox_client
+            client = get_syftbox_client()
+            user_email = client.email if client and hasattr(client, 'email') else None
+            
+            if not user_email:
+                raise HTTPException(status_code=403, detail="User authentication required")
+            
+            # Check write permissions based on file type
+            has_permission = False
+            if file_type == 'private':
+                write_perms = raw_obj.private_write_permissions if hasattr(raw_obj, 'private_write_permissions') else []
+                has_permission = user_email in write_perms
+            else:  # mock
+                write_perms = raw_obj.mock_write_permissions if hasattr(raw_obj, 'mock_write_permissions') else []
+                has_permission = user_email in write_perms
+            
+            if not has_permission:
+                owner_email = raw_obj.get_owner_email() if hasattr(raw_obj, 'get_owner_email') else 'unknown'
+                logger.warning(f"User {user_email} attempted to write {file_type} file for object {object_uid} - DENIED")
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Permission denied. You don't have write access to the {file_type} file."
+                )
+            
+            logger.info(f"User {user_email} authorized to write {file_type} file for object {object_uid}")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error checking write permissions: {e}")
+            raise HTTPException(status_code=403, detail="Permission verification failed")
+        
         # Get the file path
         if file_type == 'private':
             file_path = target_obj.private_path
@@ -735,6 +771,30 @@ async def update_object_permissions(
         
         if not target_obj:
             raise HTTPException(status_code=404, detail="Object not found")
+        
+        # Get the raw object if this is a CleanSyftObject
+        raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+        
+        # Check if user has permission to update permissions (must be owner)
+        try:
+            from syft_objects.client import get_syftbox_client
+            client = get_syftbox_client()
+            user_email = client.email if client and hasattr(client, 'email') else None
+            
+            owner_email = raw_obj.get_owner_email() if hasattr(raw_obj, 'get_owner_email') else 'unknown'
+            
+            if user_email != owner_email:
+                logger.warning(f"User {user_email or 'unknown'} attempted to update permissions for object {object_uid} owned by {owner_email} - DENIED")
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Permission denied. Only the owner ({owner_email}) can update permissions."
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error checking permissions: {e}")
+            # If we can't verify permissions, deny by default
+            raise HTTPException(status_code=403, detail="Permission verification failed")
         
         # Log the current and new permissions for debugging
         logger.info(f"Updating permissions for object {object_uid}")
@@ -802,7 +862,7 @@ async def update_object_permissions(
         raise HTTPException(status_code=500, detail=f"Error updating permissions: {str(e)}")
 
 @app.delete("/api/objects/{object_uid}")
-async def delete_object(object_uid: str) -> Dict[str, Any]:
+async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, Any]:
     """Delete a syft object by UID."""
     if objects is None:
         raise HTTPException(status_code=503, detail="Syft objects not available")
@@ -817,6 +877,31 @@ async def delete_object(object_uid: str) -> Dict[str, Any]:
         
         if not target_obj:
             raise HTTPException(status_code=404, detail="Object not found")
+        
+        # Get the raw object if this is a CleanSyftObject
+        raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+        
+        # Check permissions using the object's can_delete method
+        if hasattr(raw_obj, 'can_delete'):
+            # Get current user email if not provided
+            if not user_email:
+                try:
+                    from syft_objects.client import get_syftbox_client
+                    client = get_syftbox_client()
+                    if client and hasattr(client, 'email'):
+                        user_email = client.email
+                except:
+                    pass
+            
+            if not raw_obj.can_delete(user_email):
+                owner_email = raw_obj.get_owner_email() if hasattr(raw_obj, 'get_owner_email') else 'unknown'
+                logger.warning(f"User {user_email or 'unknown'} attempted to delete object {object_uid} owned by {owner_email} - DENIED")
+                raise HTTPException(
+                    status_code=403, 
+                    detail=f"Permission denied. Only the owner ({owner_email}) can delete this object."
+                )
+            else:
+                logger.info(f"User {user_email} authorized to delete object {object_uid}")
         
         # Generic deletion logic for both file and folder objects
         deleted_files = []
