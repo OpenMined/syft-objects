@@ -45,6 +45,19 @@ class ObjectsCollection:
             # If sorting fails (e.g., with mock objects in tests), skip sorting
             pass
     
+    def _trigger_auto_install_if_needed(self):
+        """Trigger non-blocking auto-install if syft-objects app not present"""
+        try:
+            from .auto_install import is_syftbox_app_installed, ensure_syftbox_app_installed
+            
+            # Only check/install if app is not already present
+            if not is_syftbox_app_installed():
+                # Trigger non-blocking install (silent to avoid spam)
+                ensure_syftbox_app_installed(silent=True)
+        except Exception:
+            # If auto-install fails, silently continue - we don't want to break normal operation
+            pass
+    
     def _ensure_server_ready(self):
         """Ensure syft-objects server is ready before UI operations"""
         
@@ -180,7 +193,10 @@ class ObjectsCollection:
         return self
 
     def _ensure_loaded(self):
-        """Ensure objects are loaded"""
+        """Ensure objects are loaded and trigger auto-install if needed"""
+        # Trigger non-blocking auto-install attempt if syft-objects app not present
+        self._trigger_auto_install_if_needed()
+        
         if not self._cached:
             self._load_objects()
 
