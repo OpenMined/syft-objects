@@ -345,7 +345,7 @@ class SyftObject(BaseModel):
     
     
     @model_validator(mode='after')
-    def validate_urls(self):
+    def _validate_urls(self):
         """Validate URLs match object type"""
         if self._is_folder:
             # Folders must end with /
@@ -362,7 +362,7 @@ class SyftObject(BaseModel):
         return self
     
     @model_validator(mode='after')
-    def validate_file_extensions(self):
+    def _validate_file_extensions(self):
         """Validate that mock and private files have matching extensions"""
         # Skip validation for folders - they don't have extensions
         if self._is_folder:
@@ -414,6 +414,13 @@ class SyftObject(BaseModel):
             'private_permissions', 'private_write_permissions'
         }
         
+        # Define deprecated attributes that should redirect to new API
+        deprecated_attrs = {
+            'private_path': 'private.get_path()',
+            'mock_path': 'mock.get_path()', 
+            'syftobject_path': 'syftobject_config.get_path()'
+        }
+        
         # Allow access from internal methods and special cases
         import inspect
         frame = inspect.currentframe()
@@ -422,8 +429,15 @@ class SyftObject(BaseModel):
             # Allow access from within the class methods
             if 'self' in caller.f_locals and caller.f_locals.get('self') is self:
                 return super().__getattribute__(name)
-            # Allow access from the module itself
-            if caller.f_globals.get('__name__', '').startswith('syft_objects'):
+            # Allow access from the same module
+            caller_module = caller.f_globals.get('__name__', '')
+            if caller_module == 'syft_objects.models':
+                return super().__getattribute__(name)
+            # Allow access from syft_objects internals for backward compatibility
+            if caller_module.startswith('syft_objects.'):
+                if name in deprecated_attrs:
+                    # Still allow internal access to deprecated properties
+                    return super().__getattribute__(name)
                 return super().__getattribute__(name)
         
         # Block direct access to hidden attributes
@@ -431,6 +445,13 @@ class SyftObject(BaseModel):
             raise AttributeError(
                 f"'{type(self).__name__}' object has no attribute '{name}'. "
                 f"Use 'get_{name}()' instead."
+            )
+        
+        # Block access to deprecated attributes with helpful message
+        if name in deprecated_attrs:
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{name}'. "
+                f"Use '{deprecated_attrs[name]}' instead."
             )
         
         return super().__getattribute__(name)
@@ -446,6 +467,11 @@ class SyftObject(BaseModel):
             'private_url', 'mock_url', 'syftobject', 'object_type',
             'syftobject_permissions', 'mock_permissions', 'mock_write_permissions',
             'private_permissions', 'private_write_permissions',
+            # Hide deprecated path properties
+            'private_path', 'mock_path', 'syftobject_path',
+            # Hide methods that should be private
+            'can_delete', 'load_yaml', 'validate_urls', 'validate_file_extensions',
+            'from_orm', 'model_construct', 'model_copy',
             # Also hide many pydantic internals
             'model_config', 'model_fields', 'model_computed_fields', 'model_extra',
             'model_fields_set', 'model_post_init', 'model_validate', 'model_validate_json',
@@ -465,8 +491,10 @@ class SyftObject(BaseModel):
             'get_path', 'get_info', 'set_name', 'set_description', 'set_metadata',
             'set_updated_at', 'set_type', 'delete_obj', 'set_permissions',
             'mock', 'private', 'syftobject_config', '_repr_html_', '_is_folder',
-            'type', 'load_yaml', '_save_yaml', '_create_syftbox_permissions',
-            '_check_file_exists', 'can_delete', 'get_owner_email'
+            'type', '_save_yaml', '_create_syftbox_permissions',
+            '_check_file_exists', '_can_delete', 'get_owner_email', '_load_yaml',
+            '_validate_urls', '_validate_file_extensions', '_from_orm', 
+            '_model_construct', '_model_copy'
         }
         
         return sorted(list(public_attrs | public_methods))
@@ -575,7 +603,7 @@ class SyftObject(BaseModel):
             self._create_syftbox_permissions(file_path)
 
     @classmethod
-    def load_yaml(cls, file_path: str | Path) -> 'SyftObject':
+    def _load_yaml(cls, file_path: str | Path) -> 'SyftObject':
         """Load a syft object from a .syftobject.yaml file"""
         file_path = Path(file_path)
         
@@ -813,7 +841,7 @@ class SyftObject(BaseModel):
         except Exception as e:
             return False
     
-    def can_delete(self, user_email: str = None) -> bool:
+    def _can_delete(self, user_email: str = None) -> bool:
         """
         Check if a user has permission to delete this object.
         User must have write access to all object components (private, mock, syftobject).
@@ -851,6 +879,20 @@ class SyftObject(BaseModel):
         # since syftobject permissions are usually public for discovery
         
         return True
+    
+    @classmethod
+    def _from_orm(cls, *args, **kwargs):
+        """Private method for ORM compatibility"""
+        return super().from_orm(*args, **kwargs)
+    
+    @classmethod
+    def _model_construct(cls, *args, **kwargs):
+        """Private method for model construction"""
+        return super().model_construct(*args, **kwargs)
+    
+    def _model_copy(self, *args, **kwargs):
+        """Private method for model copying"""
+        return super().model_copy(*args, **kwargs)
     
     def get_owner_email(self) -> str:
         """Extract the owner email from the private URL."""

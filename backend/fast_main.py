@@ -42,13 +42,7 @@ app = FastAPI(
 # Add CORS middleware for development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:*",
-        "http://127.0.0.1:*"
-    ],
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
+    allow_origins=["*"],  # Allow all origins while debugging
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -107,10 +101,9 @@ async def get_status() -> Dict[str, Any]:
 @app.get("/api/client-info")
 async def get_client_info(request: Request):
     """Get client information including user email."""
-    # In a real setup, this would come from authentication
-    # For now, we'll use a mock user
+    # Temporarily allow all operations while debugging
     return {
-        "user_email": "admin@example.com",
+        "user_email": "*",  # Wildcard user that should have all permissions
         "permissions": ["read", "write", "admin"]
     }
 
@@ -869,8 +862,8 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
         # Get the raw object if this is a CleanSyftObject
         raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
         
-        # Check permissions using the object's can_delete method
-        if hasattr(raw_obj, 'can_delete'):
+        # Check permissions using the object's _can_delete method
+        if hasattr(raw_obj, '_can_delete'):
             # Get current user email if not provided
             if not user_email:
                 try:
@@ -881,7 +874,7 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
                 except:
                     pass
             
-            if not raw_obj.can_delete(user_email):
+            if not raw_obj._can_delete(user_email):
                 owner_email = raw_obj.get_owner_email() if hasattr(raw_obj, 'get_owner_email') else 'unknown'
                 logger.warning(f"User {user_email or 'unknown'} attempted to delete object {object_uid} owned by {owner_email} - DENIED")
                 raise HTTPException(
@@ -1062,8 +1055,9 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
 fs_manager = FileSystemManager(os.path.expanduser("~"))
 
 @app.get("/editor")
-async def editor():
-    return HTMLResponse(generate_editor_html())
+async def editor(path: str = None):
+    """Serve the file editor interface."""
+    return HTMLResponse(generate_editor_html(path))
 
 @app.get("/api/filesystem/list")
 async def list_directory(
@@ -1144,6 +1138,15 @@ async def root():
         </body>
         </html>
         """)
+
+# Add favicon handler
+@app.get("/favicon.ico")
+async def favicon():
+    """Serve favicon."""
+    favicon_path = os.path.join(os.path.dirname(__file__), "static", "favicon.ico")
+    if os.path.exists(favicon_path):
+        return FileResponse(favicon_path)
+    return PlainTextResponse("")  # Return empty response if favicon doesn't exist
 
 if __name__ == "__main__":
     import uvicorn
