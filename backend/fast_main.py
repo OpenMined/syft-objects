@@ -173,8 +173,15 @@ async def get_objects(
             # Extract email from private URL
             email = "unknown@example.com"
             try:
-                if obj.private_url.startswith("syft://"):
-                    parts = obj.private_url.split("/")
+                # Handle both CleanSyftObject and raw SyftObject
+                if hasattr(obj, 'private') and hasattr(obj.private, 'get_url'):
+                    private_url = obj.private.get_url()
+                else:
+                    raw_obj = obj._obj if hasattr(obj, '_obj') else obj
+                    private_url = raw_obj.private_url
+                
+                if private_url.startswith("syft://"):
+                    parts = private_url.split("/")
                     if len(parts) >= 3:
                         email = parts[2]
             except:
@@ -566,7 +573,7 @@ async def get_object_details(object_uid: str) -> Dict[str, Any]:
             private_preview = ""
             mock_preview = ""
             
-            # Extract email
+            # Extract email from private URL
             email = "unknown@example.com"
             try:
                 if urls['private'].startswith("syft://"):
@@ -619,11 +626,18 @@ async def get_object_details(object_uid: str) -> Dict[str, Any]:
             except Exception as e:
                 mock_preview = f"Error reading mock file: {str(e)}"
             
-            # Extract email
+            # Extract email from private URL
             email = "unknown@example.com"
             try:
-                if target_obj.private_url.startswith("syft://"):
-                    parts = target_obj.private_url.split("/")
+                # Handle both CleanSyftObject and raw SyftObject
+                if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'get_url'):
+                    private_url = target_obj.private.get_url()
+                else:
+                    raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+                    private_url = raw_obj.private_url
+                
+                if private_url.startswith("syft://"):
+                    parts = private_url.split("/")
                     if len(parts) >= 3:
                         email = parts[2]
             except:

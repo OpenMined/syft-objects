@@ -77,7 +77,13 @@ class ObjectsCollection:
     def _get_object_email(self, syft_obj: 'SyftObject'):
         """Extract email from syft:// URL"""
         try:
-            private_url = syft_obj.private_url
+            # Handle both CleanSyftObject and raw SyftObject
+            if hasattr(syft_obj, 'private') and hasattr(syft_obj.private, 'get_url'):
+                private_url = syft_obj.private.get_url()
+            else:
+                raw_obj = syft_obj._obj if hasattr(syft_obj, '_obj') else syft_obj
+                private_url = raw_obj.private_url
+            
             if private_url.startswith("syft://"):
                 parts = private_url.split("/")
                 if len(parts) >= 3:
