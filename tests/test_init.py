@@ -7,7 +7,7 @@ import syft_objects
 
 def test_version():
     """Test version is defined"""
-    assert syft_objects.__version__ == "0.6.35"
+    assert syft_objects.__version__ == "0.7.6"
 
 
 def test_exports():
@@ -63,14 +63,16 @@ def test_delete_object_function():
     """Test delete_object function is available"""
     mock_obj = Mock()
     mock_obj.delete.return_value = True
+    mock_obj.uid = "test-uid"
     
-    with patch.object(syft_objects.objects, '__getitem__', return_value=mock_obj):
-        with patch.object(syft_objects.objects, 'refresh') as mock_refresh:
-            result = syft_objects.delete_object("test-uid")
-            
-            assert result is True
-            mock_obj.delete.assert_called_once()
-            mock_refresh.assert_called_once()
+    with patch.object(syft_objects.objects, '_objects', [mock_obj]):
+        with patch.object(syft_objects.objects, '_cached', True):  # Skip loading
+            with patch.object(syft_objects.objects, 'refresh') as mock_refresh:
+                result = syft_objects.delete_object("test-uid")
+                
+                assert result is True
+                mock_obj.delete.assert_called_once_with(None)  # user_email parameter
+                mock_refresh.assert_called_once()
 
 
 def test_delete_object_not_found():
