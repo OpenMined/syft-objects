@@ -133,7 +133,7 @@ class SyftObject(BaseModel):
             return ""
     
     @model_validator(mode='after')
-    def validate_urls(self):
+    def _validate_urls(self):
         """Validate URLs match object type"""
         if self.is_folder:
             # Folders must end with /
@@ -150,7 +150,7 @@ class SyftObject(BaseModel):
         return self
     
     @model_validator(mode='after')
-    def validate_file_extensions(self):
+    def _validate_file_extensions(self):
         """Validate that mock and private files have matching extensions"""
         # Skip validation for folders - they don't have extensions
         if self.is_folder:
@@ -296,7 +296,7 @@ class SyftObject(BaseModel):
             self._create_syftbox_permissions(file_path)
 
     @classmethod
-    def load_yaml(cls, file_path: str | Path) -> 'SyftObject':
+    def _load_yaml(cls, file_path: str | Path) -> 'SyftObject':
         """Load a syft object from a .syftobject.yaml file"""
         file_path = Path(file_path)
         
@@ -472,4 +472,287 @@ class SyftObject(BaseModel):
                 
         except Exception as e:
             print(f"Error deleting standard object: {e}")
-            return False 
+            return False
+    
+    # ===== NEW API: Getter Methods =====
+    def get_uid(self) -> str:
+        """Get the object's unique identifier"""
+        return str(self.uid)
+    
+    def get_name(self) -> str:
+        """Get the object's name"""
+        return self.name
+    
+    def get_description(self) -> str:
+        """Get the object's description"""
+        return self.description
+    
+    def get_created_at(self) -> datetime:
+        """Get the object's creation timestamp"""
+        return self.created_at
+    
+    def get_updated_at(self) -> datetime:
+        """Get the object's last update timestamp"""
+        return self.updated_at
+    
+    def get_metadata(self) -> dict:
+        """Get the object's metadata"""
+        return self.metadata.copy()
+    
+    def get_file_type(self) -> str:
+        """Get the file type (extension) of the object"""
+        if self.is_folder:
+            return "folder"
+        # Extract extension from private URL
+        parts = self.private_url.split("/")[-1].split(".")
+        if len(parts) > 1:
+            return parts[-1]
+        return ""
+    
+    def get_info(self) -> dict:
+        """Get a dictionary of object information"""
+        return {
+            "uid": str(self.uid),
+            "name": self.name,
+            "description": self.description,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "is_folder": self.is_folder,
+            "metadata": self.metadata,
+            "permissions": self.get_permissions()
+        }
+    
+    def get_path(self) -> str:
+        """Get the primary (mock) path of the object"""
+        return self.mock_path
+    
+    def get_permissions(self) -> dict:
+        """Get all permissions for the object"""
+        return {
+            "syftobject": {
+                "read": self.syftobject_permissions.copy()
+            },
+            "mock": {
+                "read": self.mock_permissions.copy(),
+                "write": self.mock_write_permissions.copy()
+            },
+            "private": {
+                "read": self.private_permissions.copy(),
+                "write": self.private_write_permissions.copy()
+            }
+        }
+    
+    def get_urls(self) -> dict:
+        """Get all URLs for the object"""
+        return {
+            "private": self.private_url,
+            "mock": self.mock_url,
+            "syftobject": self.syftobject
+        }
+    
+    # ===== NEW API: Setter Methods =====
+    def set_name(self, name: str) -> None:
+        """Set the object's name"""
+        self.name = name
+        self.updated_at = utcnow()
+    
+    def set_description(self, description: str) -> None:
+        """Set the object's description"""
+        self.description = description
+        self.updated_at = utcnow()
+    
+    def set_metadata(self, metadata: dict) -> None:
+        """Set the object's metadata (replaces existing)"""
+        self.metadata = metadata.copy()
+        self.updated_at = utcnow()
+    
+    def update_metadata(self, metadata: dict) -> None:
+        """Update the object's metadata (merges with existing)"""
+        self.metadata.update(metadata)
+        self.updated_at = utcnow()
+    
+    # ===== Accessor Properties =====
+    @property
+    def mock(self) -> 'MockAccessor':
+        """Access mock-related properties and methods"""
+        return MockAccessor(self)
+    
+    @property
+    def private(self) -> 'PrivateAccessor':
+        """Access private-related properties and methods"""
+        return PrivateAccessor(self)
+    
+    @property
+    def syftobject_config(self) -> 'SyftObjectConfigAccessor':
+        """Access syftobject configuration properties and methods"""
+        return SyftObjectConfigAccessor(self)
+    
+    # ===== Custom Attribute Access Control =====
+    def __getattribute__(self, name):
+        """Intercept attribute access to hide internal fields from direct access"""
+        # Get the actual attribute value first
+        value = object.__getattribute__(self, name)
+        
+        # List of attributes that should be hidden from external access
+        hidden_attrs = {
+            'uid', 'name', 'description', 'created_at', 'updated_at', 'metadata',
+            'private_url', 'mock_url', 'syftobject', 'object_type',
+            'syftobject_permissions', 'mock_permissions', 'mock_write_permissions',
+            'private_permissions', 'private_write_permissions'
+        }
+        
+        # Deprecated attributes that should suggest alternatives
+        deprecated_attrs = {
+            'private_path': 'private.get_path()',
+            'mock_path': 'mock.get_path()',
+            'syftobject_path': 'syftobject_config.get_path()',
+            'paths': 'get_path()',
+            'urls': 'get_urls()',
+            'permissions': 'get_permissions()',
+            'info': 'get_info()'
+        }
+        
+        # Check if this is an internal syft_objects call
+        import inspect
+        frame = inspect.currentframe()
+        if frame and frame.f_back:
+            caller_module = frame.f_back.f_globals.get('__name__', '')
+            # Allow internal access from syft_objects modules
+            if caller_module.startswith('syft_objects'):
+                return value
+        
+        # Block direct access to hidden attributes from external code
+        if name in hidden_attrs:
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{name}'. "
+                f"Use 'get_{name}()' instead."
+            )
+        
+        # Redirect deprecated attributes
+        if name in deprecated_attrs:
+            raise AttributeError(
+                f"'{type(self).__name__}' object attribute '{name}' is deprecated. "
+                f"Use '{deprecated_attrs[name]}' instead."
+            )
+        
+        return value
+    
+    def __dir__(self):
+        """Customize dir() output to show only public API"""
+        # Get default attributes
+        attrs = set(object.__dir__(self))
+        
+        # Remove hidden/internal attributes
+        hidden_attrs = {
+            'uid', 'name', 'description', 'created_at', 'updated_at', 'metadata',
+            'private_url', 'mock_url', 'syftobject', 'object_type',
+            'syftobject_permissions', 'mock_permissions', 'mock_write_permissions',
+            'private_permissions', 'private_write_permissions',
+            'private_path', 'mock_path', 'syftobject_path', 'paths', 'urls',
+            'permissions', 'info', 'is_folder', 'can_delete', 'from_orm',
+            'load_yaml', 'model_construct', 'model_copy', 'validate_file_extensions',
+            'validate_urls'
+        }
+        
+        # Remove private methods we want to hide
+        private_to_hide = {
+            '_can_delete', '_load_yaml', '_validate_urls', '_validate_file_extensions'
+        }
+        
+        # Add our public API methods
+        public_methods = {
+            # Getters
+            'get_uid', 'get_name', 'get_description', 'get_created_at',
+            'get_updated_at', 'get_metadata', 'get_file_type', 'get_info',
+            'get_path', 'get_permissions', 'get_urls',
+            # Setters
+            'set_name', 'set_description', 'set_metadata', 'update_metadata',
+            'set_permissions',
+            # Accessors
+            'mock', 'private', 'syftobject_config',
+            # Actions
+            'delete_obj', 'save_yaml',
+            # Type
+            'type'
+        }
+        
+        # Filter out hidden attributes and add public ones
+        visible_attrs = (attrs - hidden_attrs - private_to_hide) | public_methods
+        
+        return sorted(list(visible_attrs))
+
+
+# ===== Accessor Classes =====
+class MockAccessor:
+    """Accessor for mock-related properties and methods"""
+    
+    def __init__(self, syft_obj: SyftObject):
+        self._obj = syft_obj
+    
+    def get_path(self) -> str:
+        """Get the local file path for the mock data"""
+        return self._obj.mock_path
+    
+    def get_url(self) -> str:
+        """Get the syft:// URL for the mock data"""
+        return self._obj.mock_url
+    
+    def get_permissions(self) -> list[str]:
+        """Get read permissions for the mock data"""
+        return self._obj.mock_permissions.copy()
+    
+    def get_write_permissions(self) -> list[str]:
+        """Get write permissions for the mock data"""
+        return self._obj.mock_write_permissions.copy()
+
+
+class PrivateAccessor:
+    """Accessor for private-related properties and methods"""
+    
+    def __init__(self, syft_obj: SyftObject):
+        self._obj = syft_obj
+    
+    def get_path(self) -> str:
+        """Get the local file path for the private data"""
+        return self._obj.private_path
+    
+    def get_url(self) -> str:
+        """Get the syft:// URL for the private data"""
+        return self._obj.private_url
+    
+    def get_permissions(self) -> list[str]:
+        """Get read permissions for the private data"""
+        return self._obj.private_permissions.copy()
+    
+    def get_write_permissions(self) -> list[str]:
+        """Get write permissions for the private data"""
+        return self._obj.private_write_permissions.copy()
+    
+    def save(self, file_path: str | Path = None, create_syftbox_permissions: bool = True) -> None:
+        """Save the syft object (alias for save_yaml)"""
+        if file_path is None:
+            # Use the syftobject path if available
+            if hasattr(self._obj, 'syftobject_path') and self._obj.syftobject_path:
+                file_path = self._obj.syftobject_path
+            else:
+                raise ValueError("No file path provided and no syftobject_path available")
+        self._obj.save_yaml(file_path, create_syftbox_permissions)
+
+
+class SyftObjectConfigAccessor:
+    """Accessor for syftobject configuration properties and methods"""
+    
+    def __init__(self, syft_obj: SyftObject):
+        self._obj = syft_obj
+    
+    def get_path(self) -> str:
+        """Get the local file path for the syftobject configuration"""
+        return self._obj.syftobject_path
+    
+    def get_url(self) -> str:
+        """Get the syft:// URL for the syftobject configuration"""
+        return self._obj.syftobject
+    
+    def get_permissions(self) -> list[str]:
+        """Get permissions for the syftobject configuration (discovery)"""
+        return self._obj.syftobject_permissions.copy() 
