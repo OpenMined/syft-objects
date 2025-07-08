@@ -149,10 +149,10 @@ async def get_objects(
         if email_filter:
             collection = collection.filter_by_email(email_filter)
         
-        # Convert to list and sort by creation date (newest first for proper indexing)
+        # Convert to list and sort by creation date (oldest first for proper indexing)
         all_objects = collection.to_list()
-        # Sort by created_at (newest first) to get consistent indexing by creation order
-        all_objects.sort(key=lambda x: x.created_at or datetime.min, reverse=True)
+        # Sort by created_at (oldest first) so index 0/1 represents the oldest object
+        all_objects.sort(key=lambda x: x.created_at or datetime.min, reverse=False)
         total_count = len(all_objects)
         
         # Apply pagination
@@ -163,8 +163,8 @@ async def get_objects(
         # Convert objects to dict format
         objects_data = []
         for page_idx, obj in enumerate(paginated_objects):
-            # Calculate the actual index in the full collection (1-based, ordered by creation)
-            actual_index = start_idx + page_idx + 1
+            # Calculate the actual index in the full collection (0-based, ordered by creation)
+            actual_index = start_idx + page_idx
             # Extract email from private URL
             email = "unknown@example.com"
             try:

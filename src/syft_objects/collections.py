@@ -530,6 +530,7 @@ Example Usage:
             border-bottom: 1px solid #f3f4f6;
             vertical-align: top;
             font-size: 0.75rem;
+            text-align: left;
         }}
         #{container_id} tbody tr {{
             transition: background-color 0.15s;
@@ -538,18 +539,19 @@ Example Usage:
         #{container_id} tbody tr:hover {{
             background: rgba(0, 0, 0, 0.03);
         }}
-        #{container_id} .copy-toast {{
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #10b981;
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 0.375rem;
-            font-size: 0.875rem;
-            display: none;
-            z-index: 1000;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+        @keyframes rainbow {{
+            0% {{ background-color: #ffe9ec; }}
+            14.28% {{ background-color: #fff4ea; }}
+            28.57% {{ background-color: #ffffea; }}
+            42.86% {{ background-color: #eaffef; }}
+            57.14% {{ background-color: #eaf6ff; }}
+            71.43% {{ background-color: #f5eaff; }}
+            85.71% {{ background-color: #ffeaff; }}
+            100% {{ background-color: #ffe9ec; }}
+        }}
+        #{container_id} .rainbow-flash {{
+            animation: rainbow 0.8s ease-in-out;
         }}
         #{container_id} .pagination {{
             display: flex;
@@ -582,7 +584,7 @@ Example Usage:
         }}
         #{container_id} .pagination .offline-status {{
             font-size: 0.75rem;
-            color: #dc2626;
+            color: #9ca3af;
             font-style: italic;
             opacity: 0.8;
             text-align: center;
@@ -729,10 +731,10 @@ Example Usage:
                 <div class="header">
                     <div class="search-controls">
                         <div style="flex: 1; min-width: 150px;">
-                            <input id="{container_id}-search" placeholder="Search objects..." style="width: 100%; padding: 0.25rem 0.5rem 0.25rem 1.75rem; border: 1px solid #d1d5db; border-radius: 0.25rem; font-size: 0.75rem;">
+                            <input id="{container_id}-search" placeholder="Search objects..." style="width: 100%; max-width: 80%; padding: 0.25rem 0.5rem 0.25rem 1.75rem; border: 1px solid #d1d5db; border-radius: 0.25rem; font-size: 0.75rem;">
                         </div>
                         <div style="flex: 1; min-width: 150px;">
-                            <input id="{container_id}-filter" placeholder="Filter by Admin..." style="width: 100%; padding: 0.25rem 0.5rem 0.25rem 1.75rem; border: 1px solid #d1d5db; border-radius: 0.25rem; font-size: 0.75rem;">
+                            <input id="{container_id}-filter" placeholder="Filter by Admin..." style="width: 100%; max-width: 80%; padding: 0.25rem 0.5rem 0.25rem 1.75rem; border: 1px solid #d1d5db; border-radius: 0.25rem; font-size: 0.75rem;">
                         </div>
                         <div style="display: flex; gap: 0.25rem;">
                             <button class="btn btn-blue btn-disabled">Search</button>
@@ -768,11 +770,13 @@ Example Usage:
         total_objects = len(self._objects)
         total_pages = max(1, (total_objects + items_per_page - 1) // items_per_page)
         
-        # Generate initial page
+        # Generate initial page (newest first for better UX)
         for i in range(min(items_per_page, total_objects)):
-            obj = self._objects[i]
+            # Reverse the order to show newest first
+            reverse_i = total_objects - 1 - i
+            obj = self._objects[reverse_i]
             # Use original index if this is a sliced collection, otherwise use current index
-            display_index = self._original_indices[i] if self._original_indices else i
+            display_index = self._original_indices[reverse_i] if self._original_indices else reverse_i
             name = html_module.escape(obj.name or "Unnamed Object")
             email = html_module.escape(self._get_object_email(obj))
             uid = str(obj.uid)
@@ -787,7 +791,7 @@ Example Usage:
                     file_type = path.suffix
             
             html += f"""
-                        <tr onclick="copyObjectCode_{container_id}({display_index})" style="cursor: pointer;">
+                        <tr onclick="copyObjectCode_{container_id}({display_index}, this)" style="cursor: pointer;">
                             <td><input type="checkbox" class="checkbox" disabled></td>
                             <td>{display_index}</td>
                             <td><div class="truncate" style="font-weight: 500;" title="{name}">{name}</div></td>
@@ -857,7 +861,7 @@ Example Usage:
                 </div>
                 <div class="pagination">
                     <div></div>
-                    <span class="offline-status">Offline Mode: Some interactive features temporarily disabled. Check SyftBox status to go online.</span>
+                    <span class="offline-status">Offline Mode: Some interactive features temporarily disabled. Check SyftBox/apps/syft-objects status to enable interactive features.</span>
                     <div class="pagination-controls">
                         <button onclick="changePage_{container_id}(-1)" id="{container_id}-prev" disabled>Previous</button>
                         <span class="page-info" id="{container_id}-page-info">Page 1 of {total_pages}</span>
@@ -867,8 +871,7 @@ Example Usage:
             </div>
         </div>
         
-        <!-- Toast for copy notification -->
-        <div id="{container_id}-toast" class="copy-toast">Python code copied to clipboard!</div>
+
         
         <script>
         // Store objects data
@@ -884,14 +887,12 @@ Example Usage:
             return div.innerHTML;
         }}
         
-        function copyObjectCode_{container_id}(index) {{
+        function copyObjectCode_{container_id}(index, rowElement) {{
             var objects = window['{container_id}_objects'];
             var obj = objects[index];
             if (!obj) return;
             
-            var code = 'obj = so.objects[' + index + ']\\n' +
-                       '# or by UID:\\n' +
-                       'obj = so.objects["' + obj.uid + '"]';
+            var code = 'obj = so.objects["' + obj.uid + '"]';
             
             // Copy to clipboard
             var textarea = document.createElement('textarea');
@@ -903,11 +904,24 @@ Example Usage:
             document.execCommand('copy');
             document.body.removeChild(textarea);
             
-            // Show toast
-            var toast = document.getElementById('{container_id}-toast');
-            toast.style.display = 'block';
+            // Add rainbow animation to the clicked row
+            if (rowElement) {{
+                rowElement.classList.add('rainbow-flash');
+                setTimeout(function() {{
+                    rowElement.classList.remove('rainbow-flash');
+                }}, 800);
+            }}
+            
+            // Show the actual copied code in footer
+            var offlineStatus = document.querySelector('#{container_id} .offline-status');
+            var originalText = offlineStatus.textContent;
+            offlineStatus.textContent = 'Copied to clipboard: ' + code;
+            offlineStatus.style.color = '#10b981'; // Green color
+            offlineStatus.style.fontFamily = 'monospace'; // Make it look like code
             setTimeout(function() {{
-                toast.style.display = 'none';
+                offlineStatus.textContent = originalText;
+                offlineStatus.style.color = ''; // Reset to default color
+                offlineStatus.style.fontFamily = ''; // Reset to default font
             }}, 2000);
         }}
         
@@ -939,11 +953,13 @@ Example Usage:
             var objects = window['{container_id}_objects'];
             
             for (var i = start; i < end; i++) {{
-                var obj = objects[i];
+                // Reverse the order to show newest first (consistent with initial page)
+                var reverseIndex = totalObjects - 1 - i;
+                var obj = objects[reverseIndex];
                 if (!obj) continue;
                 
                 // Use the display_index from the object data (handles slicing correctly)
-                var displayIndex = obj.display_index !== undefined ? obj.display_index : i;
+                var displayIndex = obj.display_index !== undefined ? obj.display_index : reverseIndex;
                 
                 var name = obj.name || 'Unnamed Object';
                 var uid = obj.uid || '';
@@ -967,7 +983,7 @@ Example Usage:
                 }}
                 
                 var tr = document.createElement('tr');
-                tr.onclick = function(idx) {{ return function() {{ copyObjectCode_{container_id}(idx); }}; }}(displayIndex);
+                tr.onclick = function(idx, row) {{ return function() {{ copyObjectCode_{container_id}(idx, row); }}; }}(displayIndex, tr);
                 tr.style.cursor = 'pointer';
                 
                 // Escape all user-provided content
@@ -1044,7 +1060,9 @@ Example Usage:
             var objects = window['{container_id}_filteredObjects'];
             
             for (var i = start; i < end; i++) {{
-                var obj = objects[i];
+                // Reverse the order to show newest first
+                var reverseIndex = window['{container_id}_totalObjects'] - 1 - i;
+                var obj = objects[reverseIndex];
                 if (!obj) continue;
                 
                 var name = obj.name || 'Unnamed Object';
@@ -1069,8 +1087,7 @@ Example Usage:
                 }}
                 
                 var tr = document.createElement('tr');
-                var originalIndex = window['{container_id}_objects'].indexOf(obj);
-                tr.onclick = function(idx) {{ return function() {{ copyObjectCode_{container_id}(idx); }}; }}(originalIndex);
+                tr.onclick = function(idx) {{ return function() {{ copyObjectCode_{container_id}(idx); }}; }}(reverseIndex);
                 tr.style.cursor = 'pointer';
                 
                 // Escape all user-provided content
@@ -1079,7 +1096,7 @@ Example Usage:
                 var escapedEmail = escapeHtml_{container_id}(email);
                 
                 tr.innerHTML = '<td><input type="checkbox" class="checkbox" disabled></td>' +
-                    '<td>' + (originalIndex + 1) + '</td>' +
+                    '<td>' + reverseIndex + '</td>' +
                     '<td><div class="truncate" style="font-weight: 500;" title="' + escapedName + '">' + escapedName + '</div></td>' +
                     '<td><div class="truncate" style="color: #6b7280;" title="' + escapedDesc + '">' + escapedDesc + '</div></td>' +
                     '<td><div class="admin-email"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span class="truncate">' + escapedEmail + '</span></div></td>' +
