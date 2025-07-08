@@ -731,7 +731,7 @@ Example Usage:
                         <div style="flex: 1; min-width: 150px;">
                             <input id="{container_id}-search" placeholder="Search objects..." style="width: 100%; padding: 0.25rem 0.5rem 0.25rem 1.75rem; border: 1px solid #d1d5db; border-radius: 0.25rem; font-size: 0.75rem;">
                         </div>
-                        <div style="flex: 1; min-width: 150px;">
+                        <div style="flex: 0 0 120px;">
                             <input id="{container_id}-filter" placeholder="Filter by Admin..." style="width: 100%; padding: 0.25rem 0.5rem 0.25rem 1.75rem; border: 1px solid #d1d5db; border-radius: 0.25rem; font-size: 0.75rem;">
                         </div>
                         <div style="display: flex; gap: 0.25rem;">
