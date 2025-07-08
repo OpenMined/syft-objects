@@ -1,295 +1,266 @@
-"""Clean API wrapper for SyftObject to hide Pydantic complexity"""
+"""Clean API wrapper for SyftObject that exposes only the desired methods."""
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional
 from datetime import datetime
-import warnings
+from pathlib import Path
 
 
 class CleanSyftObject:
-    """A clean API wrapper around SyftObject that exposes only essential functionality.
+    """Clean API wrapper that exposes only the methods we want users to see."""
     
-    This wrapper hides all the Pydantic internals and provides a simple, intuitive
-    interface matching the HTML widget functionality.
-    """
+    def __init__(self, syft_obj):
+        """Initialize with a raw SyftObject instance."""
+        # Use object.__setattr__ to bypass our custom __setattr__
+        object.__setattr__(self, '_CleanSyftObject__obj', syft_obj)
     
-    def __init__(self, syft_object):
-        """Initialize with a raw SyftObject instance"""
-        self._obj = syft_object
+    # ===== Getter Methods =====
+    def get_uid(self) -> str:
+        """Get the object's unique identifier"""
+        return str(self._CleanSyftObject__obj.uid)
     
-    # === CORE PROPERTIES ===
+    def get_name(self) -> str:
+        """Get the object's name"""
+        return self._CleanSyftObject__obj.name
     
-    @property
-    def name(self) -> str:
-        """The object's name"""
-        return self._obj.get_name()
+    def get_description(self) -> str:
+        """Get the object's description"""
+        return self._CleanSyftObject__obj.description
     
-    @property
-    def uid(self) -> str:
-        """Unique identifier for this object"""
-        return self._obj.get_uid()
+    def get_created_at(self) -> datetime:
+        """Get the object's creation timestamp"""
+        return self._CleanSyftObject__obj.created_at
     
-    @property
-    def description(self) -> str:
-        """Human-readable description"""
-        return self._obj.get_description()
+    def get_updated_at(self) -> datetime:
+        """Get the object's last update timestamp"""
+        return self._CleanSyftObject__obj.updated_at
     
-    @property
-    def metadata(self) -> Dict[str, Any]:
-        """User-defined metadata dictionary"""
-        return self._obj.get_metadata()
+    def get_metadata(self) -> dict:
+        """Get the object's metadata"""
+        return self._CleanSyftObject__obj.metadata.copy()
     
-    @metadata.setter
-    def metadata(self, value: Dict[str, Any]):
-        """Update metadata"""
-        self._obj.set_metadata(value)
-        self._obj.private.save()
-    
-    @property
-    def created_at(self) -> datetime:
-        """When this object was created"""
-        # Return the datetime object directly, not the ISO string
-        return self._obj.created_at
-    
-    @property
-    def updated_at(self) -> Optional[datetime]:
-        """When this object was last modified"""
-        # Return the datetime object directly, not the ISO string
-        return self._obj.updated_at
-    
-    @property
-    def type(self) -> str:
-        """File type extension (e.g., '.txt', '.csv') or 'folder'"""
-        if self._obj._is_folder:
+    def get_file_type(self) -> str:
+        """Get the file type (extension) of the object"""
+        if self._CleanSyftObject__obj.is_folder:
             return "folder"
-        return self._obj.get_file_type() or "unknown"
+        # Extract extension from private URL
+        parts = self._CleanSyftObject__obj.private_url.split("/")[-1].split(".")
+        if len(parts) > 1:
+            return parts[-1]
+        return ""
     
-    @property
-    def file_type(self) -> str:
-        """Alias for type property to match backend expectations"""
-        return self.type
+    def get_info(self) -> dict:
+        """Get a dictionary of object information"""
+        return {
+            "uid": str(self._CleanSyftObject__obj.uid),
+            "name": self._CleanSyftObject__obj.name,
+            "description": self._CleanSyftObject__obj.description,
+            "created_at": self._CleanSyftObject__obj.created_at.isoformat() if self._CleanSyftObject__obj.created_at else None,
+            "updated_at": self._CleanSyftObject__obj.updated_at.isoformat() if self._CleanSyftObject__obj.updated_at else None,
+            "is_folder": self._CleanSyftObject__obj.is_folder,
+            "metadata": self._CleanSyftObject__obj.metadata,
+            "permissions": self.get_permissions()
+        }
     
-    @property
-    def is_folder(self) -> bool:
-        """Check if this object represents a folder"""
-        return self._obj._is_folder
+    def get_path(self) -> str:
+        """Get the primary (mock) path of the object"""
+        return self._CleanSyftObject__obj.mock_path
     
-    # === DATA ACCESS ===
+    def get_permissions(self) -> dict:
+        """Get all permissions for the object"""
+        return {
+            "syftobject": {
+                "read": self._CleanSyftObject__obj.syftobject_permissions.copy()
+            },
+            "mock": {
+                "read": self._CleanSyftObject__obj.mock_permissions.copy(),
+                "write": self._CleanSyftObject__obj.mock_write_permissions.copy()
+            },
+            "private": {
+                "read": self._CleanSyftObject__obj.private_permissions.copy(),
+                "write": self._CleanSyftObject__obj.private_write_permissions.copy()
+            }
+        }
     
+    def get_urls(self) -> dict:
+        """Get all URLs for the object"""
+        return {
+            "private": self._CleanSyftObject__obj.private_url,
+            "mock": self._CleanSyftObject__obj.mock_url,
+            "syftobject": self._CleanSyftObject__obj.syftobject
+        }
+    
+    # ===== Setter Methods =====
+    def set_name(self, name: str) -> None:
+        """Set the object's name"""
+        self._CleanSyftObject__obj.name = name
+        from .models import utcnow
+        self._CleanSyftObject__obj.updated_at = utcnow()
+    
+    def set_description(self, description: str) -> None:
+        """Set the object's description"""
+        self._CleanSyftObject__obj.description = description
+        from .models import utcnow
+        self._CleanSyftObject__obj.updated_at = utcnow()
+    
+    def set_metadata(self, metadata: dict) -> None:
+        """Set the object's metadata (replaces existing)"""
+        self._CleanSyftObject__obj.metadata = metadata.copy()
+        from .models import utcnow
+        self._CleanSyftObject__obj.updated_at = utcnow()
+    
+    def update_metadata(self, metadata: dict) -> None:
+        """Update the object's metadata (merges with existing)"""
+        self._CleanSyftObject__obj.metadata.update(metadata)
+        from .models import utcnow
+        self._CleanSyftObject__obj.updated_at = utcnow()
+    
+    # ===== Accessor Properties =====
     @property
     def mock(self):
-        """Access mock data (public/shareable version).
-        
-        Returns a DataAccessor that supports:
-        - Reading: obj.mock() or obj.mock.read()
-        - Writing: obj.mock.write(data)
-        - For DataFrames: obj.mock.df
-        - For text: obj.mock.text
-        """
-        return self._obj.mock
+        """Access mock-related properties and methods"""
+        return MockAccessor(self._CleanSyftObject__obj)
     
     @property
     def private(self):
-        """Access private data (sensitive version).
-        
-        Returns a DataAccessor that supports:
-        - Reading: obj.private() or obj.private.read()
-        - Writing: obj.private.write(data)
-        - For DataFrames: obj.private.df
-        - For text: obj.private.text
-        """
-        return self._obj.private
-    
-    # === PERMISSIONS ===
+        """Access private-related properties and methods"""
+        return PrivateAccessor(self._CleanSyftObject__obj)
     
     @property
-    def permissions(self) -> Dict[str, List[str]]:
-        """Get all permissions in a simple dictionary format"""
-        perms = self._obj.get_permissions()
-        return {
-            "discovery": perms["syftobject"],
-            "mock_read": perms["mock_read"],
-            "mock_write": perms["mock_write"],
-            "private_read": perms["private_read"],
-            "private_write": perms["private_write"]
-        }
+    def syftobject_config(self):
+        """Access syftobject configuration properties and methods"""
+        return SyftObjectConfigAccessor(self._CleanSyftObject__obj)
     
-    # Individual permission properties for backend compatibility
-    @property
-    def syftobject_permissions(self) -> List[str]:
-        """Who can discover this object"""
-        return list(self._obj.syftobject_permissions or [])
+    # ===== Actions =====
+    def delete_obj(self, user_email: str = None) -> bool:
+        """Delete this object with permission checking"""
+        return self._CleanSyftObject__obj.delete_obj(user_email)
+    
+    def set_permissions(self, file_type: str, read: list[str] = None, write: list[str] = None) -> None:
+        """Set permissions for this object"""
+        self._CleanSyftObject__obj.set_permissions(file_type, read, write)
     
     @property
-    def mock_permissions(self) -> List[str]:
-        """Who can read the mock data"""
-        return list(self._obj.mock_permissions or [])
+    def type(self) -> str:
+        """Get the object type"""
+        return self._CleanSyftObject__obj.object_type
     
-    @property
-    def mock_write_permissions(self) -> List[str]:
-        """Who can write the mock data"""
-        return list(self._obj.mock_write_permissions or [])
-    
-    @property
-    def private_permissions(self) -> List[str]:
-        """Who can read the private data"""
-        return list(self._obj.private_permissions or [])
-    
-    @property
-    def private_write_permissions(self) -> List[str]:
-        """Who can write the private data"""
-        return list(self._obj.private_write_permissions or [])
-    
-    def set_permissions(self, **kwargs) -> None:
-        """Update permissions for this object.
-        
-        Args:
-            discovery: List of emails who can discover this object
-            mock_read: List of emails who can read the mock
-            mock_write: List of emails who can write the mock
-            private_read: List of emails who can read the private data
-            private_write: List of emails who can write the private data
-            
-        Example:
-            obj.set_permissions(
-                mock_read=["public"],
-                mock_write=["alice@example.com"],
-                private_read=["alice@example.com", "bob@example.com"]
-            )
-        """
-        # Map friendly names to internal names
-        mapping = {
-            "discovery": "syftobject_permissions",
-            "mock_read": "mock_permissions", 
-            "mock_write": "mock_write_permissions",
-            "private_read": "private_permissions",
-            "private_write": "private_write_permissions"
-        }
-        
-        # Convert and apply
-        internal_kwargs = {}
-        for key, value in kwargs.items():
-            if key in mapping:
-                internal_kwargs[mapping[key]] = value
-            else:
-                warnings.warn(f"Unknown permission type: {key}")
-        
-        if internal_kwargs:
-            self._obj.set_permissions(**internal_kwargs)
-    
-    # === URLS & PATHS ===
-    
-    @property
-    def urls(self) -> Dict[str, str]:
-        """Get syft:// URLs for all components"""
-        urls = self._obj.get_urls()
-        return {
-            "mock": urls["mock"],
-            "private": urls["private"],
-            "metadata": urls["syftobject"]
-        }
-    
-    # Individual URL properties for backend compatibility
-    @property
-    def private_url(self) -> str:
-        """Syft:// URL for private data"""
-        return self._obj.private_url
-    
-    @property
-    def mock_url(self) -> str:
-        """Syft:// URL for mock data"""
-        return self._obj.mock_url
-    
-    @property
-    def syftobject(self) -> str:
-        """Syft:// URL for metadata file"""
-        return self._obj.syftobject
-    
-    @property
-    def paths(self) -> Dict[str, Optional[str]]:
-        """Get local filesystem paths for all components"""
-        paths = self._obj.get_path()
-        return {
-            "mock": paths["mock"],
-            "private": paths["private"],
-            "metadata": paths["syftobject"]
-        }
-    
-    # Individual path properties
-    @property
-    def mock_path(self) -> Optional[str]:
-        """Local filesystem path for mock data"""
-        return self._obj.mock.get_path()
-    
-    @property
-    def private_path(self) -> Optional[str]:
-        """Local filesystem path for private data"""
-        return self._obj.private.get_path()
-    
-    @property
-    def syftobject_path(self) -> Optional[str]:
-        """Local filesystem path for metadata file"""
-        return self._obj.syftobject_config.get_path()
-    
-    # === ACTIONS ===
-    
-    def delete(self) -> bool:
-        """Delete this object and all its files.
-        
-        Returns:
-            bool: True if deletion was successful
-        """
-        return self._obj.delete_obj()
-    
-    def save(self) -> None:
-        """Save any changes to the metadata file"""
-        self._obj.private.save()
-    
-    def info(self) -> Dict[str, Any]:
-        """Get detailed information about this object (like Info button in UI)"""
-        return {
-            "name": self.name,
-            "uid": self.uid,
-            "description": self.description,
-            "type": self.type,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-            "metadata": self.metadata,
-            "permissions": self.permissions,
-            "urls": self.urls,
-            "paths": self.paths,
-            "is_folder": self._obj._is_folder
-        }
-    
-    # === DISPLAY ===
-    
-    def _repr_html_(self):
-        """Jupyter notebook HTML representation"""
-        return self._obj._repr_html_()
-    
-    def __repr__(self):
+    # ===== Special Methods =====
+    def __repr__(self) -> str:
         """String representation"""
-        return f"<SyftObject {self.name} ({self.uid[:8]}...)>"
+        return f"<SyftObject uid={self.get_uid()} name='{self.get_name()}'>"
     
-    def __str__(self):
-        """Human-readable string"""
-        return f"SyftObject '{self.name}' ({self.type})"
+    def __str__(self) -> str:
+        """String representation"""
+        return self.__repr__()
     
-    # === PRIVATE HELPERS ===
+    def _repr_html_(self) -> str:
+        """Rich HTML representation for Jupyter notebooks"""
+        # Delegate to the wrapped object's display
+        return self._CleanSyftObject__obj._repr_html_()
     
-    def _check_file_exists(self, url: str) -> bool:
-        """Check if a file exists at the given syft:// URL (internal use)"""
-        return self._obj._check_file_exists(url)
+    def __dir__(self):
+        """Show only the clean API methods"""
+        return [
+            # Getters
+            'get_uid', 'get_name', 'get_description', 'get_created_at',
+            'get_updated_at', 'get_metadata', 'get_file_type', 'get_info',
+            'get_path', 'get_permissions', 'get_urls',
+            # Setters
+            'set_name', 'set_description', 'set_metadata', 'update_metadata',
+            'set_permissions',
+            # Accessors
+            'mock', 'private', 'syftobject_config',
+            # Actions
+            'delete_obj',
+            # Type
+            'type'
+        ]
     
-    def _raw(self):
-        """Access the underlying raw SyftObject (for advanced users only)"""
-        warnings.warn(
-            "Accessing raw SyftObject exposes internal Pydantic API. "
-            "Consider using the clean API methods instead.",
-            stacklevel=2
-        )
-        return self._obj
+    def __getattr__(self, name):
+        """Block access to internal attributes"""
+        if name == '_obj':
+            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+
+
+# ===== Accessor Classes =====
+class MockAccessor:
+    """Accessor for mock-related properties and methods"""
+    
+    def __init__(self, syft_obj):
+        self._CleanSyftObject__obj = syft_obj
+    
+    def get_path(self) -> str:
+        """Get the local file path for the mock data"""
+        return self._CleanSyftObject__obj.mock_path
+    
+    def get_url(self) -> str:
+        """Get the syft:// URL for the mock data"""
+        return self._CleanSyftObject__obj.mock_url
+    
+    def get_permissions(self) -> list[str]:
+        """Get read permissions for the mock data"""
+        return self._CleanSyftObject__obj.mock_permissions.copy()
+    
+    def get_write_permissions(self) -> list[str]:
+        """Get write permissions for the mock data"""
+        return self._CleanSyftObject__obj.mock_write_permissions.copy()
+
+
+class PrivateAccessor:
+    """Accessor for private-related properties and methods"""
+    
+    def __init__(self, syft_obj):
+        self._CleanSyftObject__obj = syft_obj
+    
+    def get_path(self) -> str:
+        """Get the local file path for the private data"""
+        return self._CleanSyftObject__obj.private_path
+    
+    def get_url(self) -> str:
+        """Get the syft:// URL for the private data"""
+        return self._CleanSyftObject__obj.private_url
+    
+    def get_permissions(self) -> list[str]:
+        """Get read permissions for the private data"""
+        return self._CleanSyftObject__obj.private_permissions.copy()
+    
+    def get_write_permissions(self) -> list[str]:
+        """Get write permissions for the private data"""
+        return self._CleanSyftObject__obj.private_write_permissions.copy()
+    
+    def save(self, file_path: str | Path = None, create_syftbox_permissions: bool = True) -> None:
+        """Save the syft object (alias for save_yaml)"""
+        if file_path is None:
+            # Use the syftobject path if available
+            if hasattr(self._CleanSyftObject__obj, 'syftobject_path') and self._CleanSyftObject__obj.syftobject_path:
+                file_path = self._CleanSyftObject__obj.syftobject_path
+            else:
+                raise ValueError("No file path provided and no syftobject_path available")
+        self._CleanSyftObject__obj.save_yaml(file_path, create_syftbox_permissions)
+
+
+class SyftObjectConfigAccessor:
+    """Accessor for syftobject configuration properties and methods"""
+    
+    def __init__(self, syft_obj):
+        self._CleanSyftObject__obj = syft_obj
+    
+    def get_path(self) -> str:
+        """Get the local file path for the syftobject configuration"""
+        return self._CleanSyftObject__obj.syftobject_path
+    
+    def get_url(self) -> str:
+        """Get the syft:// URL for the syftobject configuration"""
+        return self._CleanSyftObject__obj.syftobject
+    
+    def get_permissions(self) -> list[str]:
+        """Get permissions for the syftobject configuration (discovery)"""
+        return self._CleanSyftObject__obj.syftobject_permissions.copy()
 
 
 def wrap_syft_object(obj) -> CleanSyftObject:
-    """Wrap a raw SyftObject in the clean API"""
+    """Wrap a SyftObject in the clean API wrapper."""
+    if isinstance(obj, CleanSyftObject):
+        return obj
     return CleanSyftObject(obj)

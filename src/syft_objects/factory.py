@@ -192,7 +192,7 @@ def syobj(
             metadata=clean_metadata,
             syftobject_permissions=discovery_read or ["public"],
             mock_permissions=mock_read or ["public"],
-            mock_write_permissions=mock_write or [email],  # Admin should have write access to mock by default
+            mock_write_permissions=mock_write or [],
             private_permissions=private_read or [email],
             private_write_permissions=private_write or [email]
         )
@@ -287,7 +287,7 @@ def syobj(
     # === PERMISSION HANDLING ===
     final_discovery_read = discovery_read or ["public"]
     final_mock_read = mock_read or ["public"]
-    final_mock_write = mock_write or [email]  # Admin should have write access to mock by default
+    final_mock_write = mock_write or []
     final_private_read = private_read or [email]
     final_private_write = private_write or [email]
     
@@ -368,7 +368,7 @@ def syobj(
             save_path = tmp_dir / f"{safe_name}_{uid_short}.syftobject.yaml"
         
         # Save the syftobject.yaml file
-        syft_obj._save_yaml(save_path, create_syftbox_permissions=False)
+        syft_obj.save_yaml(save_path, create_syftbox_permissions=False)
         
         # Move .syftobject.yaml file to SyftBox location if available
         final_syftobj_path = save_path
@@ -398,8 +398,9 @@ def syobj(
         if create_syftbox_permissions:
             syft_obj._create_syftbox_permissions(Path(final_syftobj_path))
     
-    # Return the raw SyftObject
-    return syft_obj
+    # Wrap in clean API
+    from .clean_api import wrap_syft_object
+    return wrap_syft_object(syft_obj)
 
 
 def _create_mock_folder_structure(source: Path, target: Path):

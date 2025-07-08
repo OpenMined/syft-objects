@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "syft-objects"
-version = "0.8.0"
+version = "0.9.1"
 description = "Share files with explicit mock vs private control"
 readme = "README.md"
 authors = [
@@ -33,10 +33,10 @@ requires-python = ">=3.9"
 dependencies = [
     "pydantic>=2.0.0",
     "pyyaml>=6.0",
-    "syft-perm[syftbox]>=0.1.0",
-    "fastapi>=0.68.0",
-    "uvicorn>=0.15.0",
-    "loguru>=0.5.3",
+    "syft-perm>=0.1.0",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "loguru>=0.7.0",
     "syft-core>=0.2.5",
     "requests>=2.32.4",
     "uvloop>=0.17.0; sys_platform != 'win32'",

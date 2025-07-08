@@ -1,6 +1,6 @@
 # syft-objects - Distributed file discovery and addressing system 
 
-__version__ = "0.8.4"
+__version__ = "0.9.1"
 
 # Internal imports (hidden from public API)
 from . import models as _models
@@ -82,6 +82,7 @@ __all__ = [
     "create_object", # Function for creating objects
     "delete_object", # Function for deleting objects
     "objects",       # Global collection instance
+    "syobj",         # Legacy factory function
 ]
 
 # Internal setup (hidden from user)
@@ -97,7 +98,7 @@ import sys
 _current_module = sys.modules[__name__]
 _internal_modules = ['models', 'data_accessor', 'factory', 'collections', 'utils', 
                      'client', 'auto_install', 'permissions', 'file_ops', 'display',
-                     'ObjectsCollection', 'sys', 'syobj']  # Hide all internal modules and factory function
+                     'ObjectsCollection', 'sys']  # Hide all internal modules (but keep syobj)
 for _attr_name in _internal_modules:
     if hasattr(_current_module, _attr_name):
         delattr(_current_module, _attr_name)

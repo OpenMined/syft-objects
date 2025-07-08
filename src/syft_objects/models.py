@@ -19,99 +19,6 @@ def utcnow():
     return datetime.now(tz=timezone.utc)
 
 
-class MockAccessor(DataAccessor):
-    """Accessor for mock data with permission management methods."""
-    
-    def __init__(self, syft_url: str, syft_object: 'SyftObject'):
-        super().__init__(syft_url, syft_object)
-    
-    def get_path(self) -> str:
-        """Get the local file path for mock data"""
-        return self.path
-    
-    def get_url(self) -> str:
-        """Get the syft:// URL for mock data"""
-        return self.url
-    
-    def get_permissions(self) -> list[str]:
-        """Get read permissions for mock data"""
-        return self._syft_object.mock_permissions
-    
-    def get_write_permissions(self) -> list[str]:
-        """Get write permissions for mock data"""
-        return self._syft_object.mock_write_permissions
-    
-    def set_permissions(self, read: list[str] = None, write: list[str] = None) -> None:
-        """Set permissions for mock data"""
-        self._syft_object.set_permissions("mock", read=read, write=write)
-
-
-class PrivateAccessor(DataAccessor):
-    """Accessor for private data with permission management methods."""
-    
-    def __init__(self, syft_url: str, syft_object: 'SyftObject'):
-        super().__init__(syft_url, syft_object)
-    
-    def get_path(self) -> str:
-        """Get the local file path for private data"""
-        return self.path
-    
-    def get_url(self) -> str:
-        """Get the syft:// URL for private data"""
-        return self.url
-    
-    def get_permissions(self) -> list[str]:
-        """Get read permissions for private data"""
-        return self._syft_object.private_permissions
-    
-    def get_write_permissions(self) -> list[str]:
-        """Get write permissions for private data"""
-        return self._syft_object.private_write_permissions
-    
-    def set_permissions(self, read: list[str] = None, write: list[str] = None) -> None:
-        """Set permissions for private data"""
-        self._syft_object.set_permissions("private", read=read, write=write)
-    
-    def save(self, file_path: str = None, create_syftbox_permissions: bool = True) -> None:
-        """Save the syft object - moved from main object to private accessor"""
-        if file_path:
-            self._syft_object._save_yaml(file_path, create_syftbox_permissions)
-        else:
-            # Use existing syftobject path
-            syftobject_path = self._syft_object._syftobject_path
-            if syftobject_path:
-                self._syft_object._save_yaml(syftobject_path, create_syftbox_permissions)
-            else:
-                raise ValueError("No file path provided and no existing syftobject path found")
-
-
-class SyftObjectConfigAccessor:
-    """Accessor for syftobject configuration and metadata."""
-    
-    def __init__(self, syft_object: 'SyftObject'):
-        self._syft_object = syft_object
-    
-    def get_path(self) -> str:
-        """Get the local file path for the .syftobject.yaml file"""
-        return self._syft_object._syftobject_path
-    
-    def get_url(self) -> str:
-        """Get the syft:// URL for the .syftobject.yaml file"""
-        return self._syft_object.syftobject
-    
-    def get_permissions(self) -> list[str]:
-        """Get read permissions for the syftobject file (discovery permissions)"""
-        return self._syft_object.syftobject_permissions
-    
-    def set_permissions(self, read: list[str]) -> None:
-        """Set discovery permissions for the syftobject file"""
-        self._syft_object.set_permissions("syftobject", read=read)
-    
-    def __repr__(self) -> str:
-        """String representation"""
-        return f"SyftObjectConfigAccessor(url='{self.get_url()}', path='{self.get_path()}')"
-
-
 class SyftObject(BaseModel):
     """
     A distributed object with mock/real pattern for file discovery and addressing
@@ -160,83 +67,51 @@ class SyftObject(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Arbitrary metadata")
     
     @property
-    def _is_folder(self) -> bool:
-        """Check if this object represents a folder. (Hidden from public API)"""
+    def is_folder(self) -> bool:
+        """Check if this object represents a folder."""
         return self.object_type == "folder"
-    
-    @property
-    def type(self) -> str:
-        """Alias for get_type() to maintain some compatibility"""
-        return self.get_type()
     
     # Data accessor properties
     @property
-    def private(self) -> PrivateAccessor:
-        """Get data accessor for private data with enhanced permission methods"""
-        return PrivateAccessor(self.private_url, self)
+    def private(self) -> DataAccessor:
+        """Get data accessor for private data with .obj, .file, .path, .url properties"""
+        return DataAccessor(self.private_url, self)
     
     @property
-    def mock(self) -> MockAccessor:
-        """Get data accessor for mock data with enhanced permission methods"""
-        return MockAccessor(self.mock_url, self)
+    def mock(self) -> DataAccessor:
+        """Get data accessor for mock data with .obj, .file, .path, .url properties"""
+        return DataAccessor(self.mock_url, self)
+    
+    # Convenience properties for backward compatibility
+    @property
+    def private_path(self) -> str:
+        """Get the full local file path for the private object"""
+        return self._get_local_file_path(self.private_url)
     
     @property
-    def syftobject_config(self) -> SyftObjectConfigAccessor:
-        """Get accessor for syftobject configuration and metadata"""
-        return SyftObjectConfigAccessor(self)
+    def mock_path(self) -> str:
+        """Get the full local file path for the mock object"""
+        return self._get_local_file_path(self.mock_url)
     
-    # Setter methods for all getters
-    def set_name(self, name: str) -> None:
-        """Set the human-readable name for this object"""
-        self.name = name
+    @property
+    def syftobject_path(self) -> str:
+        """Get the full local file path for the .syftobject.yaml file"""
+        # First try to get path from the syftobject field
+        if hasattr(self, 'syftobject') and self.syftobject:
+            return self._get_local_file_path(self.syftobject)
+        
+        # Fall back to metadata if available
+        file_ops = self.metadata.get("_file_operations", {})
+        syftobject_yaml_path = file_ops.get("syftobject_yaml_path")
+        if syftobject_yaml_path:
+            return syftobject_yaml_path
+        return ""
     
-    def set_description(self, description: str) -> None:
-        """Set the description of this object"""
-        self.description = description
-    
-    def set_metadata(self, metadata: dict) -> None:
-        """Set the arbitrary metadata dictionary"""
-        self.metadata = metadata.copy()
-    
-    def set_updated_at(self, timestamp: datetime = None) -> None:
-        """Set the last update timestamp (defaults to current UTC time)"""
-        self.updated_at = timestamp or utcnow()
-    
-    def set_type(self, object_type: str) -> None:
-        """Set the object type (file or folder)"""
-        if object_type not in ["file", "folder"]:
-            raise ValueError(f"Invalid object type: {object_type}. Must be 'file' or 'folder'")
-        self.object_type = object_type
-    
-    # New API methods with get_ prefixes
-    def get_uid(self) -> str:
-        """Get the unique identifier for this object"""
-        return str(self.uid)
-    
-    def get_name(self) -> str:
-        """Get the human-readable name for this object"""
-        return self.name or ""
-    
-    def get_description(self) -> str:
-        """Get the description of this object"""
-        return self.description or ""
-    
-    def get_created_at(self) -> str:
-        """Get the creation timestamp as ISO string"""
-        return self.created_at.isoformat() if self.created_at else ""
-    
-    def get_updated_at(self) -> str:
-        """Get the last update timestamp as ISO string"""
-        return self.updated_at.isoformat() if self.updated_at else ""
-    
-    def get_type(self) -> str:
-        """Get the object type (file or folder)"""
-        return self.object_type
-    
-    def get_file_type(self) -> str:
+    @property
+    def file_type(self) -> str:
         """Get the file extension from mock/private URLs"""
         # Folders don't have file extensions
-        if self._is_folder:
+        if self.is_folder:
             return ""
             
         try:
@@ -257,97 +132,10 @@ class SyftObject(BaseModel):
         except:
             return ""
     
-    def get_metadata(self) -> dict:
-        """Get the arbitrary metadata dictionary"""
-        return self.metadata.copy()
-    
-    def get_permissions(self) -> dict:
-        """Get all permission settings for this object"""
-        return {
-            "syftobject": self.syftobject_permissions.copy(),
-            "mock_read": self.mock_permissions.copy(),
-            "mock_write": self.mock_write_permissions.copy(),
-            "private_read": self.private_permissions.copy(),
-            "private_write": self.private_write_permissions.copy()
-        }
-    
-    def get_urls(self) -> dict:
-        """Get all syft:// URLs for this object"""
-        return {
-            "private": self.private_url,
-            "mock": self.mock_url,
-            "syftobject": self.syftobject
-        }
-    
-    def get_path(self) -> dict:
-        """Get all local file paths for this object"""
-        return {
-            "private": self._get_local_file_path(self.private_url),
-            "mock": self._get_local_file_path(self.mock_url),
-            "syftobject": self.syftobject_path
-        }
-    
-    def get_info(self) -> dict:
-        """Get comprehensive information about this object"""
-        return {
-            "uid": self.get_uid(),
-            "name": self.get_name(),
-            "description": self.get_description(),
-            "type": self.get_type(),
-            "created_at": self.get_created_at(),
-            "updated_at": self.get_updated_at(),
-            "urls": self.get_urls(),
-            "paths": self.get_path(),
-            "permissions": self.get_permissions(),
-            "metadata": self.get_metadata()
-        }
-
-    # Internal/hidden properties for backward compatibility - moved from public API
-    @property
-    def _private_path(self) -> str:
-        """Get the full local file path for the private object (internal use)"""
-        return self._get_local_file_path(self.private_url)
-    
-    @property
-    def _mock_path(self) -> str:
-        """Get the full local file path for the mock object (internal use)"""
-        return self._get_local_file_path(self.mock_url)
-    
-    @property
-    def _syftobject_path(self) -> str:
-        """Get the full local file path for the .syftobject.yaml file (internal use)"""
-        # First try to get path from the syftobject field
-        if hasattr(self, 'syftobject') and self.syftobject:
-            return self._get_local_file_path(self.syftobject)
-        
-        # Fall back to metadata if available
-        file_ops = self.metadata.get("_file_operations", {})
-        syftobject_yaml_path = file_ops.get("syftobject_yaml_path")
-        if syftobject_yaml_path:
-            return syftobject_yaml_path
-        return ""
-    
-    # Backward compatibility properties for internal code
-    @property
-    def private_path(self) -> str:
-        """DEPRECATED: Use private.get_path() instead"""
-        return self._private_path
-    
-    @property
-    def mock_path(self) -> str:
-        """DEPRECATED: Use mock.get_path() instead"""
-        return self._mock_path
-    
-    @property
-    def syftobject_path(self) -> str:
-        """DEPRECATED: Use syftobject_config.get_path() instead"""
-        return self._syftobject_path
-    
-    
     @model_validator(mode='after')
     def _validate_urls(self):
         """Validate URLs match object type"""
-        if self._is_folder:
+        if self.is_folder:
             # Folders must end with /
             if not self.private_url.endswith('/'):
                 self.private_url += '/'
@@ -365,7 +153,7 @@ class SyftObject(BaseModel):
     def _validate_file_extensions(self):
         """Validate that mock and private files have matching extensions"""
         # Skip validation for folders - they don't have extensions
-        if self._is_folder:
+        if self.is_folder:
             return self
             
         def extract_extension(url: str) -> str:
@@ -404,101 +192,6 @@ class SyftObject(BaseModel):
             UUID: lambda v: str(v)
         }
     
-    def __getattribute__(self, name):
-        """Intercept attribute access to hide internal fields from direct access"""
-        # Define which attributes should be hidden from direct access
-        hidden_attrs = {
-            'uid', 'name', 'description', 'created_at', 'updated_at', 'metadata',
-            'private_url', 'mock_url', 'syftobject', 'object_type',
-            'syftobject_permissions', 'mock_permissions', 'mock_write_permissions',
-            'private_permissions', 'private_write_permissions'
-        }
-        
-        # Define deprecated attributes that should redirect to new API
-        deprecated_attrs = {
-            'private_path': 'private.get_path()',
-            'mock_path': 'mock.get_path()', 
-            'syftobject_path': 'syftobject_config.get_path()'
-        }
-        
-        # Allow access from internal methods and special cases
-        import inspect
-        frame = inspect.currentframe()
-        if frame and frame.f_back:
-            caller = frame.f_back
-            # Allow access from within the class methods
-            if 'self' in caller.f_locals and caller.f_locals.get('self') is self:
-                return super().__getattribute__(name)
-            # Allow access from the same module
-            caller_module = caller.f_globals.get('__name__', '')
-            if caller_module == 'syft_objects.models':
-                return super().__getattribute__(name)
-            # Allow access from syft_objects internals for backward compatibility
-            if caller_module.startswith('syft_objects.'):
-                if name in deprecated_attrs:
-                    # Still allow internal access to deprecated properties
-                    return super().__getattribute__(name)
-                return super().__getattribute__(name)
-        
-        # Block direct access to hidden attributes
-        if name in hidden_attrs:
-            raise AttributeError(
-                f"'{type(self).__name__}' object has no attribute '{name}'. "
-                f"Use 'get_{name}()' instead."
-            )
-        
-        # Block access to deprecated attributes with helpful message
-        if name in deprecated_attrs:
-            raise AttributeError(
-                f"'{type(self).__name__}' object has no attribute '{name}'. "
-                f"Use '{deprecated_attrs[name]}' instead."
-            )
-        
-        return super().__getattribute__(name)
-    
-    def __dir__(self):
-        """Override dir() to only show the public API methods"""
-        # Get default attributes
-        attrs = set(super().__dir__())
-        
-        # Remove hidden fields
-        hidden_fields = {
-            'uid', 'name', 'description', 'created_at', 'updated_at', 'metadata',
-            'private_url', 'mock_url', 'syftobject', 'object_type',
-            'syftobject_permissions', 'mock_permissions', 'mock_write_permissions',
-            'private_permissions', 'private_write_permissions',
-            # Hide deprecated path properties
-            'private_path', 'mock_path', 'syftobject_path',
-            # Hide methods that should be private
-            'can_delete', 'load_yaml', 'validate_urls', 'validate_file_extensions',
-            'from_orm', 'model_construct', 'model_copy',
-            # Also hide many pydantic internals
-            'model_config', 'model_fields', 'model_computed_fields', 'model_extra',
-            'model_fields_set', 'model_post_init', 'model_validate', 'model_validate_json',
-            'model_dump', 'model_dump_json', 'model_json_schema', 'model_parametrized_name',
-            'model_rebuild', 'model_validate_strings', 'copy', 'dict', 'json', 'parse_file',
-            'parse_obj', 'parse_raw', 'schema', 'schema_json', 'update_forward_refs',
-            'validate', 'construct', '__fields__', '__fields_set__', '__config__',
-        }
-        
-        # Keep only public API
-        public_attrs = attrs - hidden_fields
-        
-        # Make sure we include our public methods
-        public_methods = {
-            'get_uid', 'get_name', 'get_description', 'get_created_at', 'get_updated_at',
-            'get_type', 'get_file_type', 'get_metadata', 'get_permissions', 'get_urls',
-            'get_path', 'get_info', 'set_name', 'set_description', 'set_metadata',
-            'set_updated_at', 'set_type', 'delete_obj', 'set_permissions',
-            'mock', 'private', 'syftobject_config', '_repr_html_', '_is_folder',
-            'type', '_save_yaml', '_create_syftbox_permissions',
-            '_check_file_exists', '_can_delete', 'get_owner_email', '_load_yaml',
-            '_validate_urls', '_validate_file_extensions', '_from_orm', 
-            '_model_construct', '_model_copy'
-        }
-        
-        return sorted(list(public_attrs | public_methods))
-    
     def _repr_html_(self) -> str:
         """Rich HTML representation for Jupyter notebooks"""
         return create_html_display(self)
@@ -524,7 +217,7 @@ class SyftObject(BaseModel):
         """Get the local file path for a syft:// URL"""
         try:
             # Check for folder paths in metadata first
-            if self._is_folder and "_folder_paths" in self.metadata:
+            if self.is_folder and "_folder_paths" in self.metadata:
                 folder_paths = self.metadata["_folder_paths"]
                 if syft_url == self.private_url and "private" in folder_paths:
                     return folder_paths["private"]
@@ -572,8 +265,8 @@ class SyftObject(BaseModel):
             return f"Error reading file: {str(e)}"
 
 
-    def _save_yaml(self, file_path: str | Path, create_syftbox_permissions: bool = True) -> None:
-        """Save the syft object to a YAML file - internal method, use private.save() instead"""
+    def save_yaml(self, file_path: str | Path, create_syftbox_permissions: bool = True) -> None:
+        """Save the syft object to a YAML file with .syftobject.yaml extension and create SyftBox permission files"""
         file_path = Path(file_path)
         
         # Ensure the file ends with .syftobject.yaml
@@ -655,178 +348,133 @@ class SyftObject(BaseModel):
             raise ValueError(f"Invalid file_type: {file_type}. Must be 'mock', 'private', or 'syftobject'.")
     
     def delete_obj(self, user_email: str = None) -> bool:
+        """Delete this object with permission checking"""
+        if not self.can_delete(user_email):
+            return False
+        return self.delete()
+    
+    def can_delete(self, user_email: str = None) -> bool:
+        """Check if a user can delete this object"""
+        if not user_email:
+            return False
+        owner_email = self.get_owner_email()
+        return user_email == owner_email
+    
+    def get_owner_email(self) -> str:
+        """Get the owner email from metadata"""
+        return self.metadata.get('owner_email', 'unknown')
+    
+    def delete(self) -> bool:
         """
         Delete this syft-object and all its associated files.
         
-        For folder objects, this will delete the entire directory structure.
-        For file objects, this will delete the individual files.
-        
-        Args:
-            user_email: Email of the user attempting deletion. If None, will try to get from SyftBox client.
+        For syft-queue jobs, this will delegate to the syft-queue deletion API.
+        For regular syft-objects, this will delete the object files directly.
         
         Returns:
             bool: True if deletion was successful, False otherwise
         """
-        # Check permissions first
-        if not self.can_delete(user_email):
-            raise PermissionError(f"User {user_email or 'unknown'} does not have permission to delete object {self.uid} owned by {self.get_owner_email()}")
-        
         try:
-            if self._is_folder:
-                return self._delete_folder_object()
+            # Check if this is a syft-queue job and delegate if so
+            if hasattr(self, 'metadata') and self.metadata and self.metadata.get('type') == 'SyftBox Job':
+                return self._delete_syft_queue_job()
             else:
-                return self._delete_file_object()
+                return self._delete_standard_object()
         except Exception as e:
+            print(f"Error deleting object {self.uid}: {e}")
             return False
     
-    def _delete_folder_object(self) -> bool:
-        """Delete a folder-type syft-object by removing its directory structure."""
+    def _delete_syft_queue_job(self) -> bool:
+        """Delete a syft-queue job by calling the syft-queue API."""
         try:
-            from pathlib import Path
-            import shutil
+            import requests
             
-            # Try multiple strategies to find the folder path
-            folder_path = None
+            # Try to find syft-queue server port
+            syft_queue_ports = [8005, 8006, 8007, 8008]  # Common syft-queue ports
             
-            # Strategy 1: Use syftobject_path parent directory (most reliable for syft-queue jobs)
-            if self.syftobject_path:
-                syftobject_path = Path(self.syftobject_path)
-                if syftobject_path.exists():
-                    folder_path = syftobject_path.parent
-                    pass  # Found folder path via syftobject_path
-            
-            # Strategy 2: For syft-queue jobs, search across all status directories
-            if not folder_path and hasattr(self, 'metadata') and self.metadata and self.metadata.get('type') == 'SyftBox Job':
-                # Search in syft-queues directories for this job UID
-                job_uid = str(self.uid)
-                
-                # Common syft-queue base paths
-                potential_bases = [
-                    Path.home() / "SyftBox" / "datasites",
-                    Path("/tmp"),  # fallback
-                ]
-                
-                for base in potential_bases:
-                    if base.exists():
-                        # Search for job directories with this UID across all status folders
-                        for queue_dir in base.rglob("**/syft-queues"):
-                            for status_dir in ["inbox", "running", "completed", "failed"]:
-                                status_path = queue_dir / f"*_queue" / "jobs" / status_dir
-                                for job_dir in status_path.parent.glob(f"jobs/{status_dir}/*"):
-                                    if job_dir.is_dir() and job_uid in job_dir.name:
-                                        folder_path = job_dir
-                                        pass  # Found syft-queue job folder
-                                        break
-                                if folder_path:
-                                    break
-                            if folder_path:
-                                break
-                    if folder_path:
-                        break
-            
-            # Strategy 3: Check if private_path is a directory
-            if not folder_path and self.private_path:
-                private_path = Path(self.private_path)
-                if private_path.exists() and private_path.is_dir():
-                    folder_path = private_path
-                    pass  # Found folder path via private_path (is_dir)
-                elif private_path.exists() and private_path.is_file():
-                    # If private_path is a file, use its parent directory
-                    folder_path = private_path.parent
-                    pass  # Found folder path via private_path parent
-            
-            # Strategy 4: Check folder paths in metadata
-            if not folder_path and hasattr(self, 'metadata') and self.metadata:
-                folder_paths = self.metadata.get('_folder_paths', {})
-                if 'private' in folder_paths:
-                    metadata_path = Path(folder_paths['private'])
-                    pass  # Found folder path via metadata
-                    
-                    # Check if the metadata path actually exists
-                    if metadata_path.exists() and metadata_path.is_dir():
-                        folder_path = metadata_path
-                        pass  # Metadata path exists and is valid
-                    else:
-                        pass  # Metadata path doesn't exist, checking if job moved
-                        
-                        # The metadata path is stale - search for the job in current location
-                        job_uid = str(self.uid)
-                        potential_bases = [
-                            Path.home() / "SyftBox" / "datasites",
-                            Path("/tmp"),  # fallback
-                        ]
-                        
-                        for base in potential_bases:
-                            if base.exists():
-                                # Search for job directories with this UID across all status folders
-                                for queue_dir in base.rglob("**/syft-queues"):
-                                    for status_dir in ["running", "completed", "failed", "inbox"]:  # prioritize current status
-                                        for job_dir in queue_dir.rglob(f"*/jobs/{status_dir}/*{job_uid}*"):
-                                            if job_dir.is_dir():
-                                                folder_path = job_dir
-                                                pass  # Found job in status folder
-                                                break
-                                        if folder_path:
-                                            break
-                                    if folder_path:
-                                        break
-                            if folder_path:
-                                break
-            
-            if folder_path and folder_path.exists() and folder_path.is_dir():
-                shutil.rmtree(str(folder_path))
-                
-                # Refresh the objects collection
+            for port in syft_queue_ports:
                 try:
-                    from .collections import objects
-                    if objects:
-                        objects.refresh()
-                except ImportError:
-                    pass
-                return True
-            else:
-                return False
-                
+                    response = requests.delete(f"http://localhost:{port}/api/jobs/{self.uid}", timeout=5.0)
+                    if response.status_code == 200:
+                        print(f"✅ Successfully deleted syft-queue job: {self.name if hasattr(self, 'name') else self.uid}")
+                        # Refresh the objects collection
+                        try:
+                            from .collections import objects
+                            if objects:
+                                objects.refresh()
+                        except ImportError:
+                            pass
+                        return True
+                    elif response.status_code == 404:
+                        # Job not found on this syft-queue instance, try next port
+                        continue
+                except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+                    # Server not running on this port, try next
+                    continue
+            
+            # If syft-queue API isn't available, fall back to manual deletion
+            print(f"⚠️  Could not reach syft-queue API, falling back to manual deletion")
+            return self._delete_job_directory()
+            
         except Exception as e:
+            print(f"Error calling syft-queue API: {e}")
+            return self._delete_job_directory()
+    
+    def _delete_job_directory(self) -> bool:
+        """Manually delete a syft-queue job directory."""
+        try:
+            # Extract job directory from syftobject path
+            if hasattr(self, 'syftobject_path') and self.syftobject_path:
+                from pathlib import Path
+                job_dir = Path(self.syftobject_path).parent
+                if job_dir.exists() and job_dir.is_dir():
+                    import shutil
+                    shutil.rmtree(str(job_dir))
+                    print(f"✅ Deleted syft-queue job directory: {job_dir}")
+                    
+                    # Refresh the objects collection
+                    try:
+                        from .collections import objects
+                        if objects:
+                            objects.refresh()
+                    except ImportError:
+                        pass
+                    return True
+            return False
+        except Exception as e:
+            print(f"Error deleting job directory: {e}")
             return False
     
-    def _delete_file_object(self) -> bool:
-        """Delete a file-type syft-object by removing its individual files."""
+    def _delete_standard_object(self) -> bool:
+        """Delete a standard syft-object by removing its files."""
         try:
             from pathlib import Path
-            import shutil
             deleted_files = []
             
-            # Delete private file/directory if it exists
-            if self.private_path:
+            # Delete private file if it exists
+            if hasattr(self, 'private_path') and self.private_path:
                 private_path = Path(self.private_path)
                 if private_path.exists():
-                    if private_path.is_file():
-                        private_path.unlink()
-                        deleted_files.append("private")
-                    elif private_path.is_dir():
-                        shutil.rmtree(str(private_path))
-                        deleted_files.append("private_directory")
+                    private_path.unlink()
+                    deleted_files.append("private")
             
-            # Delete mock file/directory if it exists
-            if self.mock_path:
+            # Delete mock file if it exists
+            if hasattr(self, 'mock_path') and self.mock_path:
                 mock_path = Path(self.mock_path)
                 if mock_path.exists():
-                    if mock_path.is_file():
-                        mock_path.unlink()
-                        deleted_files.append("mock")
-                    elif mock_path.is_dir():
-                        shutil.rmtree(str(mock_path))
-                        deleted_files.append("mock_directory")
+                    mock_path.unlink()
+                    deleted_files.append("mock")
             
             # Delete syftobject file if it exists
-            if self.syftobject_path:
+            if hasattr(self, 'syftobject_path') and self.syftobject_path:
                 syftobject_path = Path(self.syftobject_path)
                 if syftobject_path.exists():
                     syftobject_path.unlink()
                     deleted_files.append("syftobject")
             
             if deleted_files:
+                print(f"✅ Deleted syft-object files: {', '.join(deleted_files)}")
+                
                 # Refresh the objects collection
                 try:
                     from .collections import objects
@@ -836,72 +484,11 @@ class SyftObject(BaseModel):
                     pass
                 return True
             else:
+                print(f"⚠️  No files found to delete for object {self.uid}")
                 return False
                 
         except Exception as e:
+            print(f"Error deleting standard object: {e}")
             return False
     
-    def _can_delete(self, user_email: str = None) -> bool:
-        """
-        Check if a user has permission to delete this object.
-        User must have write access to all object components (private, mock, syftobject).
-        """
-        if not user_email:
-            # Try to get current user email from SyftBox client
-            try:
-                from .client import get_syftbox_client
-                client = get_syftbox_client()
-                if client and hasattr(client, 'email'):
-                    user_email = client.email
-                else:
-                    # No user email available - deny deletion
-                    return False
-            except:
-                return False
-        
-        # Extract object owner email from private URL
-        owner_email = self.get_owner_email()
-        
-        # User must be the owner/admin to delete the object
-        if user_email != owner_email:
-            return False
-        
-        # Additional check: user must have write permissions for all components
-        # Check private write permissions
-        if self.private_write_permissions and user_email not in self.private_write_permissions:
-            return False
-        
-        # Check mock write permissions  
-        if self.mock_write_permissions and user_email not in self.mock_write_permissions:
-            return False
-        
-        # For syftobject file, we require the user to be the owner (already checked above)
-        # since syftobject permissions are usually public for discovery
-        
-        return True
-    
-    @classmethod
-    def _from_orm(cls, *args, **kwargs):
-        """Private method for ORM compatibility"""
-        return super().from_orm(*args, **kwargs)
-    
-    @classmethod
-    def _model_construct(cls, *args, **kwargs):
-        """Private method for model construction"""
-        return super().model_construct(*args, **kwargs)
-    
-    def _model_copy(self, *args, **kwargs):
-        """Private method for model copying"""
-        return super().model_copy(*args, **kwargs)
-    
-    def get_owner_email(self) -> str:
-        """Extract the owner email from the private URL."""
-        try:
-            if self.private_url.startswith("syft://"):
-                parts = self.private_url.split("/")
-                if len(parts) >= 3:
-                    return parts[2]
-        except:
-            pass
-        return "unknown@example.com"
  
