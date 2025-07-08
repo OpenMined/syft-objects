@@ -545,9 +545,8 @@ Example Usage:
         }}
         #{container_id} .pagination {{
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
-            gap: 0.5rem;
             padding: 0.5rem;
             border-top: 1px solid #e5e7eb;
             background: rgba(0, 0, 0, 0.02);
@@ -577,8 +576,14 @@ Example Usage:
             font-size: 0.75rem;
             color: #dc2626;
             font-style: italic;
-            margin-left: 1rem;
             opacity: 0.8;
+            text-align: center;
+            flex: 1;
+        }}
+        #{container_id} .pagination .pagination-controls {{
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }}
         #{container_id} .truncate {{
             overflow: hidden;
@@ -834,10 +839,13 @@ Example Usage:
                     </table>
                 </div>
                 <div class="pagination">
-                    <button onclick="changePage_{container_id}(-1)" id="{container_id}-prev" disabled>Previous</button>
-                    <span class="page-info" id="{container_id}-page-info">Page 1 of {total_pages}</span>
-                    <button onclick="changePage_{container_id}(1)" id="{container_id}-next" {'disabled' if total_pages <= 1 else ''}>Next</button>
+                    <div></div>
                     <span class="offline-status">Offline Mode: Interactive features temporarily disabled. Check SyftBox status to go online.</span>
+                    <div class="pagination-controls">
+                        <button onclick="changePage_{container_id}(-1)" id="{container_id}-prev" disabled>Previous</button>
+                        <span class="page-info" id="{container_id}-page-info">Page 1 of {total_pages}</span>
+                        <button onclick="changePage_{container_id}(1)" id="{container_id}-next" {'disabled' if total_pages <= 1 else ''}>Next</button>
+                    </div>
                 </div>
             </div>
         </div>
