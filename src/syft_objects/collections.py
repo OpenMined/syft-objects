@@ -303,10 +303,7 @@ class ObjectsCollection:
         
         # For integer indices, objects are sorted by created_at (oldest first)
         # so objects[0] returns oldest, objects[-1] returns newest
-        obj = self._objects[index]
-        # Wrap in clean API
-        from .clean_api import wrap_syft_object
-        return wrap_syft_object(obj)
+        return self._objects[index]
 
     def __len__(self):
         if not self._cached:
@@ -316,9 +313,7 @@ class ObjectsCollection:
     def __iter__(self):
         if not self._cached:
             self._ensure_loaded()
-        # Wrap each object in clean API
-        from .clean_api import wrap_syft_object
-        return (wrap_syft_object(obj) for obj in self._objects)
+        return iter(self._objects)
 
     def __str__(self):
         """Display objects as a nice table"""

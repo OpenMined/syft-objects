@@ -105,30 +105,13 @@ async def get_status() -> Dict[str, Any]:
     }
 
 @app.get("/api/client-info")
-async def get_client_info() -> Dict[str, Any]:
-    """Get SyftBox client information for form defaults."""
-    user_email = "admin@example.com"  # fallback
-    
-    if SYFTBOX_AVAILABLE:
-        try:
-            client = get_syftbox_client()
-            if client:
-                user_email = getattr(client, 'email', 'admin@example.com')
-        except Exception:
-            pass
-    
+async def get_client_info(request: Request):
+    """Get client information including user email."""
+    # In a real setup, this would come from authentication
+    # For now, we'll use a mock user
     return {
-        "user_email": user_email,
-        "defaults": {
-            "admin_email": user_email,
-            "permissions": {
-                "private_read": user_email,
-                "private_write": user_email,
-                "mock_read": "public",
-                "mock_write": user_email,
-                "syftobject": "public"
-            }
-        }
+        "user_email": "admin@example.com",
+        "permissions": ["read", "write", "admin"]
     }
 
 @app.get("/api/objects")
@@ -1085,23 +1068,37 @@ async def editor_page(path: Optional[str] = Query(None)):
     return HTMLResponse(content=generate_editor_html(initial_path))
 
 @app.get("/api/filesystem/list")
-async def list_directory(path: str = Query(...)):
-    """List directory contents."""
-    return filesystem_manager.list_directory(path)
+async def list_directory(
+    path: str = Query(...),
+    user_email: str = Query(None)
+):
+    """List directory contents with permission checks."""
+    if not user_email:
+        raise HTTPException(status_code=400, detail="user_email is required")
+    return filesystem_manager.list_directory(path, user_email)
 
 @app.get("/api/filesystem/read")
-async def read_file(path: str = Query(...)):
-    """Read file contents."""
-    return filesystem_manager.read_file(path)
+async def read_file(
+    path: str = Query(...),
+    user_email: str = Query(None)
+):
+    """Read file contents with permission checks."""
+    if not user_email:
+        raise HTTPException(status_code=400, detail="user_email is required")
+    content = filesystem_manager.read_file(path, user_email)
+    return {"content": content}
 
 @app.post("/api/filesystem/write")
 async def write_file(
     path: str = Body(...),
     content: str = Body(...),
-    create_dirs: bool = Body(False)
+    user_email: str = Body(None)
 ):
-    """Write content to a file."""
-    return filesystem_manager.write_file(path, content, create_dirs)
+    """Write file contents with permission checks."""
+    if not user_email:
+        raise HTTPException(status_code=400, detail="user_email is required")
+    filesystem_manager.write_file(path, content, user_email)
+    return {"message": "File saved successfully"}
 
 @app.post("/api/filesystem/create-directory")
 async def create_directory(path: str = Body(...)):
@@ -1109,9 +1106,15 @@ async def create_directory(path: str = Body(...)):
     return filesystem_manager.create_directory(path)
 
 @app.delete("/api/filesystem/delete")
-async def delete_item(path: str = Query(...), recursive: bool = Query(False)):
-    """Delete a file or directory."""
-    return filesystem_manager.delete_item(path, recursive)
+async def delete_item(
+    path: str = Query(...),
+    user_email: str = Query(None)
+):
+    """Delete file with permission checks."""
+    if not user_email:
+        raise HTTPException(status_code=400, detail="user_email is required")
+    filesystem_manager.delete_file(path, user_email)
+    return {"message": "File deleted successfully"}
 
 # Widget endpoints to match original server exactly
 @app.get("/widget")

@@ -13,6 +13,7 @@ from datetime import datetime
 from fastapi import HTTPException
 from fastapi.responses import HTMLResponse
 import json
+from syft_perm import get_file_permissions, check_permission
 
 
 class FileSystemManager:
@@ -38,17 +39,31 @@ class FileSystemManager:
     
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB limit
     
-    def __init__(self, base_path: str = None):
-        """Initialize with optional base path restriction."""
-        self.base_path = Path(base_path).resolve() if base_path else None
+    def __init__(self, root_dir: str):
+        self.root_dir = os.path.abspath(root_dir)
     
+    def _check_permissions(self, file_path: str, required_permission: str, user_email: str) -> bool:
+        """Check if user has required permission for the file"""
+        if not user_email:
+            return False
+            
+        try:
+            perms = get_file_permissions(file_path)
+            if not perms:
+                return False
+                
+            return check_permission(perms, user_email, required_permission)
+        except Exception as e:
+            print(f"Error checking permissions: {e}")
+            return False
+
     def _validate_path(self, path: str) -> Path:
         """Validate and resolve a path, ensuring it's within allowed bounds."""
         try:
             resolved_path = Path(path).resolve()
             
             # If we have a base path, ensure the resolved path is within it
-            if self.base_path and not str(resolved_path).startswith(str(self.base_path)):
+            if self.root_dir and not str(resolved_path).startswith(str(self.root_dir)):
                 raise HTTPException(status_code=403, detail="Access denied: Path outside allowed directory")
             
             return resolved_path
@@ -73,119 +88,54 @@ class FileSystemManager:
         except (UnicodeDecodeError, PermissionError):
             return False
     
-    def list_directory(self, path: str) -> Dict[str, Any]:
-        """List directory contents."""
-        dir_path = self._validate_path(path)
-        
-        if not dir_path.exists():
+    def list_directory(self, dir_path: str, user_email: str) -> List[dict]:
+        """List directory contents, filtering based on read permissions"""
+        abs_path = os.path.abspath(os.path.join(self.root_dir, dir_path))
+        if not os.path.exists(abs_path):
             raise HTTPException(status_code=404, detail="Directory not found")
-        
-        if not dir_path.is_dir():
-            raise HTTPException(status_code=400, detail="Path is not a directory")
-        
+            
         try:
             items = []
-            
-            for item_path in sorted(dir_path.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
-                try:
-                    stat = item_path.stat()
-                    is_directory = item_path.is_dir()
-                    
-                    item_info = {
-                        'name': item_path.name,
-                        'path': str(item_path),
-                        'is_directory': is_directory,
-                        'size': stat.st_size if not is_directory else None,
-                        'modified': datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                        'is_editable': not is_directory and self._is_text_file(item_path),
-                        'extension': item_path.suffix.lower() if not is_directory else None
-                    }
-                    items.append(item_info)
-                    
-                except (PermissionError, OSError):
-                    # Skip items we can't access
-                    continue
-            
-            # Get parent directory if not at root
-            parent_path = None
-            if dir_path.parent != dir_path:
-                parent_path = str(dir_path.parent)
-            
-            return {
-                'path': str(dir_path),
-                'parent': parent_path,
-                'items': items,
-                'total_items': len(items)
-            }
-            
-        except PermissionError:
-            raise HTTPException(status_code=403, detail="Permission denied")
+            for item in os.listdir(abs_path):
+                item_path = os.path.join(abs_path, item)
+                # Only include items the user has permission to read
+                if self._check_permissions(item_path, "read", user_email):
+                    items.append({
+                        "name": item,
+                        "type": "directory" if os.path.isdir(item_path) else "file"
+                    })
+            return items
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
     
-    def read_file(self, path: str) -> Dict[str, Any]:
-        """Read file contents."""
-        file_path = self._validate_path(path)
-        
-        if not file_path.exists():
+    def read_file(self, file_path: str, user_email: str) -> str:
+        """Read a file's contents if user has permission"""
+        abs_path = os.path.abspath(os.path.join(self.root_dir, file_path))
+        if not os.path.exists(abs_path):
             raise HTTPException(status_code=404, detail="File not found")
-        
-        if file_path.is_dir():
-            raise HTTPException(status_code=400, detail="Path is a directory")
-        
-        if file_path.stat().st_size > self.MAX_FILE_SIZE:
-            raise HTTPException(status_code=413, detail="File too large to edit")
-        
-        if not self._is_text_file(file_path):
-            raise HTTPException(status_code=415, detail="File type not supported for editing")
-        
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
             
-            stat = file_path.stat()
-            return {
-                'path': str(file_path),
-                'content': content,
-                'size': stat.st_size,
-                'modified': datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                'extension': file_path.suffix.lower(),
-                'encoding': 'utf-8'
-            }
-        except UnicodeDecodeError:
-            raise HTTPException(status_code=415, detail="File encoding not supported")
-        except PermissionError:
+        if not self._check_permissions(abs_path, "read", user_email):
             raise HTTPException(status_code=403, detail="Permission denied")
+            
+        try:
+            with open(abs_path, 'r') as f:
+                return f.read()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
     
-    def write_file(self, path: str, content: str, create_dirs: bool = False) -> Dict[str, Any]:
-        """Write content to a file."""
-        file_path = self._validate_path(path)
+    def write_file(self, file_path: str, content: str, user_email: str) -> None:
+        """Write content to a file if user has permission"""
+        abs_path = os.path.abspath(os.path.join(self.root_dir, file_path))
         
-        # Create parent directories if requested
-        if create_dirs:
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Check if parent directory exists
-        if not file_path.parent.exists():
-            raise HTTPException(status_code=400, detail="Parent directory does not exist")
-        
-        # Check if we can write to this file type
-        if file_path.suffix.lower() not in self.ALLOWED_EXTENSIONS:
-            raise HTTPException(status_code=415, detail="File type not allowed for editing")
-        
-        try:
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(content)
-            
-            stat = file_path.stat()
-            return {
-                'path': str(file_path),
-                'size': stat.st_size,
-                'modified': datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                'message': 'File saved successfully'
-            }
-        except PermissionError:
+        if not self._check_permissions(abs_path, "write", user_email):
             raise HTTPException(status_code=403, detail="Permission denied")
-        except OSError as e:
-            raise HTTPException(status_code=500, detail=f"Error writing file: {str(e)}")
+            
+        try:
+            os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+            with open(abs_path, 'w') as f:
+                f.write(content)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
     
     def create_directory(self, path: str) -> Dict[str, Any]:
         """Create a new directory."""
@@ -205,47 +155,31 @@ class FileSystemManager:
         except OSError as e:
             raise HTTPException(status_code=500, detail=f"Error creating directory: {str(e)}")
     
-    def delete_item(self, path: str, recursive: bool = False) -> Dict[str, Any]:
-        """Delete a file or directory."""
-        item_path = self._validate_path(path)
-        
-        if not item_path.exists():
-            raise HTTPException(status_code=404, detail="Item not found")
-        
-        try:
-            if item_path.is_dir():
-                if recursive:
-                    import shutil
-                    shutil.rmtree(item_path)
-                else:
-                    item_path.rmdir()
-            else:
-                item_path.unlink()
+    def delete_file(self, file_path: str, user_email: str) -> None:
+        """Delete a file if user has permission"""
+        abs_path = os.path.abspath(os.path.join(self.root_dir, file_path))
+        if not os.path.exists(abs_path):
+            raise HTTPException(status_code=404, detail="File not found")
             
-            return {
-                'path': str(item_path),
-                'message': 'Item deleted successfully'
-            }
-        except PermissionError:
+        if not self._check_permissions(abs_path, "write", user_email):
             raise HTTPException(status_code=403, detail="Permission denied")
-        except OSError as e:
-            raise HTTPException(status_code=500, detail=f"Error deleting item: {str(e)}")
+            
+        try:
+            os.remove(abs_path)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
 
 def generate_editor_html(initial_path: str = None) -> str:
-    """Generate the HTML for the filesystem code editor."""
-    initial_path = initial_path or str(Path.home())
-    
-    html_content = f"""
-<!DOCTYPE html>
+    """Generate the HTML for the file editor interface."""
+    return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SyftBox File Editor</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
     <style>
         :root {{
             --background: 0 0% 100%;
@@ -645,426 +579,218 @@ def generate_editor_html(initial_path: str = None) -> str:
 <body>
     <div class="container">
         <div class="main-content">
-            <div class="panel">
-                <div class="panel-header">
-                    📁 File Explorer
-                </div>
-                <div class="breadcrumb" id="breadcrumb">
-                    <div class="loading">Loading...</div>
-                </div>
+            <div class="panel file-browser">
+                <div class="panel-header">File Browser</div>
+                <div class="breadcrumb"></div>
                 <div class="panel-content">
-                    <div class="file-list" id="fileList">
-                        <div class="loading">Loading files...</div>
-                    </div>
+                    <div class="file-list"></div>
                 </div>
             </div>
-            
-            <div class="panel">
+            <div class="panel editor-panel">
+                <div class="editor-header">
+                    <div class="editor-title">Welcome to SyftBox Editor</div>
+                    <div class="editor-actions">
+                        <button onclick="saveFile()" class="btn btn-primary">Save</button>
+                        <button onclick="deleteFile()" class="btn btn-destructive">Delete</button>
+                    </div>
+                </div>
                 <div class="editor-container">
-                    <div class="editor-header">
-                        <div class="editor-title" id="editorTitle">No file selected</div>
-                        <div class="editor-actions">
-                            <button class="btn btn-primary" id="saveBtn" disabled>
-                                💾 Save
-                            </button>
-                            <button class="btn btn-secondary" id="newFileBtn">
-                                📄 New File
-                            </button>
-                            <button class="btn btn-secondary" id="newFolderBtn">
-                                📁 New Folder
-                            </button>
-                        </div>
-                    </div>
-                    <div class="panel-content">
-                        <div class="empty-state" id="emptyState">
-                            <svg class="logo" xmlns="http://www.w3.org/2000/svg" width="311" height="360" viewBox="0 0 311 360" fill="none">
-                                <g clip-path="url(#clip0_7523_4240)">
-                                    <path d="M311.414 89.7878L155.518 179.998L-0.378906 89.7878L155.518 -0.422485L311.414 89.7878Z" fill="url(#paint0_linear_7523_4240)"></path>
-                                    <path d="M311.414 89.7878V270.208L155.518 360.423V179.998L311.414 89.7878Z" fill="url(#paint1_linear_7523_4240)"></path>
-                                    <path d="M155.518 179.998V360.423L-0.378906 270.208V89.7878L155.518 179.998Z" fill="url(#paint2_linear_7523_4240)"></path>
-                                </g>
-                                <defs>
-                                    <linearGradient id="paint0_linear_7523_4240" x1="-0.378904" y1="89.7878" x2="311.414" y2="89.7878" gradientUnits="userSpaceOnUse">
-                                        <stop stop-color="#DC7A6E"></stop>
-                                        <stop offset="0.251496" stop-color="#F6A464"></stop>
-                                        <stop offset="0.501247" stop-color="#FDC577"></stop>
-                                        <stop offset="0.753655" stop-color="#EFC381"></stop>
-                                        <stop offset="1" stop-color="#B9D599"></stop>
-                                    </linearGradient>
-                                    <linearGradient id="paint1_linear_7523_4240" x1="309.51" y1="89.7878" x2="155.275" y2="360.285" gradientUnits="userSpaceOnUse">
-                                        <stop stop-color="#BFCD94"></stop>
-                                        <stop offset="0.245025" stop-color="#B2D69E"></stop>
-                                        <stop offset="0.504453" stop-color="#8DCCA6"></stop>
-                                        <stop offset="0.745734" stop-color="#5CB8B7"></stop>
-                                        <stop offset="1" stop-color="#4CA5B8"></stop>
-                                    </linearGradient>
-                                    <linearGradient id="paint2_linear_7523_4240" x1="-0.378906" y1="89.7878" x2="155.761" y2="360.282" gradientUnits="userSpaceOnUse">
-                                        <stop stop-color="#D7686D"></stop>
-                                        <stop offset="0.225" stop-color="#C64B77"></stop>
-                                        <stop offset="0.485" stop-color="#A2638E"></stop>
-                                        <stop offset="0.703194" stop-color="#758AA8"></stop>
-                                        <stop offset="1" stop-color="#639EAF"></stop>
-                                    </linearGradient>
-                                    <clipPath id="clip0_7523_4240">
-                                        <rect width="311" height="360" fill="white"></rect>
-                                    </clipPath>
-                                </defs>
-                            </svg>
-                            <h3>Welcome to SyftBox Editor</h3>
-                            <p>Select a file from the explorer to start editing</p>
-                        </div>
-                        <textarea class="editor-textarea" id="editor" style="display: none;" placeholder="Start typing..."></textarea>
-                    </div>
-                    <div class="status-bar">
-                        <div class="status-left">
-                            <span id="fileInfo">Ready</span>
-                        </div>
-                        <div class="status-right">
-                            <span id="cursorPosition">Ln 1, Col 1</span>
-                            <span id="fileSize">0 bytes</span>
-                        </div>
-                    </div>
+                    <div id="editor"></div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        class FileSystemEditor {{
-            constructor() {{
-                this.currentPath = '{initial_path}';
-                this.currentFile = null;
-                this.isModified = false;
-                this.initializeElements();
-                this.setupEventListeners();
-                this.loadDirectory(this.currentPath);
-            }}
-            
-            initializeElements() {{
-                this.fileList = document.getElementById('fileList');
-                this.editor = document.getElementById('editor');
-                this.saveBtn = document.getElementById('saveBtn');
-                this.newFileBtn = document.getElementById('newFileBtn');
-                this.newFolderBtn = document.getElementById('newFolderBtn');
-                this.editorTitle = document.getElementById('editorTitle');
-                this.emptyState = document.getElementById('emptyState');
-                this.breadcrumb = document.getElementById('breadcrumb');
-                this.fileInfo = document.getElementById('fileInfo');
-                this.cursorPosition = document.getElementById('cursorPosition');
-                this.fileSize = document.getElementById('fileSize');
-            }}
-            
-            setupEventListeners() {{
-                this.saveBtn.addEventListener('click', () => this.saveFile());
-                this.newFileBtn.addEventListener('click', () => this.createNewFile());
-                this.newFolderBtn.addEventListener('click', () => this.createNewFolder());
-                
-                this.editor.addEventListener('input', () => {{
-                    this.isModified = true;
-                    this.updateUI();
-                }});
-                
-                this.editor.addEventListener('keyup', () => this.updateCursorPosition());
-                this.editor.addEventListener('click', () => this.updateCursorPosition());
-                
-                // Auto-save on Ctrl+S
-                document.addEventListener('keydown', (e) => {{
-                    if (e.ctrlKey && e.key === 's') {{
-                        e.preventDefault();
-                        if (this.currentFile) {{
-                            this.saveFile();
-                        }}
-                    }}
-                }});
-            }}
-            
-            async loadDirectory(path) {{
-                try {{
-                    const response = await fetch(`/api/filesystem/list?path=${{encodeURIComponent(path)}}`);
-                    const data = await response.json();
-                    
-                    if (!response.ok) {{
-                        throw new Error(data.detail || 'Failed to load directory');
-                    }}
-                    
-                    this.currentPath = data.path;
-                    this.renderFileList(data.items);
-                    this.renderBreadcrumb(data.path, data.parent);
-                    
-                }} catch (error) {{
-                    this.showError('Failed to load directory: ' + error.message);
-                }}
-            }}
-            
-            renderFileList(items) {{
-                if (items.length === 0) {{
-                    this.fileList.innerHTML = '<div class="empty-state"><h3>Empty Directory</h3><p>No files or folders found</p></div>';
-                    return;
-                }}
-                
-                this.fileList.innerHTML = items.map(item => {{
-                    const icon = item.is_directory ? '📁' : (item.is_editable ? '📄' : '📋');
-                    const sizeText = item.is_directory ? 'Directory' : this.formatFileSize(item.size);
-                    const modifiedText = new Date(item.modified).toLocaleString();
-                    
-                    return `
-                        <div class="file-item" data-path="${{item.path}}" data-is-directory="${{item.is_directory}}" data-is-editable="${{item.is_editable}}">
-                            <div class="file-icon ${{item.is_directory ? 'directory' : (item.is_editable ? 'editable' : '')}}">${{icon}}</div>
-                            <div class="file-details">
-                                <div class="file-name">${{item.name}}</div>
-                                <div class="file-meta">${{sizeText}} • ${{modifiedText}}</div>
-                            </div>
-                        </div>
-                    `;
-                }}).join('');
-                
-                // Add click handlers
-                this.fileList.querySelectorAll('.file-item').forEach(item => {{
-                    item.addEventListener('click', () => {{
-                        const path = item.dataset.path;
-                        const isDirectory = item.dataset.isDirectory === 'true';
-                        const isEditable = item.dataset.isEditable === 'true';
-                        
-                        if (isDirectory) {{
-                            this.loadDirectory(path);
-                        }} else if (isEditable) {{
-                            this.loadFile(path);
-                        }}
-                    }});
-                    
-                    item.addEventListener('contextmenu', (e) => {{
-                        e.preventDefault();
-                        this.showContextMenu(e, item.dataset.path, item.dataset.isDirectory === 'true');
-                    }});
-                }});
-            }}
-            
-            renderBreadcrumb(currentPath, parentPath) {{
-                const pathParts = currentPath.split('/').filter(part => part !== '');
-                const isRoot = pathParts.length === 0;
-                
-                let breadcrumbHtml = '';
-                
-                if (isRoot) {{
-                    breadcrumbHtml = '<div class="breadcrumb-current">Root</div>';
-                }} else {{
-                    // Build path parts
-                    let currentBuildPath = '';
-                    pathParts.forEach((part, index) => {{
-                        currentBuildPath += '/' + part;
-                        const isLast = index === pathParts.length - 1;
-                        
-                        if (isLast) {{
-                            breadcrumbHtml += `<div class="breadcrumb-current">${{part}}</div>`;
-                        }} else {{
-                            breadcrumbHtml += `
-                                <div class="breadcrumb-item">
-                                    <a href="#" class="breadcrumb-link" data-path="${{currentBuildPath}}">${{part}}</a>
-                                    <span class="breadcrumb-separator">›</span>
-                                </div>
-                            `;
-                        }}
-                    }});
-                    
-                    // Add home link at beginning
-                    breadcrumbHtml = `
-                        <div class="breadcrumb-item">
-                            <a href="#" class="breadcrumb-link" data-path="/">🏠 Home</a>
-                            <span class="breadcrumb-separator">›</span>
-                        </div>
-                    ` + breadcrumbHtml;
-                }}
-                
-                this.breadcrumb.innerHTML = breadcrumbHtml;
-                
-                // Add click handlers for breadcrumb navigation
-                this.breadcrumb.querySelectorAll('.breadcrumb-link').forEach(link => {{
-                    link.addEventListener('click', (e) => {{
-                        e.preventDefault();
-                        const path = link.dataset.path;
-                        this.loadDirectory(path);
-                    }});
-                }});
-            }}
-            
-            async loadFile(path) {{
-                try {{
-                    const response = await fetch(`/api/filesystem/read?path=${{encodeURIComponent(path)}}`);
-                    const data = await response.json();
-                    
-                    if (!response.ok) {{
-                        throw new Error(data.detail || 'Failed to load file');
-                    }}
-                    
-                    this.currentFile = data;
-                    this.editor.value = data.content;
-                    this.isModified = false;
-                    this.updateUI();
-                    
-                    // Show editor, hide empty state
-                    this.emptyState.style.display = 'none';
-                    this.editor.style.display = 'block';
-                    
-                    // Update file info
-                    this.fileInfo.textContent = `${{path.split('/').pop()}} (${{data.extension}})`;
-                    this.fileSize.textContent = this.formatFileSize(data.size);
-                    
-                    // Focus editor
-                    this.editor.focus();
-                    
-                }} catch (error) {{
-                    this.showError('Failed to load file: ' + error.message);
-                }}
-            }}
-            
-            async saveFile() {{
-                if (!this.currentFile) return;
-                
-                try {{
-                    const response = await fetch('/api/filesystem/write', {{
-                        method: 'POST',
-                        headers: {{
-                            'Content-Type': 'application/json',
-                        }},
-                        body: JSON.stringify({{
-                            path: this.currentFile.path,
-                            content: this.editor.value
-                        }})
-                    }});
-                    
-                    const data = await response.json();
-                    
-                    if (!response.ok) {{
-                        throw new Error(data.detail || 'Failed to save file');
-                    }}
-                    
-                    this.isModified = false;
-                    this.updateUI();
-                    this.showSuccess('File saved successfully');
-                    
-                    // Update file info
-                    this.fileSize.textContent = this.formatFileSize(data.size);
-                    
-                }} catch (error) {{
-                    this.showError('Failed to save file: ' + error.message);
-                }}
-            }}
-            
-            updateUI() {{
-                const title = this.currentFile ? 
-                    `${{this.currentFile.path.split('/').pop()}}${{this.isModified ? ' •' : ''}}` : 
-                    'No file selected';
-                
-                this.editorTitle.textContent = title;
-                this.saveBtn.disabled = !this.currentFile || !this.isModified;
-            }}
-            
-            updateCursorPosition() {{
-                const textarea = this.editor;
-                const text = textarea.value;
-                const cursorPos = textarea.selectionStart;
-                
-                // Calculate line and column
-                const lines = text.substring(0, cursorPos).split('\\n');
-                const line = lines.length;
-                const col = lines[lines.length - 1].length + 1;
-                
-                this.cursorPosition.textContent = `Ln ${{line}}, Col ${{col}}`;
-            }}
-            
-            formatFileSize(bytes) {{
-                if (bytes === 0) return '0 bytes';
-                
-                const k = 1024;
-                const sizes = ['bytes', 'KB', 'MB', 'GB'];
-                const i = Math.floor(Math.log(bytes) / Math.log(k));
-                
-                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-            }}
-            
-            showError(message) {{
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'error';
-                errorDiv.textContent = message;
-                document.body.appendChild(errorDiv);
-                
-                setTimeout(() => {{
-                    errorDiv.remove();
-                }}, 5000);
-            }}
-            
-            showSuccess(message) {{
-                const successDiv = document.createElement('div');
-                successDiv.className = 'success';
-                successDiv.textContent = message;
-                document.body.appendChild(successDiv);
-                
-                setTimeout(() => {{
-                    successDiv.remove();
-                }}, 3000);
-            }}
-            
-            createNewFile() {{
-                const filename = prompt('Enter filename:', 'untitled.txt');
-                if (!filename) return;
-                
-                const newPath = this.currentPath + '/' + filename;
-                
-                // Create empty file
-                fetch('/api/filesystem/write', {{
-                    method: 'POST',
-                    headers: {{
-                        'Content-Type': 'application/json',
-                    }},
-                    body: JSON.stringify({{
-                        path: newPath,
-                        content: '',
-                        create_dirs: true
-                    }})
-                }})
-                .then(response => response.json())
-                .then(data => {{
-                    if (data.message) {{
-                        this.showSuccess(data.message);
-                        this.loadDirectory(this.currentPath);
-                    }}
-                }})
-                .catch(error => {{
-                    this.showError('Failed to create file: ' + error.message);
-                }});
-            }}
-            
-            createNewFolder() {{
-                const foldername = prompt('Enter folder name:', 'New Folder');
-                if (!foldername) return;
-                
-                const newPath = this.currentPath + '/' + foldername;
-                
-                fetch('/api/filesystem/create-directory', {{
-                    method: 'POST',
-                    headers: {{
-                        'Content-Type': 'application/json',
-                    }},
-                    body: JSON.stringify({{
-                        path: newPath
-                    }})
-                }})
-                .then(response => response.json())
-                .then(data => {{
-                    if (data.message) {{
-                        this.showSuccess(data.message);
-                        this.loadDirectory(this.currentPath);
-                    }}
-                }})
-                .catch(error => {{
-                    this.showError('Failed to create folder: ' + error.message);
-                }});
+        let editor = ace.edit("editor");
+        editor.setTheme("ace/theme/chrome");
+        editor.session.setMode("ace/mode/text");
+        editor.setOptions({{
+            fontSize: "14px",
+            showPrintMargin: false,
+            highlightActiveLine: true,
+            enableLiveAutocompletion: true
+        }});
+
+        let currentPath = '';
+        let currentFile = null;
+        const initialPath = {json.dumps(initial_path)};
+
+        // Get user email from SyftBox client
+        async function initSyftUser() {{
+            try {{
+                const response = await fetch('/api/client-info');
+                const data = await response.json();
+                window.syftUserEmail = data.user_email;
+            }} catch (error) {{
+                console.error('Error getting user email:', error);
+                window.syftUserEmail = 'admin@example.com';
             }}
         }}
-        
-        // Initialize the editor when DOM is loaded
+
+        async function loadDirectory(path) {{
+            const params = new URLSearchParams({{
+                path: path || '',
+                user_email: window.syftUserEmail || 'admin@example.com'
+            }});
+            
+            try {{
+                const response = await fetch(`/api/filesystem/list?${{params}}`);
+                const data = await response.json();
+                renderFileList(data);
+                renderBreadcrumb(path);
+                currentPath = path;
+            }} catch (error) {{
+                showError('Error loading directory: ' + error);
+            }}
+        }}
+
+        async function loadFile(path) {{
+            const params = new URLSearchParams({{
+                path: path,
+                user_email: window.syftUserEmail || 'admin@example.com'
+            }});
+            
+            try {{
+                const response = await fetch(`/api/filesystem/read?${{params}}`);
+                const data = await response.json();
+                editor.setValue(data.content);
+                currentFile = path;
+                document.querySelector('.editor-title').textContent = path.split('/').pop();
+            }} catch (error) {{
+                showError('Error loading file: ' + error);
+            }}
+        }}
+
+        async function saveFile() {{
+            if (!currentFile) return;
+            
+            try {{
+                const response = await fetch('/api/filesystem/write', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{
+                        path: currentFile,
+                        content: editor.getValue(),
+                        user_email: window.syftUserEmail || 'admin@example.com'
+                    }})
+                }});
+                const data = await response.json();
+                showSuccess('File saved successfully');
+            }} catch (error) {{
+                showError('Error saving file: ' + error);
+            }}
+        }}
+
+        async function deleteFile() {{
+            if (!currentFile) return;
+            
+            if (!confirm('Are you sure you want to delete this file?')) return;
+            
+            const params = new URLSearchParams({{
+                path: currentFile,
+                user_email: window.syftUserEmail || 'admin@example.com'
+            }});
+            
+            try {{
+                const response = await fetch(`/api/filesystem/delete?${{params}}`, {{
+                    method: 'DELETE'
+                }});
+                const data = await response.json();
+                showSuccess('File deleted successfully');
+                loadDirectory(currentPath);
+                editor.setValue('');
+                currentFile = null;
+            }} catch (error) {{
+                showError('Error deleting file: ' + error);
+            }}
+        }}
+
+        function renderFileList(items) {{
+            const fileList = document.querySelector('.file-list');
+            fileList.innerHTML = '';
+            
+            items.forEach(item => {{
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                div.innerHTML = `
+                    <div class="file-icon">${{item.type === 'directory' ? '📁' : '📄'}}</div>
+                    <div class="file-details">
+                        <div class="file-name">${{item.name}}</div>
+                    </div>
+                `;
+                
+                div.onclick = () => {{
+                    if (item.type === 'directory') {{
+                        loadDirectory(item.path);
+                    }} else {{
+                        loadFile(item.path);
+                    }}
+                }};
+                
+                fileList.appendChild(div);
+            }});
+        }}
+
+        function renderBreadcrumb(path) {{
+            const parts = path ? path.split('/').filter(Boolean) : [];
+            const breadcrumb = document.querySelector('.breadcrumb');
+            breadcrumb.innerHTML = '';
+            
+            // Add root
+            const root = document.createElement('a');
+            root.href = '#';
+            root.className = 'breadcrumb-link';
+            root.textContent = 'Root';
+            root.onclick = (e) => {{
+                e.preventDefault();
+                loadDirectory('');
+            }};
+            breadcrumb.appendChild(root);
+            
+            // Add path parts
+            let currentPath = '';
+            parts.forEach((part, i) => {{
+                // Add separator
+                const separator = document.createElement('span');
+                separator.className = 'breadcrumb-separator';
+                separator.textContent = '/';
+                breadcrumb.appendChild(separator);
+                
+                currentPath += '/' + part;
+                
+                // Add path part
+                const link = document.createElement(i === parts.length - 1 ? 'span' : 'a');
+                link.className = i === parts.length - 1 ? 'breadcrumb-current' : 'breadcrumb-link';
+                link.textContent = part;
+                
+                if (i < parts.length - 1) {{
+                    link.href = '#';
+                    link.onclick = (e) => {{
+                        e.preventDefault();
+                        loadDirectory(currentPath);
+                    }};
+                }}
+                
+                breadcrumb.appendChild(link);
+            }});
+        }}
+
+        function showError(message) {{
+            console.error(message);
+            // Add UI notification here
+        }}
+
+        function showSuccess(message) {{
+            console.log(message);
+            // Add UI notification here
+        }}
+
+        // Initialize
         document.addEventListener('DOMContentLoaded', () => {{
-            new FileSystemEditor();
+            initSyftUser().then(() => {{
+                loadDirectory(initialPath || '');
+            }});
         }});
     </script>
 </body>
