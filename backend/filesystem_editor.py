@@ -13,7 +13,7 @@ from datetime import datetime
 from fastapi import HTTPException
 from fastapi.responses import HTMLResponse
 import json
-from syft_perm import get_file_permissions, check_permission
+from syft_perm import get_file_permissions
 
 
 class FileSystemManager:
@@ -52,7 +52,19 @@ class FileSystemManager:
             if not perms:
                 return False
                 
-            return check_permission(perms, user_email, required_permission)
+            if required_permission == "read":
+                return (user_email in perms.get("read", []) or 
+                       user_email in perms.get("write", []) or 
+                       user_email in perms.get("admin", []) or 
+                       "*" in perms.get("read", []))
+            elif required_permission == "write":
+                return (user_email in perms.get("write", []) or 
+                       user_email in perms.get("admin", []) or 
+                       "*" in perms.get("write", []))
+            elif required_permission == "admin":
+                return (user_email in perms.get("admin", []) or 
+                       "*" in perms.get("admin", []))
+            return False
         except Exception as e:
             print(f"Error checking permissions: {e}")
             return False

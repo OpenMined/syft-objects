@@ -1059,13 +1059,11 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
         raise HTTPException(status_code=500, detail=f"Error deleting object: {str(e)}")
 
 # Filesystem Editor endpoints
-filesystem_manager = FileSystemManager()
+fs_manager = FileSystemManager(os.path.expanduser("~"))
 
-@app.get("/editor", response_class=HTMLResponse)
-async def editor_page(path: Optional[str] = Query(None)):
-    """Serve the filesystem editor HTML page."""
-    initial_path = path if path else str(PathLib.home())
-    return HTMLResponse(content=generate_editor_html(initial_path))
+@app.get("/editor")
+async def editor():
+    return HTMLResponse(generate_editor_html())
 
 @app.get("/api/filesystem/list")
 async def list_directory(
@@ -1075,7 +1073,7 @@ async def list_directory(
     """List directory contents with permission checks."""
     if not user_email:
         raise HTTPException(status_code=400, detail="user_email is required")
-    return filesystem_manager.list_directory(path, user_email)
+    return fs_manager.list_directory(path, user_email)
 
 @app.get("/api/filesystem/read")
 async def read_file(
@@ -1085,7 +1083,7 @@ async def read_file(
     """Read file contents with permission checks."""
     if not user_email:
         raise HTTPException(status_code=400, detail="user_email is required")
-    content = filesystem_manager.read_file(path, user_email)
+    content = fs_manager.read_file(path, user_email)
     return {"content": content}
 
 @app.post("/api/filesystem/write")
@@ -1097,13 +1095,8 @@ async def write_file(
     """Write file contents with permission checks."""
     if not user_email:
         raise HTTPException(status_code=400, detail="user_email is required")
-    filesystem_manager.write_file(path, content, user_email)
+    fs_manager.write_file(path, content, user_email)
     return {"message": "File saved successfully"}
-
-@app.post("/api/filesystem/create-directory")
-async def create_directory(path: str = Body(...)):
-    """Create a new directory."""
-    return filesystem_manager.create_directory(path)
 
 @app.delete("/api/filesystem/delete")
 async def delete_item(
@@ -1113,7 +1106,7 @@ async def delete_item(
     """Delete file with permission checks."""
     if not user_email:
         raise HTTPException(status_code=400, detail="user_email is required")
-    filesystem_manager.delete_file(path, user_email)
+    fs_manager.delete_file(path, user_email)
     return {"message": "File deleted successfully"}
 
 # Widget endpoints to match original server exactly

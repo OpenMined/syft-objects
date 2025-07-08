@@ -164,6 +164,11 @@ class SyftObject(BaseModel):
         """Check if this object represents a folder. (Hidden from public API)"""
         return self.object_type == "folder"
     
+    @property
+    def type(self) -> str:
+        """Alias for get_type() to maintain some compatibility"""
+        return self.get_type()
+    
     # Data accessor properties
     @property
     def private(self) -> PrivateAccessor:
@@ -398,6 +403,73 @@ class SyftObject(BaseModel):
             datetime: lambda v: v.isoformat(),
             UUID: lambda v: str(v)
         }
+    
+    def __getattribute__(self, name):
+        """Intercept attribute access to hide internal fields from direct access"""
+        # Define which attributes should be hidden from direct access
+        hidden_attrs = {
+            'uid', 'name', 'description', 'created_at', 'updated_at', 'metadata',
+            'private_url', 'mock_url', 'syftobject', 'object_type',
+            'syftobject_permissions', 'mock_permissions', 'mock_write_permissions',
+            'private_permissions', 'private_write_permissions'
+        }
+        
+        # Allow access from internal methods and special cases
+        import inspect
+        frame = inspect.currentframe()
+        if frame and frame.f_back:
+            caller = frame.f_back
+            # Allow access from within the class methods
+            if 'self' in caller.f_locals and caller.f_locals.get('self') is self:
+                return super().__getattribute__(name)
+            # Allow access from the module itself
+            if caller.f_globals.get('__name__', '').startswith('syft_objects'):
+                return super().__getattribute__(name)
+        
+        # Block direct access to hidden attributes
+        if name in hidden_attrs:
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{name}'. "
+                f"Use 'get_{name}()' instead."
+            )
+        
+        return super().__getattribute__(name)
+    
+    def __dir__(self):
+        """Override dir() to only show the public API methods"""
+        # Get default attributes
+        attrs = set(super().__dir__())
+        
+        # Remove hidden fields
+        hidden_fields = {
+            'uid', 'name', 'description', 'created_at', 'updated_at', 'metadata',
+            'private_url', 'mock_url', 'syftobject', 'object_type',
+            'syftobject_permissions', 'mock_permissions', 'mock_write_permissions',
+            'private_permissions', 'private_write_permissions',
+            # Also hide many pydantic internals
+            'model_config', 'model_fields', 'model_computed_fields', 'model_extra',
+            'model_fields_set', 'model_post_init', 'model_validate', 'model_validate_json',
+            'model_dump', 'model_dump_json', 'model_json_schema', 'model_parametrized_name',
+            'model_rebuild', 'model_validate_strings', 'copy', 'dict', 'json', 'parse_file',
+            'parse_obj', 'parse_raw', 'schema', 'schema_json', 'update_forward_refs',
+            'validate', 'construct', '__fields__', '__fields_set__', '__config__',
+        }
+        
+        # Keep only public API
+        public_attrs = attrs - hidden_fields
+        
+        # Make sure we include our public methods
+        public_methods = {
+            'get_uid', 'get_name', 'get_description', 'get_created_at', 'get_updated_at',
+            'get_type', 'get_file_type', 'get_metadata', 'get_permissions', 'get_urls',
+            'get_path', 'get_info', 'set_name', 'set_description', 'set_metadata',
+            'set_updated_at', 'set_type', 'delete_obj', 'set_permissions',
+            'mock', 'private', 'syftobject_config', '_repr_html_', '_is_folder',
+            'type', 'load_yaml', '_save_yaml', '_create_syftbox_permissions',
+            '_check_file_exists', 'can_delete', 'get_owner_email'
+        }
+        
+        return sorted(list(public_attrs | public_methods))
     
     def _repr_html_(self) -> str:
         """Rich HTML representation for Jupyter notebooks"""
