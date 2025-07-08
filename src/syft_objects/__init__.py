@@ -1,6 +1,6 @@
 # syft-objects - Distributed file discovery and addressing system 
 
-__version__ = "0.7.6"
+__version__ = "0.8.0"
 
 # Internal imports (hidden from public API)
 from . import models as _models
@@ -69,7 +69,7 @@ def delete_object(uid, user_email=None):
     
     try:
         obj = objects[uid]  # This uses the UID lookup
-        result = obj.delete(user_email)  # Now includes permission checking
+        result = obj.delete_obj(user_email)  # Now includes permission checking
         if result:
             # Refresh the collection after successful deletion
             objects.refresh()

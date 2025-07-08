@@ -2412,7 +2412,7 @@ new_object = sy.SyftObject(
             raise ValueError("uid_or_index must be a string UID or integer index")
         
         # Perform the deletion with permission checking
-        success = target_obj.delete(user_email)
+        success = target_obj.delete_obj(user_email)
         
         # If successful, refresh the collection
         if success:

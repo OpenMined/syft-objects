@@ -135,7 +135,7 @@ class SyftObject(BaseModel):
     @model_validator(mode='after')
     def validate_urls(self):
         """Validate URLs match object type"""
-        if self.is_folder:
+        if self._is_folder():
             # Folders must end with /
             if not self.private_url.endswith('/'):
                 self.private_url += '/'
@@ -217,7 +217,7 @@ class SyftObject(BaseModel):
         """Get the local file path for a syft:// URL"""
         try:
             # Check for folder paths in metadata first
-            if self.is_folder and "_folder_paths" in self.metadata:
+            if self._is_folder() and "_folder_paths" in self.metadata:
                 folder_paths = self.metadata["_folder_paths"]
                 if syft_url == self.private_url and "private" in folder_paths:
                     return folder_paths["private"]
@@ -265,8 +265,8 @@ class SyftObject(BaseModel):
             return f"Error reading file: {str(e)}"
 
 
-    def save_yaml(self, file_path: str | Path, create_syftbox_permissions: bool = True) -> None:
-        """Save the syft object to a YAML file with .syftobject.yaml extension and create SyftBox permission files"""
+    def _save_yaml(self, file_path: str | Path, create_syftbox_permissions: bool = True) -> None:
+        """Save the syft object to a YAML file - internal method, use private.save() instead"""
         file_path = Path(file_path)
         
         # Ensure the file ends with .syftobject.yaml

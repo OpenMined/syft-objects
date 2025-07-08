@@ -7,7 +7,7 @@ import syft_objects
 
 def test_version():
     """Test version is defined"""
-    assert syft_objects.__version__ == "0.7.6"
+    assert syft_objects.__version__ == "0.8.0"
 
 
 def test_exports():
@@ -62,7 +62,7 @@ def test_create_object_function():
 def test_delete_object_function():
     """Test delete_object function is available"""
     mock_obj = Mock()
-    mock_obj.delete.return_value = True
+    mock_obj.delete_obj.return_value = True
     mock_obj.uid = "test-uid"
     
     with patch.object(syft_objects.objects, '_objects', [mock_obj]):
@@ -71,7 +71,7 @@ def test_delete_object_function():
                 result = syft_objects.delete_object("test-uid")
                 
                 assert result is True
-                mock_obj.delete.assert_called_once_with(None)  # user_email parameter
+                mock_obj.delete_obj.assert_called_once_with(None)  # user_email parameter
                 mock_refresh.assert_called_once()
 
 

@@ -42,7 +42,7 @@ class CleanSyftObject:
     def metadata(self, value: Dict[str, Any]):
         """Update metadata"""
         self._obj.metadata = value
-        self._obj.save_yaml()
+        self._obj.private.save()
     
     @property
     def created_at(self) -> datetime:
@@ -233,11 +233,11 @@ class CleanSyftObject:
         Returns:
             bool: True if deletion was successful
         """
-        return self._obj.delete()
+        return self._obj.delete_obj()
     
     def save(self) -> None:
         """Save any changes to the metadata file"""
-        self._obj.save_yaml()
+        self._obj.private.save()
     
     def info(self) -> Dict[str, Any]:
         """Get detailed information about this object (like Info button in UI)"""
