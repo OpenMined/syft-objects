@@ -445,21 +445,42 @@ async def create_object(
         # Refresh the collection to pick up the new object from filesystem
         objects.refresh()
         
-        return {
-            "success": True,
-            "message": "Object created successfully",
-            "object": {
-                "uid": str(new_object.uid),
-                "name": new_object.name,
-                "description": new_object.description,
-                "email": user_email,
-                "created_at": new_object.created_at.isoformat() if new_object.created_at else None,
-                "private_url": new_object.private_url,
-                "mock_url": new_object.mock_url,
-                "syftobject_url": new_object.syftobject,
-            },
-            "timestamp": datetime.now()
-        }
+        # Handle CleanSyftObject
+        if hasattr(new_object, 'get_urls'):
+            # This is a CleanSyftObject
+            urls = new_object.get_urls()
+            return {
+                "success": True,
+                "message": "Object created successfully",
+                "object": {
+                    "uid": new_object.get_uid(),
+                    "name": new_object.get_name(),
+                    "description": new_object.get_description(),
+                    "email": user_email,
+                    "created_at": new_object.get_created_at().isoformat() if new_object.get_created_at() else None,
+                    "private_url": urls['private'],
+                    "mock_url": urls['mock'],
+                    "syftobject_url": urls['syftobject'],
+                },
+                "timestamp": datetime.now()
+            }
+        else:
+            # This is a raw SyftObject
+            return {
+                "success": True,
+                "message": "Object created successfully",
+                "object": {
+                    "uid": str(new_object.uid),
+                    "name": new_object.name,
+                    "description": new_object.description,
+                    "email": user_email,
+                    "created_at": new_object.created_at.isoformat() if new_object.created_at else None,
+                    "private_url": new_object.private_url,
+                    "mock_url": new_object.mock_url,
+                    "syftobject_url": new_object.syftobject,
+                },
+                "timestamp": datetime.now()
+            }
     
     except Exception as e:
         logger.error(f"Error creating object: {e}")
@@ -527,59 +548,105 @@ async def get_object_details(object_uid: str) -> Dict[str, Any]:
         # Find the object by UID
         target_obj = None
         for obj in objects:
-            if str(obj.uid) == object_uid:
+            obj_uid = obj.get_uid() if hasattr(obj, 'get_uid') else str(obj.uid)
+            if obj_uid == object_uid:
                 target_obj = obj
                 break
         
         if not target_obj:
             raise HTTPException(status_code=404, detail="Object not found")
         
-        # Get file previews
-        private_preview = ""
-        mock_preview = ""
-        
-        try:
-            private_path = target_obj.private_path
-            if private_path:
-                private_preview = target_obj._get_file_preview(private_path, max_chars=2000)
-        except Exception as e:
-            private_preview = f"Error reading private file: {str(e)}"
-        
-        try:
-            mock_path = target_obj.mock_path
-            if mock_path:
-                mock_preview = target_obj._get_file_preview(mock_path, max_chars=2000)
-        except Exception as e:
-            mock_preview = f"Error reading mock file: {str(e)}"
-        
-        # Extract email
-        email = "unknown@example.com"
-        try:
-            if target_obj.private_url.startswith("syft://"):
-                parts = target_obj.private_url.split("/")
-                if len(parts) >= 3:
-                    email = parts[2]
-        except:
-            pass
-        
-        return {
-            "uid": str(target_obj.uid),
-            "name": target_obj.name or "Unnamed Object",
-            "description": target_obj.description or "",
-            "email": email,
-            "private_url": target_obj.private_url,
-            "mock_url": target_obj.mock_url,
-            "syftobject_url": target_obj.syftobject,
-            "created_at": target_obj.created_at.isoformat() if target_obj.created_at else None,
-            "updated_at": target_obj.updated_at.isoformat() if target_obj.updated_at else None,
-            "permissions": {
-                "syftobject": target_obj.syftobject_permissions,
-                "mock_read": target_obj.mock_permissions,
-                "mock_write": target_obj.mock_write_permissions,
-                "private_read": target_obj.private_permissions,
-                "private_write": target_obj.private_write_permissions,
-            },
-            "metadata": target_obj.metadata,
+        # Handle CleanSyftObject
+        if hasattr(target_obj, 'get_urls'):
+            # This is a CleanSyftObject
+            urls = target_obj.get_urls()
+            perms = target_obj.get_permissions()
+            
+            # Get file previews (skip for CleanSyftObject)
+            private_preview = ""
+            mock_preview = ""
+            
+            # Extract email
+            email = "unknown@example.com"
+            try:
+                if urls['private'].startswith("syft://"):
+                    parts = urls['private'].split("/")
+                    if len(parts) >= 3:
+                        email = parts[2]
+            except:
+                pass
+            
+            return {
+                "uid": target_obj.get_uid(),
+                "name": target_obj.get_name() or "Unnamed Object",
+                "description": target_obj.get_description() or "",
+                "email": email,
+                "private_url": urls['private'],
+                "mock_url": urls['mock'],
+                "syftobject_url": urls['syftobject'],
+                "created_at": target_obj.get_created_at().isoformat() if target_obj.get_created_at() else None,
+                "updated_at": target_obj.get_updated_at().isoformat() if target_obj.get_updated_at() else None,
+                "permissions": {
+                    "syftobject": perms['syftobject']['read'],
+                    "mock_read": perms['mock']['read'],
+                    "mock_write": perms['mock']['write'],
+                    "private_read": perms['private']['read'],
+                    "private_write": perms['private']['write'],
+                },
+                "metadata": target_obj.get_metadata(),
+                "previews": {
+                    "private": private_preview,
+                    "mock": mock_preview
+                }
+            }
+        else:
+            # This is a raw SyftObject
+            # Get file previews
+            private_preview = ""
+            mock_preview = ""
+            
+            try:
+                private_path = target_obj.private_path
+                if private_path:
+                    private_preview = target_obj._get_file_preview(private_path, max_chars=2000)
+            except Exception as e:
+                private_preview = f"Error reading private file: {str(e)}"
+            
+            try:
+                mock_path = target_obj.mock_path
+                if mock_path:
+                    mock_preview = target_obj._get_file_preview(mock_path, max_chars=2000)
+            except Exception as e:
+                mock_preview = f"Error reading mock file: {str(e)}"
+            
+            # Extract email
+            email = "unknown@example.com"
+            try:
+                if target_obj.private_url.startswith("syft://"):
+                    parts = target_obj.private_url.split("/")
+                    if len(parts) >= 3:
+                        email = parts[2]
+            except:
+                pass
+            
+            return {
+                "uid": str(target_obj.uid),
+                "name": target_obj.name or "Unnamed Object",
+                "description": target_obj.description or "",
+                "email": email,
+                "private_url": target_obj.private_url,
+                "mock_url": target_obj.mock_url,
+                "syftobject_url": target_obj.syftobject,
+                "created_at": target_obj.created_at.isoformat() if target_obj.created_at else None,
+                "updated_at": target_obj.updated_at.isoformat() if target_obj.updated_at else None,
+                "permissions": {
+                    "syftobject": target_obj.syftobject_permissions,
+                    "mock_read": target_obj.mock_permissions,
+                    "mock_write": target_obj.mock_write_permissions,
+                    "private_read": target_obj.private_permissions,
+                    "private_write": target_obj.private_write_permissions,
+                },
+                "metadata": target_obj.metadata,
             "file_paths": {
                 "private": target_obj.private_path,
                 "mock": target_obj.mock_path,
@@ -650,11 +717,13 @@ async def get_file_content(syft_url: str) -> PlainTextResponse:
         is_mock = False
         
         for obj in objects:
-            if obj.private_url == syft_url:
+            # Handle both CleanSyftObject and raw SyftObject
+            raw_obj = obj._obj if hasattr(obj, '_obj') else obj
+            if raw_obj.private_url == syft_url:
                 target_obj = obj
                 is_private = True
                 break
-            elif obj.mock_url == syft_url:
+            elif raw_obj.mock_url == syft_url:
                 target_obj = obj
                 is_mock = True
                 break
@@ -664,9 +733,17 @@ async def get_file_content(syft_url: str) -> PlainTextResponse:
         
         # Get the file path
         if is_private:
-            file_path = target_obj.private_path
+            if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'get_path'):
+                file_path = target_obj.private.get_path()
+            else:
+                raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+                file_path = raw_obj.private_path
         elif is_mock:
-            file_path = target_obj.mock_path
+            if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'get_path'):
+                file_path = target_obj.mock.get_path()
+            else:
+                raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+                file_path = raw_obj.mock_path
         else:
             raise HTTPException(status_code=400, detail="Invalid file type")
         
@@ -712,7 +789,9 @@ async def save_file_content(
         # Find the object by UID
         target_obj = None
         for obj in objects:
-            if str(obj.uid) == object_uid:
+            # Handle both CleanSyftObject and raw SyftObject
+            obj_uid = obj.get_uid() if hasattr(obj, 'get_uid') else str(obj.uid)
+            if obj_uid == object_uid:
                 target_obj = obj
                 break
         
@@ -757,9 +836,17 @@ async def save_file_content(
         
         # Get the file path
         if file_type == 'private':
-            file_path = target_obj.private_path
+            if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'get_path'):
+                file_path = target_obj.private.get_path()
+            else:
+                raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+                file_path = raw_obj.private_path
         else:  # mock
-            file_path = target_obj.mock_path
+            if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'get_path'):
+                file_path = target_obj.mock.get_path()
+            else:
+                raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+                file_path = raw_obj.mock_path
         
         if not file_path:
             raise HTTPException(status_code=400, detail=f"No {file_type} file path found for this object")
@@ -802,7 +889,9 @@ async def update_object_permissions(
         # Find the object by UID
         target_obj = None
         for obj in objects:
-            if str(obj.uid) == object_uid:
+            # Handle both CleanSyftObject and raw SyftObject
+            obj_uid = obj.get_uid() if hasattr(obj, 'get_uid') else str(obj.uid)
+            if obj_uid == object_uid:
                 target_obj = obj
                 break
         
@@ -841,42 +930,62 @@ async def update_object_permissions(
         # Update the object's permissions
         updated_fields = []
         if 'private_read' in permissions:
-            target_obj.private_permissions = permissions['private_read']
+            if hasattr(target_obj, '_obj'):
+                target_obj._obj.private_permissions = permissions['private_read']
+            else:
+                target_obj.private_permissions = permissions['private_read']
             updated_fields.append('private_read')
         if 'private_write' in permissions:
-            target_obj.private_write_permissions = permissions['private_write']
+            if hasattr(target_obj, '_obj'):
+                target_obj._obj.private_write_permissions = permissions['private_write']
+            else:
+                target_obj.private_write_permissions = permissions['private_write']
             updated_fields.append('private_write')
         if 'mock_read' in permissions:
-            target_obj.mock_permissions = permissions['mock_read']
+            if hasattr(target_obj, '_obj'):
+                target_obj._obj.mock_permissions = permissions['mock_read']
+            else:
+                target_obj.mock_permissions = permissions['mock_read']
             updated_fields.append('mock_read')
         if 'mock_write' in permissions:
-            target_obj.mock_write_permissions = permissions['mock_write']
+            if hasattr(target_obj, '_obj'):
+                target_obj._obj.mock_write_permissions = permissions['mock_write']
+            else:
+                target_obj.mock_write_permissions = permissions['mock_write']
             updated_fields.append('mock_write')
         if 'syftobject' in permissions:
-            target_obj.syftobject_permissions = permissions['syftobject']
+            if hasattr(target_obj, '_obj'):
+                target_obj._obj.syftobject_permissions = permissions['syftobject']
+            else:
+                target_obj.syftobject_permissions = permissions['syftobject']
             updated_fields.append('syftobject')
         
         logger.info(f"Updated fields: {updated_fields}")
         logger.info(f"Updated object permissions: {target_obj.__dict__}")
         
         # Update the updated_at timestamp
-        target_obj.updated_at = datetime.now()
+        if hasattr(target_obj, '_obj'):
+            target_obj._obj.updated_at = datetime.now()
+        else:
+            target_obj.updated_at = datetime.now()
         
         # Save the object to its .syftobject.yaml file
         try:
-            if hasattr(target_obj, 'private') and target_obj.syftobject_path:
+            if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'save'):
+                # CleanSyftObject with save method
                 target_obj.private.save(create_syftbox_permissions=True)
-                logger.info(f"Object saved to {target_obj.syftobject_path} using .private.save() method")
-            elif hasattr(target_obj, 'private') and hasattr(target_obj, 'syftobject'):
-                # Try to derive the local path from the syft:// URL
-                local_path = target_obj._get_local_file_path(target_obj.syftobject)
-                if local_path:
-                    target_obj.private.save(local_path, create_syftbox_permissions=True)
-                    logger.info(f"Object saved to {local_path} using .private.save() method")
-                else:
-                    logger.warning("Could not determine local path for syftobject file")
+                logger.info(f"Object saved using .private.save() method")
             else:
-                logger.warning("Object does not have save_yaml method or syftobject_path")
+                # Raw SyftObject
+                raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+                if hasattr(raw_obj, 'save_yaml'):
+                    if hasattr(raw_obj, 'syftobject_path') and raw_obj.syftobject_path:
+                        raw_obj.save_yaml(raw_obj.syftobject_path, create_syftbox_permissions=True)
+                        logger.info(f"Object saved to {raw_obj.syftobject_path} using save_yaml method")
+                    else:
+                        logger.warning("Could not determine local path for syftobject file")
+                else:
+                    logger.warning("Object does not have save_yaml method")
         except Exception as save_error:
             logger.error(f"Error saving object to yaml: {save_error}")
             raise HTTPException(status_code=500, detail=f"Error saving permissions: {save_error}")
@@ -908,7 +1017,9 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
         # Find the object by UID
         target_obj = None
         for obj in objects:
-            if str(obj.uid) == object_uid:
+            # Handle both CleanSyftObject and raw SyftObject
+            obj_uid = obj.get_uid() if hasattr(obj, 'get_uid') else str(obj.uid)
+            if obj_uid == object_uid:
                 target_obj = obj
                 break
         
@@ -944,22 +1055,30 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
         deleted_files = []
         
         # Check if this is a folder-type object
-        is_folder = getattr(target_obj, '_is_folder', False) or getattr(target_obj, 'object_type', '') == 'folder'
+        raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+        is_folder = getattr(raw_obj, '_is_folder', False) or getattr(raw_obj, 'object_type', '') == 'folder'
         
         if is_folder:
             # For folder objects, delete the entire directory structure
             try:
                 # Try to get folder path from syftobject_path first (most reliable)
                 folder_path = None
-                if target_obj.syftobject_path:
-                    syftobject_path = PathLib(target_obj.syftobject_path)
+                syftobject_path_val = None
+                if hasattr(target_obj, 'syftobject_config') and hasattr(target_obj.syftobject_config, 'get_path'):
+                    syftobject_path_val = target_obj.syftobject_config.get_path()
+                elif hasattr(raw_obj, 'syftobject_path'):
+                    syftobject_path_val = raw_obj.syftobject_path
+                
+                if syftobject_path_val:
+                    syftobject_path = PathLib(syftobject_path_val)
                     if syftobject_path.exists():
                         folder_path = syftobject_path.parent
                         logger.info(f"Found folder path via syftobject_path: {folder_path}")
                 
                 # For syft-queue jobs, search across all status directories
-                if not folder_path and hasattr(target_obj, 'metadata') and target_obj.metadata and target_obj.metadata.get('type') == 'SyftBox Job':
-                    job_uid = str(target_obj.uid)
+                metadata = target_obj.get_metadata() if hasattr(target_obj, 'get_metadata') else getattr(raw_obj, 'metadata', {})
+                if not folder_path and metadata and metadata.get('type') == 'SyftBox Job':
+                    job_uid = target_obj.get_uid() if hasattr(target_obj, 'get_uid') else str(raw_obj.uid)
                     
                     # Common syft-queue base paths
                     potential_bases = [
@@ -986,8 +1105,8 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
                             break
                 
                 # Strategy 3: Check folder paths in metadata with validation
-                if not folder_path and hasattr(target_obj, 'metadata') and target_obj.metadata:
-                    folder_paths = target_obj.metadata.get('_folder_paths', {})
+                if not folder_path and metadata:
+                    folder_paths = metadata.get('_folder_paths', {})
                     if 'private' in folder_paths:
                         metadata_path = PathLib(folder_paths['private'])
                         logger.info(f"Found folder path via metadata: {metadata_path}")

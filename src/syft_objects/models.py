@@ -347,6 +347,23 @@ class SyftObject(BaseModel):
         else:
             raise ValueError(f"Invalid file_type: {file_type}. Must be 'mock', 'private', or 'syftobject'.")
     
+    def delete_obj(self, user_email: str = None) -> bool:
+        """Delete this object with permission checking"""
+        if not self.can_delete(user_email):
+            return False
+        return self.delete()
+    
+    def can_delete(self, user_email: str = None) -> bool:
+        """Check if a user can delete this object"""
+        if not user_email:
+            return False
+        owner_email = self.get_owner_email()
+        return user_email == owner_email
+    
+    def get_owner_email(self) -> str:
+        """Get the owner email from metadata"""
+        return self.metadata.get('owner_email', 'unknown')
+    
     def delete(self) -> bool:
         """
         Delete this syft-object and all its associated files.
