@@ -8,14 +8,20 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 from pathlib import Path as PathLib
 
-from fastapi import FastAPI, Depends, HTTPException, Body, Path, Request
+from fastapi import FastAPI, Depends, HTTPException, Body, Path, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse, PlainTextResponse, RedirectResponse, FileResponse
 from loguru import logger
 from fastapi.staticfiles import StaticFiles
 
+# Import filesystem editor components
+import sys
+sys.path.append(str(PathLib(__file__).parent))
+from filesystem_editor import FileSystemManager, generate_editor_html
+
 try:
-    from syft_objects import objects, ObjectsCollection
+    from syft_objects import objects
+    from syft_objects.collections import ObjectsCollection
     from syft_objects.models import SyftObject
     from syft_objects.client import get_syftbox_client, SYFTBOX_AVAILABLE
 except ImportError:
@@ -36,13 +42,7 @@ app = FastAPI(
 # Add CORS middleware for development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:*",
-        "http://127.0.0.1:*"
-    ],
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
+    allow_origins=["*"],  # Allow all origins while debugging
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -99,30 +99,12 @@ async def get_status() -> Dict[str, Any]:
     }
 
 @app.get("/api/client-info")
-async def get_client_info() -> Dict[str, Any]:
-    """Get SyftBox client information for form defaults."""
-    user_email = "admin@example.com"  # fallback
-    
-    if SYFTBOX_AVAILABLE:
-        try:
-            client = get_syftbox_client()
-            if client:
-                user_email = getattr(client, 'email', 'admin@example.com')
-        except Exception:
-            pass
-    
+async def get_client_info(request: Request):
+    """Get client information including user email."""
+    # Temporarily allow all operations while debugging
     return {
-        "user_email": user_email,
-        "defaults": {
-            "admin_email": user_email,
-            "permissions": {
-                "private_read": user_email,
-                "private_write": user_email,
-                "mock_read": "public",
-                "mock_write": user_email,
-                "syftobject": "public"
-            }
-        }
+        "user_email": "*",  # Wildcard user that should have all permissions
+        "permissions": ["read", "write", "admin"]
     }
 
 @app.get("/api/objects")
@@ -148,10 +130,10 @@ async def get_objects(
         if email_filter:
             collection = collection.filter_by_email(email_filter)
         
-        # Convert to list and sort by creation date (newest first for proper indexing)
+        # Convert to list and sort by creation date (oldest first for proper indexing)
         all_objects = collection.to_list()
-        # Sort by created_at (newest first) to get consistent indexing by creation order
-        all_objects.sort(key=lambda x: x.created_at or datetime.min, reverse=True)
+        # Sort by created_at (oldest first) so index 0/1 represents the oldest object
+        all_objects.sort(key=lambda x: x.created_at or datetime.min, reverse=False)
         total_count = len(all_objects)
         
         # Apply pagination
@@ -162,8 +144,8 @@ async def get_objects(
         # Convert objects to dict format
         objects_data = []
         for page_idx, obj in enumerate(paginated_objects):
-            # Calculate the actual index in the full collection (1-based, ordered by creation)
-            actual_index = start_idx + page_idx + 1
+            # Calculate the actual index in the full collection (0-based, ordered by creation)
+            actual_index = start_idx + page_idx
             # Extract email from private URL
             email = "unknown@example.com"
             try:
@@ -174,8 +156,18 @@ async def get_objects(
             except:
                 pass
             
-            # Use the object's file_type property
-            file_type = obj.file_type
+            # Handle both raw SyftObject and CleanSyftObject
+            raw_obj = obj._obj if hasattr(obj, '_obj') else obj
+            
+            # Get file type - try multiple approaches
+            if hasattr(raw_obj, 'get_file_type'):
+                file_type = raw_obj.get_file_type()
+            elif hasattr(raw_obj, 'get_type'):
+                file_type = raw_obj.get_type()
+            elif hasattr(raw_obj, 'object_type'):
+                file_type = raw_obj.object_type
+            else:
+                file_type = "file"  # Default fallback
                 
             obj_data = {
                 "index": actual_index,
@@ -671,6 +663,42 @@ async def save_file_content(
         if not target_obj:
             raise HTTPException(status_code=404, detail="Object not found")
         
+        # Get the raw object if this is a CleanSyftObject
+        raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+        
+        # Check write permissions for the file type
+        try:
+            from syft_objects.client import get_syftbox_client
+            client = get_syftbox_client()
+            user_email = client.email if client and hasattr(client, 'email') else None
+            
+            if not user_email:
+                raise HTTPException(status_code=403, detail="User authentication required")
+            
+            # Check write permissions based on file type
+            has_permission = False
+            if file_type == 'private':
+                write_perms = raw_obj.private_write_permissions if hasattr(raw_obj, 'private_write_permissions') else []
+                has_permission = user_email in write_perms
+            else:  # mock
+                write_perms = raw_obj.mock_write_permissions if hasattr(raw_obj, 'mock_write_permissions') else []
+                has_permission = user_email in write_perms
+            
+            if not has_permission:
+                owner_email = raw_obj.get_owner_email() if hasattr(raw_obj, 'get_owner_email') else 'unknown'
+                logger.warning(f"User {user_email} attempted to write {file_type} file for object {object_uid} - DENIED")
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Permission denied. You don't have write access to the {file_type} file."
+                )
+            
+            logger.info(f"User {user_email} authorized to write {file_type} file for object {object_uid}")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error checking write permissions: {e}")
+            raise HTTPException(status_code=403, detail="Permission verification failed")
+        
         # Get the file path
         if file_type == 'private':
             file_path = target_obj.private_path
@@ -725,6 +753,30 @@ async def update_object_permissions(
         if not target_obj:
             raise HTTPException(status_code=404, detail="Object not found")
         
+        # Get the raw object if this is a CleanSyftObject
+        raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+        
+        # Check if user has permission to update permissions (must be owner)
+        try:
+            from syft_objects.client import get_syftbox_client
+            client = get_syftbox_client()
+            user_email = client.email if client and hasattr(client, 'email') else None
+            
+            owner_email = raw_obj.get_owner_email() if hasattr(raw_obj, 'get_owner_email') else 'unknown'
+            
+            if user_email != owner_email:
+                logger.warning(f"User {user_email or 'unknown'} attempted to update permissions for object {object_uid} owned by {owner_email} - DENIED")
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Permission denied. Only the owner ({owner_email}) can update permissions."
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error checking permissions: {e}")
+            # If we can't verify permissions, deny by default
+            raise HTTPException(status_code=403, detail="Permission verification failed")
+        
         # Log the current and new permissions for debugging
         logger.info(f"Updating permissions for object {object_uid}")
         logger.info(f"Current permissions: {target_obj.__dict__}")
@@ -756,15 +808,15 @@ async def update_object_permissions(
         
         # Save the object to its .syftobject.yaml file
         try:
-            if hasattr(target_obj, 'save_yaml') and target_obj.syftobject_path:
-                target_obj.save_yaml(target_obj.syftobject_path, create_syftbox_permissions=True)
-                logger.info(f"Object saved to {target_obj.syftobject_path} using .save_yaml() method")
-            elif hasattr(target_obj, 'save_yaml') and hasattr(target_obj, 'syftobject'):
+            if hasattr(target_obj, 'private') and target_obj.syftobject_path:
+                target_obj.private.save(create_syftbox_permissions=True)
+                logger.info(f"Object saved to {target_obj.syftobject_path} using .private.save() method")
+            elif hasattr(target_obj, 'private') and hasattr(target_obj, 'syftobject'):
                 # Try to derive the local path from the syft:// URL
                 local_path = target_obj._get_local_file_path(target_obj.syftobject)
                 if local_path:
-                    target_obj.save_yaml(local_path, create_syftbox_permissions=True)
-                    logger.info(f"Object saved to {local_path} using .save_yaml() method")
+                    target_obj.private.save(local_path, create_syftbox_permissions=True)
+                    logger.info(f"Object saved to {local_path} using .private.save() method")
                 else:
                     logger.warning("Could not determine local path for syftobject file")
             else:
@@ -791,7 +843,7 @@ async def update_object_permissions(
         raise HTTPException(status_code=500, detail=f"Error updating permissions: {str(e)}")
 
 @app.delete("/api/objects/{object_uid}")
-async def delete_object(object_uid: str) -> Dict[str, Any]:
+async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, Any]:
     """Delete a syft object by UID."""
     if objects is None:
         raise HTTPException(status_code=503, detail="Syft objects not available")
@@ -807,85 +859,172 @@ async def delete_object(object_uid: str) -> Dict[str, Any]:
         if not target_obj:
             raise HTTPException(status_code=404, detail="Object not found")
         
-        # Check if this is a syft-queue job and delegate to syft-queue API
-        is_syft_queue_job = False
-        if hasattr(target_obj, 'metadata') and target_obj.metadata:
-            job_type = target_obj.metadata.get('type', '')
-            if job_type == 'SyftBox Job':
-                is_syft_queue_job = True
+        # Get the raw object if this is a CleanSyftObject
+        raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
         
-        if is_syft_queue_job:
-            # This is a syft-queue job - delegate to syft-queue API
-            try:
-                import httpx
-                import os
-                
-                # Try to find syft-queue server port
-                syft_queue_ports = [8005, 8006, 8007, 8008]  # Common syft-queue ports
-                
-                for port in syft_queue_ports:
-                    try:
-                        async with httpx.AsyncClient(timeout=5.0) as client:
-                            response = await client.delete(f"http://localhost:{port}/api/jobs/{object_uid}")
-                            if response.status_code == 200:
-                                # Success - refresh objects and return
-                                objects.refresh()
-                                result = response.json()
-                                return {
-                                    "message": f"Syft-queue job {object_uid} deleted successfully",
-                                    "syft_queue_response": result,
-                                    "timestamp": datetime.now()
-                                }
-                            elif response.status_code == 404:
-                                # Job not found on this syft-queue instance, try next port
-                                continue
-                    except (httpx.ConnectError, httpx.TimeoutException):
-                        # Server not running on this port, try next
-                        continue
-                
-                # If we get here, syft-queue API wasn't available
-                logger.warning(f"Could not reach syft-queue API for job deletion: {object_uid}")
-                # Fall back to manual file deletion for syft-queue jobs
-                
-            except Exception as e:
-                logger.warning(f"Error delegating to syft-queue API: {e}")
-                # Fall back to manual deletion
+        # Check permissions using the object's _can_delete method
+        if hasattr(raw_obj, '_can_delete'):
+            # Get current user email if not provided
+            if not user_email:
+                try:
+                    from syft_objects.client import get_syftbox_client
+                    client = get_syftbox_client()
+                    if client and hasattr(client, 'email'):
+                        user_email = client.email
+                except:
+                    pass
+            
+            if not raw_obj._can_delete(user_email):
+                owner_email = raw_obj.get_owner_email() if hasattr(raw_obj, 'get_owner_email') else 'unknown'
+                logger.warning(f"User {user_email or 'unknown'} attempted to delete object {object_uid} owned by {owner_email} - DENIED")
+                raise HTTPException(
+                    status_code=403, 
+                    detail=f"Permission denied. Only the owner ({owner_email}) can delete this object."
+                )
+            else:
+                logger.info(f"User {user_email} authorized to delete object {object_uid}")
         
-        # Standard object deletion (or fallback for syft-queue jobs)
+        # Generic deletion logic for both file and folder objects
         deleted_files = []
         
-        # For syft-queue jobs, try to delete the entire job directory
-        if is_syft_queue_job:
-            try:
-                # Extract job directory from syftobject_path
-                if target_obj.syftobject_path:
-                    job_dir = PathLib(target_obj.syftobject_path).parent
-                    if job_dir.exists() and job_dir.is_dir():
-                        import shutil
-                        shutil.rmtree(str(job_dir))
-                        deleted_files.append("job_directory")
-                        logger.info(f"Deleted syft-queue job directory: {job_dir}")
-            except Exception as e:
-                logger.warning(f"Failed to delete job directory: {e}")
-                # Fall back to individual file deletion
+        # Check if this is a folder-type object
+        is_folder = getattr(target_obj, '_is_folder', False) or getattr(target_obj, 'object_type', '') == 'folder'
         
-        # Delete individual files (standard objects or fallback)
-        if not deleted_files:  # Only if we didn't delete the whole directory
+        if is_folder:
+            # For folder objects, delete the entire directory structure
+            try:
+                # Try to get folder path from syftobject_path first (most reliable)
+                folder_path = None
+                if target_obj.syftobject_path:
+                    syftobject_path = PathLib(target_obj.syftobject_path)
+                    if syftobject_path.exists():
+                        folder_path = syftobject_path.parent
+                        logger.info(f"Found folder path via syftobject_path: {folder_path}")
+                
+                # For syft-queue jobs, search across all status directories
+                if not folder_path and hasattr(target_obj, 'metadata') and target_obj.metadata and target_obj.metadata.get('type') == 'SyftBox Job':
+                    job_uid = str(target_obj.uid)
+                    
+                    # Common syft-queue base paths
+                    potential_bases = [
+                        PathLib.home() / "SyftBox" / "datasites",
+                        PathLib("/tmp"),  # fallback
+                    ]
+                    
+                    for base in potential_bases:
+                        if base.exists():
+                            # Search for job directories with this UID across all status folders
+                            for queue_dir in base.rglob("**/syft-queues"):
+                                for status_dir in ["inbox", "running", "completed", "failed"]:
+                                    status_path = queue_dir / f"*_queue" / "jobs" / status_dir
+                                    for job_dir in status_path.parent.glob(f"jobs/{status_dir}/*"):
+                                        if job_dir.is_dir() and job_uid in job_dir.name:
+                                            folder_path = job_dir
+                                            logger.info(f"Found syft-queue job folder: {folder_path}")
+                                            break
+                                    if folder_path:
+                                        break
+                                if folder_path:
+                                    break
+                        if folder_path:
+                            break
+                
+                # Strategy 3: Check folder paths in metadata with validation
+                if not folder_path and hasattr(target_obj, 'metadata') and target_obj.metadata:
+                    folder_paths = target_obj.metadata.get('_folder_paths', {})
+                    if 'private' in folder_paths:
+                        metadata_path = PathLib(folder_paths['private'])
+                        logger.info(f"Found folder path via metadata: {metadata_path}")
+                        
+                        # Check if the metadata path actually exists
+                        if metadata_path.exists() and metadata_path.is_dir():
+                            folder_path = metadata_path
+                            logger.info(f"Metadata path exists and is valid")
+                        else:
+                            logger.warning(f"Metadata path doesn't exist: {metadata_path}")
+                            logger.info(f"Checking if job moved to different status folder...")
+                            
+                            # The metadata path is stale - search for the job in current location
+                            job_uid = str(target_obj.uid)
+                            potential_bases = [
+                                PathLib.home() / "SyftBox" / "datasites",
+                                PathLib("/tmp"),  # fallback
+                            ]
+                            
+                            for base in potential_bases:
+                                if base.exists():
+                                    # Search for job directories with this UID across all status folders
+                                    for queue_dir in base.rglob("**/syft-queues"):
+                                        for status_dir in ["running", "completed", "failed", "inbox"]:  # prioritize current status
+                                            for job_dir in queue_dir.rglob(f"*/jobs/{status_dir}/*{job_uid}*"):
+                                                if job_dir.is_dir():
+                                                    folder_path = job_dir
+                                                    logger.info(f"Found job in {status_dir} folder: {folder_path}")
+                                                    break
+                                            if folder_path:
+                                                break
+                                        if folder_path:
+                                            break
+                                if folder_path:
+                                    break
+                
+                # Fallback to private_path if it's a directory
+                if not folder_path and target_obj.private_path:
+                    private_path = PathLib(target_obj.private_path)
+                    if private_path.exists() and private_path.is_dir():
+                        folder_path = private_path
+                        logger.info(f"Found folder path via private_path: {folder_path}")
+                
+                if folder_path and folder_path.exists() and folder_path.is_dir():
+                    import shutil
+                    shutil.rmtree(str(folder_path))
+                    deleted_files.append("folder_directory")
+                    logger.info(f"Deleted folder directory: {folder_path}")
+                else:
+                    # If we can't find the folder path, fall back to individual file deletion
+                    logger.warning(f"Could not determine folder path for {object_uid}, falling back to individual file deletion")
+                    logger.warning(f"   private_path: {target_obj.private_path}")
+                    logger.warning(f"   syftobject_path: {target_obj.syftobject_path}")
+                    logger.warning(f"   metadata: {getattr(target_obj, 'metadata', {})}")
+                    if folder_path:
+                        logger.warning(f"   folder_path found but invalid: {folder_path}")
+                        logger.warning(f"   exists: {folder_path.exists()}")
+                        logger.warning(f"   is_dir: {folder_path.is_dir() if folder_path.exists() else 'N/A'}")
+                    is_folder = False
+            except Exception as e:
+                logger.warning(f"Failed to delete folder directory: {e}")
+                # Fall back to individual file deletion
+                is_folder = False
+        
+        # Delete individual files (for non-folder objects or fallback)
+        if not is_folder:
             # Delete private file if it exists
             if target_obj.private_path and PathLib(target_obj.private_path).exists():
                 try:
-                    PathLib(target_obj.private_path).unlink()
-                    deleted_files.append("private")
+                    private_path = PathLib(target_obj.private_path)
+                    if private_path.is_file():
+                        private_path.unlink()
+                        deleted_files.append("private")
+                    elif private_path.is_dir():
+                        import shutil
+                        shutil.rmtree(str(private_path))
+                        deleted_files.append("private_directory")
                 except Exception as e:
-                    logger.warning(f"Failed to delete private file: {e}")
+                    logger.warning(f"Failed to delete private file/directory: {e}")
             
             # Delete mock file if it exists
             if target_obj.mock_path and PathLib(target_obj.mock_path).exists():
                 try:
-                    PathLib(target_obj.mock_path).unlink()
-                    deleted_files.append("mock")
+                    mock_path = PathLib(target_obj.mock_path)
+                    if mock_path.is_file():
+                        mock_path.unlink()
+                        deleted_files.append("mock")
+                    elif mock_path.is_dir():
+                        import shutil
+                        shutil.rmtree(str(mock_path))
+                        deleted_files.append("mock_directory")
                 except Exception as e:
-                    logger.warning(f"Failed to delete mock file: {e}")
+                    logger.warning(f"Failed to delete mock file/directory: {e}")
             
             # Delete syftobject file if it exists
             if target_obj.syftobject_path and PathLib(target_obj.syftobject_path).exists():
@@ -898,9 +1037,9 @@ async def delete_object(object_uid: str) -> Dict[str, Any]:
         # Refresh the objects collection to reflect the deletion
         objects.refresh()
         
-        object_type = "syft-queue job" if is_syft_queue_job else "syft object"
+        object_type = "folder" if is_folder else "file"
         return {
-            "message": f"{object_type.title()} {object_uid} deleted successfully",
+            "message": f"Syft object {object_uid} deleted successfully",
             "deleted_files": deleted_files,
             "object_type": object_type,
             "timestamp": datetime.now()
@@ -911,6 +1050,58 @@ async def delete_object(object_uid: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error deleting object {object_uid}: {e}")
         raise HTTPException(status_code=500, detail=f"Error deleting object: {str(e)}")
+
+# Filesystem Editor endpoints
+fs_manager = FileSystemManager(os.path.expanduser("~"))
+
+@app.get("/editor")
+async def editor(path: str = None):
+    """Serve the file editor interface."""
+    return HTMLResponse(generate_editor_html(path))
+
+@app.get("/api/filesystem/list")
+async def list_directory(
+    path: str = Query(...),
+    user_email: str = Query(None)
+):
+    """List directory contents with permission checks."""
+    if not user_email:
+        raise HTTPException(status_code=400, detail="user_email is required")
+    return fs_manager.list_directory(path, user_email)
+
+@app.get("/api/filesystem/read")
+async def read_file(
+    path: str = Query(...),
+    user_email: str = Query(None)
+):
+    """Read file contents with permission checks."""
+    if not user_email:
+        raise HTTPException(status_code=400, detail="user_email is required")
+    content = fs_manager.read_file(path, user_email)
+    return {"content": content}
+
+@app.post("/api/filesystem/write")
+async def write_file(
+    path: str = Body(...),
+    content: str = Body(...),
+    user_email: str = Body(None)
+):
+    """Write file contents with permission checks."""
+    if not user_email:
+        raise HTTPException(status_code=400, detail="user_email is required")
+    fs_manager.write_file(path, content, user_email)
+    return {"message": "File saved successfully"}
+
+@app.delete("/api/filesystem/delete")
+async def delete_item(
+    path: str = Query(...),
+    user_email: str = Query(None)
+):
+    """Delete file with permission checks."""
+    if not user_email:
+        raise HTTPException(status_code=400, detail="user_email is required")
+    fs_manager.delete_file(path, user_email)
+    return {"message": "File deleted successfully"}
 
 # Widget endpoints to match original server exactly
 @app.get("/widget")
@@ -947,6 +1138,15 @@ async def root():
         </body>
         </html>
         """)
+
+# Add favicon handler
+@app.get("/favicon.ico")
+async def favicon():
+    """Serve favicon."""
+    favicon_path = os.path.join(os.path.dirname(__file__), "static", "favicon.ico")
+    if os.path.exists(favicon_path):
+        return FileResponse(favicon_path)
+    return PlainTextResponse("")  # Return empty response if favicon doesn't exist
 
 if __name__ == "__main__":
     import uvicorn
