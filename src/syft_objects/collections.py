@@ -13,19 +13,21 @@ from .client import get_syftbox_client, SYFTBOX_AVAILABLE, get_syft_objects_url
 class ObjectsCollection:
     """Collection of syft objects that can be indexed and displayed as a table"""
 
-    def __init__(self, objects=None, search_info=None):
+    def __init__(self, objects=None, search_info=None, original_indices=None):
         if objects is None:
             self._objects = []
             self._search_info = None
             self._cached = False
             self._server_ready = False  # Track server readiness
             self._load_error = None  # Track loading errors
+            self._original_indices = None  # Track original indices for sliced collections
         else:
             self._objects = objects
             self._search_info = search_info
             self._cached = True
             self._server_ready = False
             self._load_error = None
+            self._original_indices = original_indices  # Store original indices
             # Sort objects by created_at when provided
             self._sort_objects()
 
@@ -261,7 +263,10 @@ class ObjectsCollection:
         self._ensure_loaded()
         if isinstance(index, slice):
             slice_info = f"{self._search_info} (slice {index})" if self._search_info else None
-            return ObjectsCollection(objects=self._objects[index], search_info=slice_info)
+            # Calculate original indices for the slice
+            start, stop, step = index.indices(len(self._objects))
+            original_indices = list(range(start, stop, step))
+            return ObjectsCollection(objects=self._objects[index], search_info=slice_info, original_indices=original_indices)
         elif isinstance(index, str):
             # Handle string UID lookup
             for obj in self._objects:
@@ -403,8 +408,11 @@ Example Usage:
         from pathlib import Path
         
         objects_data = []
-        for obj in self._objects:
+        for i, obj in enumerate(self._objects):
+            # Use original index if this is a sliced collection, otherwise use current index
+            display_index = self._original_indices[i] if self._original_indices else i
             obj_data = {
+                'display_index': display_index,  # Store the correct index to display
                 'name': obj.name or "Unnamed",
                 'uid': str(obj.uid),
                 'created_at': obj.created_at.strftime("%m/%d/%Y, %H:%M:%S UTC") if hasattr(obj, 'created_at') and obj.created_at else "Unknown",
@@ -756,6 +764,8 @@ Example Usage:
         # Generate initial page
         for i in range(min(items_per_page, total_objects)):
             obj = self._objects[i]
+            # Use original index if this is a sliced collection, otherwise use current index
+            display_index = self._original_indices[i] if self._original_indices else i
             name = html_module.escape(obj.name or "Unnamed Object")
             email = html_module.escape(self._get_object_email(obj))
             uid = str(obj.uid)
@@ -770,9 +780,9 @@ Example Usage:
                     file_type = path.suffix
             
             html += f"""
-                        <tr onclick="copyObjectCode_{container_id}({i})" style="cursor: pointer;">
+                        <tr onclick="copyObjectCode_{container_id}({display_index})" style="cursor: pointer;">
                             <td><input type="checkbox" class="checkbox" disabled></td>
-                            <td>{i}</td>
+                            <td>{display_index}</td>
                             <td><div class="truncate" style="font-weight: 500;" title="{name}">{name}</div></td>
                             <td><div class="truncate" style="color: #6b7280;" title="{description}">{description}</div></td>
                             <td>
@@ -925,6 +935,9 @@ Example Usage:
                 var obj = objects[i];
                 if (!obj) continue;
                 
+                // Use the display_index from the object data (handles slicing correctly)
+                var displayIndex = obj.display_index !== undefined ? obj.display_index : i;
+                
                 var name = obj.name || 'Unnamed Object';
                 var uid = obj.uid || '';
                 var uidShort = uid.substring(0, 8) + '...';
@@ -947,7 +960,7 @@ Example Usage:
                 }}
                 
                 var tr = document.createElement('tr');
-                tr.onclick = function(idx) {{ return function() {{ copyObjectCode_{container_id}(idx); }}; }}(i);
+                tr.onclick = function(idx) {{ return function() {{ copyObjectCode_{container_id}(idx); }}; }}(displayIndex);
                 tr.style.cursor = 'pointer';
                 
                 // Escape all user-provided content
@@ -956,7 +969,7 @@ Example Usage:
                 var escapedEmail = escapeHtml_{container_id}(email);
                 
                 tr.innerHTML = '<td><input type="checkbox" class="checkbox" disabled></td>' +
-                    '<td>' + i + '</td>' +
+                    '<td>' + displayIndex + '</td>' +
                     '<td><div class="truncate" style="font-weight: 500;" title="' + escapedName + '">' + escapedName + '</div></td>' +
                     '<td><div class="truncate" style="color: #6b7280;" title="' + escapedDesc + '">' + escapedDesc + '</div></td>' +
                     '<td><div class="admin-email"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span class="truncate">' + escapedEmail + '</span></div></td>' +
@@ -1347,6 +1360,8 @@ Example Usage:
         
         # Add rows for each object
         for i, obj in enumerate(self._objects):
+            # Use original index if this is a sliced collection, otherwise use current index
+            display_index = self._original_indices[i] if self._original_indices else i
             email = self._get_object_email(obj)
             name = obj.name or "Unnamed Object"
             description = obj.description or f"Auto-generated object: {name}"
@@ -1368,12 +1383,12 @@ Example Usage:
             email_escaped = html_module.escape(email)
             
             html += f"""
-                        <tr data-index="{i}" data-name="{name_escaped.lower()}" data-email="{email_escaped.lower()}" 
+                        <tr data-index="{display_index}" data-name="{name_escaped.lower()}" data-email="{email_escaped.lower()}" 
                             data-desc="{desc_escaped.lower()}" onclick="toggleRowSelect_{container_id}(this, event)">
                             <td class="checkbox-cell" onclick="event.stopPropagation()">
                                 <input type="checkbox" onchange="updateSelection_{container_id}()">
                             </td>
-                            <td class="index-cell">{i}</td>
+                            <td class="index-cell">{display_index}</td>
                             <td class="name-cell truncate" title="{name_escaped}">{name_escaped}</td>
                             <td class="truncate" title="{desc_escaped}">{desc_escaped}</td>
                             <td class="admin-cell truncate" title="{email_escaped}">
@@ -1389,13 +1404,13 @@ Example Usage:
                             <td class="date-cell">{created_str}</td>
                             <td><span class="type-badge">{obj_type}</span></td>
                             <td onclick="event.stopPropagation()">
-                                <button class="file-button mock-btn" onclick="showAccessCode_{container_id}({i}, 'mock')">Mock</button>
-                                <button class="file-button private-btn" onclick="showAccessCode_{container_id}({i}, 'private')">Private</button>
+                                <button class="file-button mock-btn" onclick="showAccessCode_{container_id}({display_index}, 'mock')">Mock</button>
+                                <button class="file-button private-btn" onclick="showAccessCode_{container_id}({display_index}, 'private')">Private</button>
                             </td>
                             <td onclick="event.stopPropagation()">
-                                <button class="action-btn info-btn" onclick="showObjectInfo_{container_id}({i})">Info</button>
+                                <button class="action-btn info-btn" onclick="showObjectInfo_{container_id}({display_index})">Info</button>
                                 <button class="action-btn path-btn" onclick="copyPath_{container_id}('{html_module.escape(str(obj.private_path))}')">Path</button>
-                                <button class="action-btn delete-btn" onclick="confirmDelete_{container_id}({i})">
+                                <button class="action-btn delete-btn" onclick="confirmDelete_{container_id}({display_index})">
                                     <svg style="width: 0.75rem; height: 0.75rem; display: inline;" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path d="M3 6h18"></path>
                                         <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
