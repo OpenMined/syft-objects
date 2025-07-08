@@ -175,8 +175,18 @@ async def get_objects(
             except:
                 pass
             
-            # Use the object's file_type property
-            file_type = obj.file_type
+            # Handle both raw SyftObject and CleanSyftObject
+            raw_obj = obj._obj if hasattr(obj, '_obj') else obj
+            
+            # Get file type - try multiple approaches
+            if hasattr(raw_obj, 'get_file_type'):
+                file_type = raw_obj.get_file_type()
+            elif hasattr(raw_obj, 'get_type'):
+                file_type = raw_obj.get_type()
+            elif hasattr(raw_obj, 'object_type'):
+                file_type = raw_obj.object_type
+            else:
+                file_type = "file"  # Default fallback
                 
             obj_data = {
                 "index": actual_index,
@@ -757,15 +767,15 @@ async def update_object_permissions(
         
         # Save the object to its .syftobject.yaml file
         try:
-            if hasattr(target_obj, 'save_yaml') and target_obj.syftobject_path:
-                target_obj.save_yaml(target_obj.syftobject_path, create_syftbox_permissions=True)
-                logger.info(f"Object saved to {target_obj.syftobject_path} using .save_yaml() method")
-            elif hasattr(target_obj, 'save_yaml') and hasattr(target_obj, 'syftobject'):
+            if hasattr(target_obj, 'private') and target_obj.syftobject_path:
+                target_obj.private.save(create_syftbox_permissions=True)
+                logger.info(f"Object saved to {target_obj.syftobject_path} using .private.save() method")
+            elif hasattr(target_obj, 'private') and hasattr(target_obj, 'syftobject'):
                 # Try to derive the local path from the syft:// URL
                 local_path = target_obj._get_local_file_path(target_obj.syftobject)
                 if local_path:
-                    target_obj.save_yaml(local_path, create_syftbox_permissions=True)
-                    logger.info(f"Object saved to {local_path} using .save_yaml() method")
+                    target_obj.private.save(local_path, create_syftbox_permissions=True)
+                    logger.info(f"Object saved to {local_path} using .private.save() method")
                 else:
                     logger.warning("Could not determine local path for syftobject file")
             else:
@@ -812,7 +822,7 @@ async def delete_object(object_uid: str) -> Dict[str, Any]:
         deleted_files = []
         
         # Check if this is a folder-type object
-        is_folder = getattr(target_obj, 'is_folder', False) or getattr(target_obj, 'object_type', '') == 'folder'
+        is_folder = getattr(target_obj, '_is_folder', False) or getattr(target_obj, 'object_type', '') == 'folder'
         
         if is_folder:
             # For folder objects, delete the entire directory structure
