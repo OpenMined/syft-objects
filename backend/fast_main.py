@@ -156,8 +156,8 @@ async def get_objects(
             except:
                 pass
             
-            # Handle both raw SyftObject and CleanSyftObject
-            raw_obj = obj._obj if hasattr(obj, '_obj') else obj
+            # Get the raw object (no CleanSyftObject at this commit)
+            raw_obj = obj
             
             # Get file type - try multiple approaches
             if hasattr(raw_obj, 'get_file_type'):
@@ -663,8 +663,8 @@ async def save_file_content(
         if not target_obj:
             raise HTTPException(status_code=404, detail="Object not found")
         
-        # Get the raw object if this is a CleanSyftObject
-        raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+        # Get the raw object (no CleanSyftObject at this commit)
+        raw_obj = target_obj
         
         # Check write permissions for the file type
         try:
@@ -753,8 +753,8 @@ async def update_object_permissions(
         if not target_obj:
             raise HTTPException(status_code=404, detail="Object not found")
         
-        # Get the raw object if this is a CleanSyftObject
-        raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+        # Get the raw object (no CleanSyftObject at this commit)
+        raw_obj = target_obj
         
         # Check if user has permission to update permissions (must be owner)
         try:
@@ -859,8 +859,8 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
         if not target_obj:
             raise HTTPException(status_code=404, detail="Object not found")
         
-        # Get the raw object if this is a CleanSyftObject
-        raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+        # Get the raw object (no CleanSyftObject at this commit)
+        raw_obj = target_obj
         
         # Check permissions using the object's _can_delete method
         if hasattr(raw_obj, '_can_delete'):
@@ -874,7 +874,7 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
                 except:
                     pass
             
-            if not raw_obj._can_delete(user_email):
+            if not raw_obj.can_delete(user_email):
                 owner_email = raw_obj.get_owner_email() if hasattr(raw_obj, 'get_owner_email') else 'unknown'
                 logger.warning(f"User {user_email or 'unknown'} attempted to delete object {object_uid} owned by {owner_email} - DENIED")
                 raise HTTPException(

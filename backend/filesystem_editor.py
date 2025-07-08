@@ -236,6 +236,15 @@ def generate_editor_html(initial_path: str = None) -> str:
     """Generate the HTML for the filesystem code editor."""
     initial_path = initial_path or str(Path.home())
     
+    # Read the box.svg file
+    box_svg_path = Path(__file__).parent.parent / 'box.svg'
+    try:
+        with open(box_svg_path, 'r') as f:
+            box_svg = f.read()
+    except:
+        # Fallback if box.svg is not found
+        box_svg = '<div class="logo">S</div>'
+    
     html_content = f"""
 <!DOCTYPE html>
 <html lang="en">
@@ -677,39 +686,7 @@ def generate_editor_html(initial_path: str = None) -> str:
                     </div>
                     <div class="panel-content">
                         <div class="empty-state" id="emptyState">
-                            <svg class="logo" xmlns="http://www.w3.org/2000/svg" width="311" height="360" viewBox="0 0 311 360" fill="none">
-                                <g clip-path="url(#clip0_7523_4240)">
-                                    <path d="M311.414 89.7878L155.518 179.998L-0.378906 89.7878L155.518 -0.422485L311.414 89.7878Z" fill="url(#paint0_linear_7523_4240)"></path>
-                                    <path d="M311.414 89.7878V270.208L155.518 360.423V179.998L311.414 89.7878Z" fill="url(#paint1_linear_7523_4240)"></path>
-                                    <path d="M155.518 179.998V360.423L-0.378906 270.208V89.7878L155.518 179.998Z" fill="url(#paint2_linear_7523_4240)"></path>
-                                </g>
-                                <defs>
-                                    <linearGradient id="paint0_linear_7523_4240" x1="-0.378904" y1="89.7878" x2="311.414" y2="89.7878" gradientUnits="userSpaceOnUse">
-                                        <stop stop-color="#DC7A6E"></stop>
-                                        <stop offset="0.251496" stop-color="#F6A464"></stop>
-                                        <stop offset="0.501247" stop-color="#FDC577"></stop>
-                                        <stop offset="0.753655" stop-color="#EFC381"></stop>
-                                        <stop offset="1" stop-color="#B9D599"></stop>
-                                    </linearGradient>
-                                    <linearGradient id="paint1_linear_7523_4240" x1="309.51" y1="89.7878" x2="155.275" y2="360.285" gradientUnits="userSpaceOnUse">
-                                        <stop stop-color="#BFCD94"></stop>
-                                        <stop offset="0.245025" stop-color="#B2D69E"></stop>
-                                        <stop offset="0.504453" stop-color="#8DCCA6"></stop>
-                                        <stop offset="0.745734" stop-color="#5CB8B7"></stop>
-                                        <stop offset="1" stop-color="#4CA5B8"></stop>
-                                    </linearGradient>
-                                    <linearGradient id="paint2_linear_7523_4240" x1="-0.378906" y1="89.7878" x2="155.761" y2="360.282" gradientUnits="userSpaceOnUse">
-                                        <stop stop-color="#D7686D"></stop>
-                                        <stop offset="0.225" stop-color="#C64B77"></stop>
-                                        <stop offset="0.485" stop-color="#A2638E"></stop>
-                                        <stop offset="0.703194" stop-color="#758AA8"></stop>
-                                        <stop offset="1" stop-color="#639EAF"></stop>
-                                    </linearGradient>
-                                    <clipPath id="clip0_7523_4240">
-                                        <rect width="311" height="360" fill="white"></rect>
-                                    </clipPath>
-                                </defs>
-                            </svg>
+                            {box_svg}
                             <h3>Welcome to SyftBox Editor</h3>
                             <p>Select a file from the explorer to start editing</p>
                         </div>
@@ -798,91 +775,77 @@ def generate_editor_html(initial_path: str = None) -> str:
             
             renderFileList(items) {{
                 if (items.length === 0) {{
-                    this.fileList.innerHTML = '<div class="empty-state"><h3>Empty Directory</h3><p>No files or folders found</p></div>';
+                    this.fileList.innerHTML = `
+                        <div class="empty-state">
+                            <p>No files found in this directory</p>
+                        </div>
+                    `;
                     return;
                 }}
                 
-                this.fileList.innerHTML = items.map(item => {{
-                    const icon = item.is_directory ? '📁' : (item.is_editable ? '📄' : '📋');
-                    const sizeText = item.is_directory ? 'Directory' : this.formatFileSize(item.size);
-                    const modifiedText = new Date(item.modified).toLocaleString();
-                    
-                    return `
-                        <div class="file-item" data-path="${{item.path}}" data-is-directory="${{item.is_directory}}" data-is-editable="${{item.is_editable}}">
-                            <div class="file-icon ${{item.is_directory ? 'directory' : (item.is_editable ? 'editable' : '')}}">${{icon}}</div>
-                            <div class="file-details">
-                                <div class="file-name">${{item.name}}</div>
-                                <div class="file-meta">${{sizeText}} • ${{modifiedText}}</div>
+                this.fileList.innerHTML = items.map(item => `
+                    <div class="file-item" data-path="${item.path}">
+                        <div class="file-icon">
+                            ${{item.is_directory ? '📁' : item.is_editable ? '📄' : '📎'}}
+                        </div>
+                        <div class="file-details">
+                            <div class="file-name">${item.name}</div>
+                            <div class="file-meta">
+                                ${{item.is_directory ? 'Directory' : this.formatSize(item.size)}} • 
+                                ${{new Date(item.modified).toLocaleString()}}
                             </div>
                         </div>
-                    `;
-                }}).join('');
+                    </div>
+                `).join('');
                 
-                // Add click handlers
                 this.fileList.querySelectorAll('.file-item').forEach(item => {{
                     item.addEventListener('click', () => {{
                         const path = item.dataset.path;
-                        const isDirectory = item.dataset.isDirectory === 'true';
-                        const isEditable = item.dataset.isEditable === 'true';
+                        const isDirectory = item.querySelector('.file-icon').textContent.includes('📁');
                         
                         if (isDirectory) {{
                             this.loadDirectory(path);
-                        }} else if (isEditable) {{
+                        }} else {{
                             this.loadFile(path);
                         }}
-                    }});
-                    
-                    item.addEventListener('contextmenu', (e) => {{
-                        e.preventDefault();
-                        this.showContextMenu(e, item.dataset.path, item.dataset.isDirectory === 'true');
                     }});
                 }});
             }}
             
-            renderBreadcrumb(currentPath, parentPath) {{
-                const pathParts = currentPath.split('/').filter(part => part !== '');
-                const isRoot = pathParts.length === 0;
+            renderBreadcrumb(path, parent) {{
+                const parts = path.split('/').filter(Boolean);
+                let currentPath = '';
                 
-                let breadcrumbHtml = '';
-                
-                if (isRoot) {{
-                    breadcrumbHtml = '<div class="breadcrumb-current">Root</div>';
-                }} else {{
-                    // Build path parts
-                    let currentBuildPath = '';
-                    pathParts.forEach((part, index) => {{
-                        currentBuildPath += '/' + part;
-                        const isLast = index === pathParts.length - 1;
-                        
-                        if (isLast) {{
-                            breadcrumbHtml += `<div class="breadcrumb-current">${{part}}</div>`;
-                        }} else {{
-                            breadcrumbHtml += `
-                                <div class="breadcrumb-item">
-                                    <a href="#" class="breadcrumb-link" data-path="${{currentBuildPath}}">${{part}}</a>
-                                    <span class="breadcrumb-separator">›</span>
-                                </div>
-                            `;
-                        }}
-                    }});
+                const breadcrumbItems = parts.map((part, index) => {{
+                    currentPath += '/' + part;
+                    const isLast = index === parts.length - 1;
                     
-                    // Add home link at beginning
-                    breadcrumbHtml = `
-                        <div class="breadcrumb-item">
-                            <a href="#" class="breadcrumb-link" data-path="/">🏠 Home</a>
-                            <span class="breadcrumb-separator">›</span>
-                        </div>
-                    ` + breadcrumbHtml;
-                }}
+                    if (isLast) {{
+                        return `<div class="breadcrumb-item">
+                            <span class="breadcrumb-current">${part}</span>
+                        </div>`;
+                    }}
+                    
+                    return `<div class="breadcrumb-item">
+                        <a href="#" class="breadcrumb-link" data-path="${currentPath}">${part}</a>
+                        <span class="breadcrumb-separator">›</span>
+                    </div>`;
+                }});
                 
-                this.breadcrumb.innerHTML = breadcrumbHtml;
+                // Add root
+                breadcrumbItems.unshift(`
+                    <div class="breadcrumb-item">
+                        <a href="#" class="breadcrumb-link" data-path="/">root</a>
+                        <span class="breadcrumb-separator">›</span>
+                    </div>
+                `);
                 
-                // Add click handlers for breadcrumb navigation
+                this.breadcrumb.innerHTML = breadcrumbItems.join('');
+                
                 this.breadcrumb.querySelectorAll('.breadcrumb-link').forEach(link => {{
                     link.addEventListener('click', (e) => {{
                         e.preventDefault();
-                        const path = link.dataset.path;
-                        this.loadDirectory(path);
+                        this.loadDirectory(link.dataset.path);
                     }});
                 }});
             }}
@@ -901,15 +864,9 @@ def generate_editor_html(initial_path: str = None) -> str:
                     this.isModified = false;
                     this.updateUI();
                     
-                    // Show editor, hide empty state
+                    // Show editor
                     this.emptyState.style.display = 'none';
                     this.editor.style.display = 'block';
-                    
-                    // Update file info
-                    this.fileInfo.textContent = `${{path.split('/').pop()}} (${{data.extension}})`;
-                    this.fileSize.textContent = this.formatFileSize(data.size);
-                    
-                    // Focus editor
                     this.editor.focus();
                     
                 }} catch (error) {{
@@ -923,9 +880,7 @@ def generate_editor_html(initial_path: str = None) -> str:
                 try {{
                     const response = await fetch('/api/filesystem/write', {{
                         method: 'POST',
-                        headers: {{
-                            'Content-Type': 'application/json',
-                        }},
+                        headers: {{ 'Content-Type': 'application/json' }},
                         body: JSON.stringify({{
                             path: this.currentFile.path,
                             content: this.editor.value
@@ -942,132 +897,120 @@ def generate_editor_html(initial_path: str = None) -> str:
                     this.updateUI();
                     this.showSuccess('File saved successfully');
                     
-                    // Update file info
-                    this.fileSize.textContent = this.formatFileSize(data.size);
-                    
                 }} catch (error) {{
                     this.showError('Failed to save file: ' + error.message);
                 }}
             }}
             
-            updateUI() {{
-                const title = this.currentFile ? 
-                    `${{this.currentFile.path.split('/').pop()}}${{this.isModified ? ' •' : ''}}` : 
-                    'No file selected';
+            async createNewFile() {{
+                const name = prompt('Enter file name:');
+                if (!name) return;
                 
-                this.editorTitle.textContent = title;
-                this.saveBtn.disabled = !this.currentFile || !this.isModified;
+                const path = `${{this.currentPath}}/${{name}}`;
+                
+                try {{
+                    const response = await fetch('/api/filesystem/write', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{
+                            path,
+                            content: '',
+                            create_dirs: true
+                        }})
+                    }});
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {{
+                        throw new Error(data.detail || 'Failed to create file');
+                    }}
+                    
+                    await this.loadDirectory(this.currentPath);
+                    await this.loadFile(path);
+                    
+                }} catch (error) {{
+                    this.showError('Failed to create file: ' + error.message);
+                }}
+            }}
+            
+            async createNewFolder() {{
+                const name = prompt('Enter folder name:');
+                if (!name) return;
+                
+                const path = `${{this.currentPath}}/${{name}}`;
+                
+                try {{
+                    const response = await fetch('/api/filesystem/mkdir', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ path }})
+                    }});
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {{
+                        throw new Error(data.detail || 'Failed to create folder');
+                    }}
+                    
+                    await this.loadDirectory(this.currentPath);
+                    
+                }} catch (error) {{
+                    this.showError('Failed to create folder: ' + error.message);
+                }}
+            }}
+            
+            updateUI() {{
+                if (this.currentFile) {{
+                    this.editorTitle.textContent = this.currentFile.path;
+                    this.saveBtn.disabled = !this.isModified;
+                    this.fileInfo.textContent = this.isModified ? 'Modified' : 'Saved';
+                    this.fileSize.textContent = this.formatSize(this.editor.value.length);
+                    this.updateCursorPosition();
+                }} else {{
+                    this.editorTitle.textContent = 'No file selected';
+                    this.saveBtn.disabled = true;
+                    this.fileInfo.textContent = 'Ready';
+                    this.fileSize.textContent = '0 bytes';
+                    this.cursorPosition.textContent = 'Ln 1, Col 1';
+                }}
             }}
             
             updateCursorPosition() {{
-                const textarea = this.editor;
-                const text = textarea.value;
-                const cursorPos = textarea.selectionStart;
-                
-                // Calculate line and column
-                const lines = text.substring(0, cursorPos).split('\\n');
+                const pos = this.editor.selectionStart;
+                const lines = this.editor.value.substr(0, pos).split('\n');
                 const line = lines.length;
                 const col = lines[lines.length - 1].length + 1;
-                
                 this.cursorPosition.textContent = `Ln ${{line}}, Col ${{col}}`;
             }}
             
-            formatFileSize(bytes) {{
+            formatSize(bytes) {{
                 if (bytes === 0) return '0 bytes';
-                
                 const k = 1024;
                 const sizes = ['bytes', 'KB', 'MB', 'GB'];
                 const i = Math.floor(Math.log(bytes) / Math.log(k));
-                
-                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
             }}
             
             showError(message) {{
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'error';
-                errorDiv.textContent = message;
-                document.body.appendChild(errorDiv);
-                
-                setTimeout(() => {{
-                    errorDiv.remove();
-                }}, 5000);
+                const error = document.createElement('div');
+                error.className = 'error';
+                error.textContent = message;
+                this.fileList.insertAdjacentElement('afterbegin', error);
+                setTimeout(() => error.remove(), 5000);
             }}
             
             showSuccess(message) {{
-                const successDiv = document.createElement('div');
-                successDiv.className = 'success';
-                successDiv.textContent = message;
-                document.body.appendChild(successDiv);
-                
-                setTimeout(() => {{
-                    successDiv.remove();
-                }}, 3000);
-            }}
-            
-            createNewFile() {{
-                const filename = prompt('Enter filename:', 'untitled.txt');
-                if (!filename) return;
-                
-                const newPath = this.currentPath + '/' + filename;
-                
-                // Create empty file
-                fetch('/api/filesystem/write', {{
-                    method: 'POST',
-                    headers: {{
-                        'Content-Type': 'application/json',
-                    }},
-                    body: JSON.stringify({{
-                        path: newPath,
-                        content: '',
-                        create_dirs: true
-                    }})
-                }})
-                .then(response => response.json())
-                .then(data => {{
-                    if (data.message) {{
-                        this.showSuccess(data.message);
-                        this.loadDirectory(this.currentPath);
-                    }}
-                }})
-                .catch(error => {{
-                    this.showError('Failed to create file: ' + error.message);
-                }});
-            }}
-            
-            createNewFolder() {{
-                const foldername = prompt('Enter folder name:', 'New Folder');
-                if (!foldername) return;
-                
-                const newPath = this.currentPath + '/' + foldername;
-                
-                fetch('/api/filesystem/create-directory', {{
-                    method: 'POST',
-                    headers: {{
-                        'Content-Type': 'application/json',
-                    }},
-                    body: JSON.stringify({{
-                        path: newPath
-                    }})
-                }})
-                .then(response => response.json())
-                .then(data => {{
-                    if (data.message) {{
-                        this.showSuccess(data.message);
-                        this.loadDirectory(this.currentPath);
-                    }}
-                }})
-                .catch(error => {{
-                    this.showError('Failed to create folder: ' + error.message);
-                }});
+                const success = document.createElement('div');
+                success.className = 'success';
+                success.textContent = message;
+                this.fileList.insertAdjacentElement('afterbegin', success);
+                setTimeout(() => success.remove(), 3000);
             }}
         }}
         
-        // Initialize the editor when DOM is loaded
-        document.addEventListener('DOMContentLoaded', () => {{
-            new FileSystemEditor();
-        }});
+        new FileSystemEditor();
     </script>
 </body>
-</html>"""
-    
+</html>
+"""
     return html_content 
