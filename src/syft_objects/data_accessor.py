@@ -76,8 +76,7 @@ class DataAccessor:
             self._cached_path = self._syft_object._get_local_file_path(self._syft_url)
             # For folders, ensure path doesn't have trailing /
             if (hasattr(self._syft_object, '_is_folder') and 
-                callable(getattr(self._syft_object, '_is_folder')) and
-                self._syft_object._is_folder() and 
+                self._syft_object._is_folder and 
                 self._cached_path.endswith('/')):
                 self._cached_path = self._cached_path.rstrip('/')
         return self._cached_path
@@ -106,8 +105,7 @@ class DataAccessor:
         """Get the loaded object - returns FolderAccessor for folders"""
         # Only create FolderAccessor for actual folder objects, not Mock objects
         if (hasattr(self._syft_object, '_is_folder') and 
-            callable(getattr(self._syft_object, '_is_folder')) and
-            self._syft_object._is_folder()):
+            self._syft_object._is_folder):
             return FolderAccessor(Path(self.path))
         
         if self._cached_obj is None:

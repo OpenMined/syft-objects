@@ -368,7 +368,7 @@ def syobj(
             save_path = tmp_dir / f"{safe_name}_{uid_short}.syftobject.yaml"
         
         # Save the syftobject.yaml file
-        syft_obj.save_yaml(save_path, create_syftbox_permissions=False)
+        syft_obj._save_yaml(save_path, create_syftbox_permissions=False)
         
         # Move .syftobject.yaml file to SyftBox location if available
         final_syftobj_path = save_path

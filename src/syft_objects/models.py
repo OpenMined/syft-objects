@@ -19,6 +19,99 @@ def utcnow():
     return datetime.now(tz=timezone.utc)
 
 
+class MockAccessor(DataAccessor):
+    """Accessor for mock data with permission management methods."""
+    
+    def __init__(self, syft_url: str, syft_object: 'SyftObject'):
+        super().__init__(syft_url, syft_object)
+    
+    def get_path(self) -> str:
+        """Get the local file path for mock data"""
+        return self.path
+    
+    def get_url(self) -> str:
+        """Get the syft:// URL for mock data"""
+        return self.url
+    
+    def get_permissions(self) -> list[str]:
+        """Get read permissions for mock data"""
+        return self._syft_object.mock_permissions
+    
+    def get_write_permissions(self) -> list[str]:
+        """Get write permissions for mock data"""
+        return self._syft_object.mock_write_permissions
+    
+    def set_permissions(self, read: list[str] = None, write: list[str] = None) -> None:
+        """Set permissions for mock data"""
+        self._syft_object.set_permissions("mock", read=read, write=write)
+
+
+class PrivateAccessor(DataAccessor):
+    """Accessor for private data with permission management methods."""
+    
+    def __init__(self, syft_url: str, syft_object: 'SyftObject'):
+        super().__init__(syft_url, syft_object)
+    
+    def get_path(self) -> str:
+        """Get the local file path for private data"""
+        return self.path
+    
+    def get_url(self) -> str:
+        """Get the syft:// URL for private data"""
+        return self.url
+    
+    def get_permissions(self) -> list[str]:
+        """Get read permissions for private data"""
+        return self._syft_object.private_permissions
+    
+    def get_write_permissions(self) -> list[str]:
+        """Get write permissions for private data"""
+        return self._syft_object.private_write_permissions
+    
+    def set_permissions(self, read: list[str] = None, write: list[str] = None) -> None:
+        """Set permissions for private data"""
+        self._syft_object.set_permissions("private", read=read, write=write)
+    
+    def save(self, file_path: str = None, create_syftbox_permissions: bool = True) -> None:
+        """Save the syft object - moved from main object to private accessor"""
+        if file_path:
+            self._syft_object._save_yaml(file_path, create_syftbox_permissions)
+        else:
+            # Use existing syftobject path
+            syftobject_path = self._syft_object.syftobject_path
+            if syftobject_path:
+                self._syft_object._save_yaml(syftobject_path, create_syftbox_permissions)
+            else:
+                raise ValueError("No file path provided and no existing syftobject path found")
+
+
+class SyftObjectConfigAccessor:
+    """Accessor for syftobject configuration and metadata."""
+    
+    def __init__(self, syft_object: 'SyftObject'):
+        self._syft_object = syft_object
+    
+    def get_path(self) -> str:
+        """Get the local file path for the .syftobject.yaml file"""
+        return self._syft_object.syftobject_path
+    
+    def get_url(self) -> str:
+        """Get the syft:// URL for the .syftobject.yaml file"""
+        return self._syft_object.syftobject
+    
+    def get_permissions(self) -> list[str]:
+        """Get read permissions for the syftobject file (discovery permissions)"""
+        return self._syft_object.syftobject_permissions
+    
+    def set_permissions(self, read: list[str]) -> None:
+        """Set discovery permissions for the syftobject file"""
+        self._syft_object.set_permissions("syftobject", read=read)
+    
+    def __repr__(self) -> str:
+        """String representation"""
+        return f"SyftObjectConfigAccessor(url='{self.get_url()}', path='{self.get_path()}')"
+
+
 class SyftObject(BaseModel):
     """
     A distributed object with mock/real pattern for file discovery and addressing
@@ -67,22 +160,121 @@ class SyftObject(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Arbitrary metadata")
     
     @property
-    def is_folder(self) -> bool:
-        """Check if this object represents a folder."""
+    def _is_folder(self) -> bool:
+        """Check if this object represents a folder. (Hidden from public API)"""
         return self.object_type == "folder"
     
     # Data accessor properties
     @property
-    def private(self) -> DataAccessor:
-        """Get data accessor for private data with .obj, .file, .path, .url properties"""
-        return DataAccessor(self.private_url, self)
+    def private(self) -> PrivateAccessor:
+        """Get data accessor for private data with enhanced permission methods"""
+        return PrivateAccessor(self.private_url, self)
     
     @property
-    def mock(self) -> DataAccessor:
-        """Get data accessor for mock data with .obj, .file, .path, .url properties"""
-        return DataAccessor(self.mock_url, self)
+    def mock(self) -> MockAccessor:
+        """Get data accessor for mock data with enhanced permission methods"""
+        return MockAccessor(self.mock_url, self)
     
-    # Convenience properties for backward compatibility
+    @property
+    def syftobject_config(self) -> SyftObjectConfigAccessor:
+        """Get accessor for syftobject configuration and metadata"""
+        return SyftObjectConfigAccessor(self)
+    
+    # New API methods with get_ prefixes
+    def get_uid(self) -> str:
+        """Get the unique identifier for this object"""
+        return str(self.uid)
+    
+    def get_name(self) -> str:
+        """Get the human-readable name for this object"""
+        return self.name or ""
+    
+    def get_description(self) -> str:
+        """Get the description of this object"""
+        return self.description or ""
+    
+    def get_created_at(self) -> str:
+        """Get the creation timestamp as ISO string"""
+        return self.created_at.isoformat() if self.created_at else ""
+    
+    def get_updated_at(self) -> str:
+        """Get the last update timestamp as ISO string"""
+        return self.updated_at.isoformat() if self.updated_at else ""
+    
+    def get_type(self) -> str:
+        """Get the object type (file or folder)"""
+        return self.object_type
+    
+    def get_file_type(self) -> str:
+        """Get the file extension from mock/private URLs"""
+        # Folders don't have file extensions
+        if self._is_folder:
+            return ""
+            
+        try:
+            # Try to extract file extension from private URL first, then mock URL
+            for url in [self.private_url, self.mock_url]:
+                if not url:
+                    continue
+                
+                # Get just the filename from the URL
+                filename = url.split("/")[-1]
+                
+                # Check if filename has an extension (dot not at start)
+                if "." in filename and not filename.startswith("."):
+                    parts = filename.split(".")
+                    if len(parts) > 1 and parts[-1]:  # Ensure there's an actual extension
+                        return f".{parts[-1].lower()}"
+            return ""
+        except:
+            return ""
+    
+    def get_metadata(self) -> dict:
+        """Get the arbitrary metadata dictionary"""
+        return self.metadata.copy()
+    
+    def get_permissions(self) -> dict:
+        """Get all permission settings for this object"""
+        return {
+            "syftobject": self.syftobject_permissions.copy(),
+            "mock_read": self.mock_permissions.copy(),
+            "mock_write": self.mock_write_permissions.copy(),
+            "private_read": self.private_permissions.copy(),
+            "private_write": self.private_write_permissions.copy()
+        }
+    
+    def get_urls(self) -> dict:
+        """Get all syft:// URLs for this object"""
+        return {
+            "private": self.private_url,
+            "mock": self.mock_url,
+            "syftobject": self.syftobject
+        }
+    
+    def get_paths(self) -> dict:
+        """Get all local file paths for this object"""
+        return {
+            "private": self._get_local_file_path(self.private_url),
+            "mock": self._get_local_file_path(self.mock_url),
+            "syftobject": self.syftobject_path
+        }
+    
+    def get_info(self) -> dict:
+        """Get comprehensive information about this object"""
+        return {
+            "uid": self.get_uid(),
+            "name": self.get_name(),
+            "description": self.get_description(),
+            "type": self.get_type(),
+            "created_at": self.get_created_at(),
+            "updated_at": self.get_updated_at(),
+            "urls": self.get_urls(),
+            "paths": self.get_paths(),
+            "permissions": self.get_permissions(),
+            "metadata": self.get_metadata()
+        }
+
+    # Internal/hidden properties for backward compatibility
     @property
     def private_path(self) -> str:
         """Get the full local file path for the private object"""
@@ -107,35 +299,11 @@ class SyftObject(BaseModel):
             return syftobject_yaml_path
         return ""
     
-    @property
-    def file_type(self) -> str:
-        """Get the file extension from mock/private URLs"""
-        # Folders don't have file extensions
-        if self.is_folder:
-            return ""
-            
-        try:
-            # Try to extract file extension from private URL first, then mock URL
-            for url in [self.private_url, self.mock_url]:
-                if not url:
-                    continue
-                
-                # Get just the filename from the URL
-                filename = url.split("/")[-1]
-                
-                # Check if filename has an extension (dot not at start)
-                if "." in filename and not filename.startswith("."):
-                    parts = filename.split(".")
-                    if len(parts) > 1 and parts[-1]:  # Ensure there's an actual extension
-                        return f".{parts[-1].lower()}"
-            return ""
-        except:
-            return ""
     
     @model_validator(mode='after')
     def validate_urls(self):
         """Validate URLs match object type"""
-        if self._is_folder():
+        if self._is_folder:
             # Folders must end with /
             if not self.private_url.endswith('/'):
                 self.private_url += '/'
@@ -153,7 +321,7 @@ class SyftObject(BaseModel):
     def validate_file_extensions(self):
         """Validate that mock and private files have matching extensions"""
         # Skip validation for folders - they don't have extensions
-        if self.is_folder:
+        if self._is_folder:
             return self
             
         def extract_extension(url: str) -> str:
@@ -217,7 +385,7 @@ class SyftObject(BaseModel):
         """Get the local file path for a syft:// URL"""
         try:
             # Check for folder paths in metadata first
-            if self._is_folder() and "_folder_paths" in self.metadata:
+            if self._is_folder and "_folder_paths" in self.metadata:
                 folder_paths = self.metadata["_folder_paths"]
                 if syft_url == self.private_url and "private" in folder_paths:
                     return folder_paths["private"]
@@ -365,7 +533,7 @@ class SyftObject(BaseModel):
             raise PermissionError(f"User {user_email or 'unknown'} does not have permission to delete object {self.uid} owned by {self.get_owner_email()}")
         
         try:
-            if self.is_folder:
+            if self._is_folder:
                 return self._delete_folder_object()
             else:
                 return self._delete_file_object()
