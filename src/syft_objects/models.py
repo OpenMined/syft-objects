@@ -587,79 +587,16 @@ class SyftObject(BaseModel):
         """Access syftobject configuration properties and methods"""
         return SyftObjectConfigAccessor(self)
     
-    # ===== Custom Attribute Access Control =====
-    def __getattr__(self, name):
-        """Intercept attribute access to hide internal fields from direct access"""
-        # List of attributes that should be hidden from external access
-        hidden_attrs = {
-            'uid', 'name', 'description', 'created_at', 'updated_at', 'metadata',
-            'private_url', 'mock_url', 'syftobject', 'object_type',
-            'syftobject_permissions', 'mock_permissions', 'mock_write_permissions',
-            'private_permissions', 'private_write_permissions'
-        }
-        
-        # Deprecated attributes that should suggest alternatives
-        deprecated_attrs = {
-            'private_path': 'private.get_path()',
-            'mock_path': 'mock.get_path()',
-            'syftobject_path': 'syftobject_config.get_path()',
-            'paths': 'get_path()',
-            'urls': 'get_urls()',
-            'permissions': 'get_permissions()',
-            'info': 'get_info()'
-        }
-        
-        # Check if this is an internal syft_objects call
-        import inspect
-        frame = inspect.currentframe()
-        if frame and frame.f_back:
-            caller_module = frame.f_back.f_globals.get('__name__', '')
-            # Allow internal access from syft_objects modules and tests
-            if caller_module.startswith('syft_objects') or caller_module.startswith('test_'):
-                # Use parent's __getattr__ to get the actual value
-                return super().__getattr__(name)
-        
-        # Block direct access to hidden attributes from external code
-        if name in hidden_attrs:
-            raise AttributeError(
-                f"'{type(self).__name__}' object has no attribute '{name}'. "
-                f"Use 'get_{name}()' instead."
-            )
-        
-        # Redirect deprecated attributes
-        if name in deprecated_attrs:
-            raise AttributeError(
-                f"'{type(self).__name__}' object attribute '{name}' is deprecated. "
-                f"Use '{deprecated_attrs[name]}' instead."
-            )
-        
-        # For other attributes, use parent's __getattr__
-        return super().__getattr__(name)
+    # ===== Allow both old and new API access =====
+    # Users can use either obj.name or obj.get_name() - both work
     
     def __dir__(self):
-        """Customize dir() output to show only public API"""
+        """Customize dir() output to show both old and new API"""
         # Get default attributes
-        attrs = set(object.__dir__(self))
+        attrs = set(super().__dir__())
         
-        # Remove hidden/internal attributes
-        hidden_attrs = {
-            'uid', 'name', 'description', 'created_at', 'updated_at', 'metadata',
-            'private_url', 'mock_url', 'syftobject', 'object_type',
-            'syftobject_permissions', 'mock_permissions', 'mock_write_permissions',
-            'private_permissions', 'private_write_permissions',
-            'private_path', 'mock_path', 'syftobject_path', 'paths', 'urls',
-            'permissions', 'info', 'is_folder', 'can_delete', 'from_orm',
-            'load_yaml', 'model_construct', 'model_copy', 'validate_file_extensions',
-            'validate_urls'
-        }
-        
-        # Remove private methods we want to hide
-        private_to_hide = {
-            '_can_delete', '_load_yaml', '_validate_urls', '_validate_file_extensions'
-        }
-        
-        # Add our public API methods
-        public_methods = {
+        # Add our new API methods explicitly
+        new_methods = {
             # Getters
             'get_uid', 'get_name', 'get_description', 'get_created_at',
             'get_updated_at', 'get_metadata', 'get_file_type', 'get_info',
@@ -670,15 +607,13 @@ class SyftObject(BaseModel):
             # Accessors
             'mock', 'private', 'syftobject_config',
             # Actions
-            'delete_obj', 'save_yaml',
-            # Type
-            'type'
+            'delete_obj'
         }
         
-        # Filter out hidden attributes and add public ones
-        visible_attrs = (attrs - hidden_attrs - private_to_hide) | public_methods
+        # Combine all attributes
+        all_attrs = attrs | new_methods
         
-        return sorted(list(visible_attrs))
+        return sorted(list(all_attrs))
 
 
 # ===== Accessor Classes =====
