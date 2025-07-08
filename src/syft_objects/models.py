@@ -347,16 +347,23 @@ class SyftObject(BaseModel):
         else:
             raise ValueError(f"Invalid file_type: {file_type}. Must be 'mock', 'private', or 'syftobject'.")
     
-    def delete(self) -> bool:
+    def delete(self, user_email: str = None) -> bool:
         """
         Delete this syft-object and all its associated files.
         
         For folder objects, this will delete the entire directory structure.
         For file objects, this will delete the individual files.
         
+        Args:
+            user_email: Email of the user attempting deletion. If None, will try to get from SyftBox client.
+        
         Returns:
             bool: True if deletion was successful, False otherwise
         """
+        # Check permissions first
+        if not self.can_delete(user_email):
+            raise PermissionError(f"User {user_email or 'unknown'} does not have permission to delete object {self.uid} owned by {self.get_owner_email()}")
+        
         try:
             if self.is_folder:
                 return self._delete_folder_object()
@@ -527,4 +534,53 @@ class SyftObject(BaseModel):
         except Exception as e:
             return False
     
+    def can_delete(self, user_email: str = None) -> bool:
+        """
+        Check if a user has permission to delete this object.
+        User must have write access to all object components (private, mock, syftobject).
+        """
+        if not user_email:
+            # Try to get current user email from SyftBox client
+            try:
+                from .client import get_syftbox_client
+                client = get_syftbox_client()
+                if client and hasattr(client, 'email'):
+                    user_email = client.email
+                else:
+                    # No user email available - deny deletion
+                    return False
+            except:
+                return False
+        
+        # Extract object owner email from private URL
+        owner_email = self.get_owner_email()
+        
+        # User must be the owner/admin to delete the object
+        if user_email != owner_email:
+            return False
+        
+        # Additional check: user must have write permissions for all components
+        # Check private write permissions
+        if self.private_write_permissions and user_email not in self.private_write_permissions:
+            return False
+        
+        # Check mock write permissions  
+        if self.mock_write_permissions and user_email not in self.mock_write_permissions:
+            return False
+        
+        # For syftobject file, we require the user to be the owner (already checked above)
+        # since syftobject permissions are usually public for discovery
+        
+        return True
+    
+    def get_owner_email(self) -> str:
+        """Extract the owner email from the private URL."""
+        try:
+            if self.private_url.startswith("syft://"):
+                parts = self.private_url.split("/")
+                if len(parts) >= 3:
+                    return parts[2]
+        except:
+            pass
+        return "unknown@example.com"
  

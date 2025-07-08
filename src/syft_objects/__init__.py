@@ -1,6 +1,6 @@
 # syft-objects - Distributed file discovery and addressing system 
 
-__version__ = "0.7.5"
+__version__ = "0.7.6"
 
 # Internal imports (hidden from public API)
 from . import models as _models
@@ -49,11 +49,12 @@ def create_object(name=None, **kwargs):
     # Use the internal factory module's syobj function
     return _factory.syobj(name, **kwargs)
 
-def delete_object(uid):
-    """Delete a SyftObject by UID.
+def delete_object(uid, user_email=None):
+    """Delete a SyftObject by UID with permission checking.
     
     Args:
         uid: String UID of the object to delete
+        user_email: Email of the user attempting deletion. If None, will try to get from SyftBox client.
         
     Returns:
         bool: True if deletion was successful, False otherwise
@@ -61,13 +62,14 @@ def delete_object(uid):
     Raises:
         KeyError: If UID is not found
         TypeError: If uid is not a string
+        PermissionError: If user doesn't have permission to delete the object
     """
     if not isinstance(uid, str):
         raise TypeError(f"UID must be str, not {type(uid).__name__}")
     
     try:
         obj = objects[uid]  # This uses the UID lookup
-        result = obj.delete()
+        result = obj.delete(user_email)  # Now includes permission checking
         if result:
             # Refresh the collection after successful deletion
             objects.refresh()

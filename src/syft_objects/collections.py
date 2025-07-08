@@ -2373,4 +2373,49 @@ new_object = sy.SyftObject(
         </script>
         """
 
-        return html 
+        return html
+
+    def delete_object(self, uid_or_index, user_email: str = None):
+        """
+        Delete an object by UID or index with permission checking.
+        
+        Args:
+            uid_or_index: Either the UID string or integer index of the object to delete
+            user_email: Email of the user attempting deletion. If None, will try to get from SyftBox client.
+        
+        Returns:
+            bool: True if deletion was successful
+            
+        Raises:
+            PermissionError: If user doesn't have permission to delete the object
+            KeyError: If object with given UID is not found
+            IndexError: If index is out of bounds
+        """
+        self._ensure_loaded()
+        
+        # Find the object to delete
+        target_obj = None
+        if isinstance(uid_or_index, str):
+            # Delete by UID
+            for obj in self._objects:
+                if str(obj.uid) == uid_or_index:
+                    target_obj = obj
+                    break
+            if not target_obj:
+                raise KeyError(f"Object with UID '{uid_or_index}' not found")
+        elif isinstance(uid_or_index, int):
+            # Delete by index
+            if not 0 <= uid_or_index < len(self._objects):
+                raise IndexError(f"Index {uid_or_index} out of bounds (0-{len(self._objects)-1})")
+            target_obj = self._objects[uid_or_index]
+        else:
+            raise ValueError("uid_or_index must be a string UID or integer index")
+        
+        # Perform the deletion with permission checking
+        success = target_obj.delete(user_email)
+        
+        # If successful, refresh the collection
+        if success:
+            self.refresh()
+        
+        return success 
