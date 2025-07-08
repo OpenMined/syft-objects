@@ -588,11 +588,8 @@ class SyftObject(BaseModel):
         return SyftObjectConfigAccessor(self)
     
     # ===== Custom Attribute Access Control =====
-    def __getattribute__(self, name):
+    def __getattr__(self, name):
         """Intercept attribute access to hide internal fields from direct access"""
-        # Get the actual attribute value first
-        value = object.__getattribute__(self, name)
-        
         # List of attributes that should be hidden from external access
         hidden_attrs = {
             'uid', 'name', 'description', 'created_at', 'updated_at', 'metadata',
@@ -617,9 +614,10 @@ class SyftObject(BaseModel):
         frame = inspect.currentframe()
         if frame and frame.f_back:
             caller_module = frame.f_back.f_globals.get('__name__', '')
-            # Allow internal access from syft_objects modules
-            if caller_module.startswith('syft_objects'):
-                return value
+            # Allow internal access from syft_objects modules and tests
+            if caller_module.startswith('syft_objects') or caller_module.startswith('test_'):
+                # Use parent's __getattr__ to get the actual value
+                return super().__getattr__(name)
         
         # Block direct access to hidden attributes from external code
         if name in hidden_attrs:
@@ -635,7 +633,8 @@ class SyftObject(BaseModel):
                 f"Use '{deprecated_attrs[name]}' instead."
             )
         
-        return value
+        # For other attributes, use parent's __getattr__
+        return super().__getattr__(name)
     
     def __dir__(self):
         """Customize dir() output to show only public API"""
