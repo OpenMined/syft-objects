@@ -157,7 +157,7 @@ async def get_objects(
         # Convert to list and sort by creation date (oldest first for proper indexing)
         all_objects = collection.to_list()
         # Sort by created_at (oldest first) so index 0/1 represents the oldest object
-        all_objects.sort(key=lambda x: x.created_at or datetime.min, reverse=False)
+        all_objects.sort(key=lambda x: (x.get_created_at() if hasattr(x, 'get_created_at') else x.created_at) or datetime.min, reverse=False)
         total_count = len(all_objects)
         
         # Apply pagination
@@ -180,8 +180,8 @@ async def get_objects(
             except:
                 pass
             
-            # SyftObject instances are now used directly (CleanSyftObject was removed)
-            raw_obj = obj
+            # Handle both raw SyftObject and CleanSyftObject
+            raw_obj = obj._obj if hasattr(obj, '_obj') else obj
             
             # Get file type - try multiple approaches
             if hasattr(raw_obj, 'get_file_type'):
@@ -193,31 +193,63 @@ async def get_objects(
             else:
                 file_type = "file"  # Default fallback
                 
-            obj_data = {
-                "index": actual_index,
-                "uid": str(obj.uid),
-                "name": obj.name or "Unnamed Object",
-                "description": obj.description or "",
-                "type": file_type,
-                "email": email,
-                "private_url": obj.private_url,
-                "mock_url": obj.mock_url,
-                "syftobject_url": obj.syftobject,
-                "created_at": obj.created_at.isoformat() if obj.created_at else None,
-                "updated_at": obj.updated_at.isoformat() if obj.updated_at else None,
-                "permissions": {
-                    "syftobject": obj.syftobject_permissions,
-                    "mock_read": obj.mock_permissions,
-                    "mock_write": obj.mock_write_permissions,
-                    "private_read": obj.private_permissions,
-                    "private_write": obj.private_write_permissions,
-                },
-                "metadata": obj.metadata,
-                "file_exists": {
-                    "private": obj._check_file_exists(obj.private_url),
-                    "mock": obj._check_file_exists(obj.mock_url),
+            # Handle CleanSyftObject wrapper
+            if hasattr(obj, 'get_urls'):
+                # This is a CleanSyftObject
+                urls = obj.get_urls()
+                perms = obj.get_permissions()
+                obj_data = {
+                    "index": actual_index,
+                    "uid": obj.get_uid(),
+                    "name": obj.get_name() or "Unnamed Object",
+                    "description": obj.get_description() or "",
+                    "type": file_type,
+                    "email": email,
+                    "private_url": urls['private'],
+                    "mock_url": urls['mock'],
+                    "syftobject_url": urls['syftobject'],
+                    "created_at": obj.get_created_at().isoformat() if obj.get_created_at() else None,
+                    "updated_at": obj.get_updated_at().isoformat() if obj.get_updated_at() else None,
+                    "permissions": {
+                        "syftobject": perms['syftobject']['read'],
+                        "mock_read": perms['mock']['read'],
+                        "mock_write": perms['mock']['write'],
+                        "private_read": perms['private']['read'],
+                        "private_write": perms['private']['write'],
+                    },
+                    "metadata": obj.get_metadata(),
+                    "file_exists": {
+                        "private": True,  # Skip file existence check for CleanSyftObject
+                        "mock": True,
+                    }
                 }
-            }
+            else:
+                # This is a raw SyftObject
+                obj_data = {
+                    "index": actual_index,
+                    "uid": str(obj.uid),
+                    "name": obj.name or "Unnamed Object",
+                    "description": obj.description or "",
+                    "type": file_type,
+                    "email": email,
+                    "private_url": obj.private_url,
+                    "mock_url": obj.mock_url,
+                    "syftobject_url": obj.syftobject,
+                    "created_at": obj.created_at.isoformat() if obj.created_at else None,
+                    "updated_at": obj.updated_at.isoformat() if obj.updated_at else None,
+                    "permissions": {
+                        "syftobject": obj.syftobject_permissions,
+                        "mock_read": obj.mock_permissions,
+                        "mock_write": obj.mock_write_permissions,
+                        "private_read": obj.private_permissions,
+                        "private_write": obj.private_write_permissions,
+                    },
+                    "metadata": obj.metadata,
+                    "file_exists": {
+                        "private": obj._check_file_exists(obj.private_url),
+                        "mock": obj._check_file_exists(obj.mock_url),
+                    }
+                }
             objects_data.append(obj_data)
         
         return {
@@ -687,8 +719,8 @@ async def save_file_content(
         if not target_obj:
             raise HTTPException(status_code=404, detail="Object not found")
         
-        # Get the SyftObject instance
-        raw_obj = target_obj
+        # Get the raw object if this is a CleanSyftObject
+        raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
         
         # Check write permissions for the file type
         try:
@@ -777,8 +809,8 @@ async def update_object_permissions(
         if not target_obj:
             raise HTTPException(status_code=404, detail="Object not found")
         
-        # Get the SyftObject instance
-        raw_obj = target_obj
+        # Get the raw object if this is a CleanSyftObject
+        raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
         
         # Check if user has permission to update permissions (must be owner)
         try:
@@ -883,8 +915,8 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
         if not target_obj:
             raise HTTPException(status_code=404, detail="Object not found")
         
-        # Get the SyftObject instance
-        raw_obj = target_obj
+        # Get the raw object if this is a CleanSyftObject
+        raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
         
         # Check permissions using the object's can_delete method
         if hasattr(raw_obj, 'can_delete'):

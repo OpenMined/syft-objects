@@ -265,8 +265,9 @@ class ObjectsCollection:
         # Only ensure loaded if this is not a cached search result
         if not self._cached:
             self._ensure_loaded()
-        # Return raw SyftObject instances (clean_api was removed)
-        return self._objects.copy()
+        # Wrap each object in clean API
+        from .clean_api import wrap_syft_object
+        return [wrap_syft_object(obj) for obj in self._objects]
 
     def get_by_indices(self, indices):
         """Get objects by list of indices"""
@@ -302,7 +303,10 @@ class ObjectsCollection:
         
         # For integer indices, objects are sorted by created_at (oldest first)
         # so objects[0] returns oldest, objects[-1] returns newest
-        return self._objects[index]
+        obj = self._objects[index]
+        # Wrap in clean API
+        from .clean_api import wrap_syft_object
+        return wrap_syft_object(obj)
 
     def __len__(self):
         if not self._cached:
@@ -312,8 +316,9 @@ class ObjectsCollection:
     def __iter__(self):
         if not self._cached:
             self._ensure_loaded()
-        # Return raw SyftObject instances
-        return iter(self._objects)
+        # Wrap each object in clean API
+        from .clean_api import wrap_syft_object
+        return (wrap_syft_object(obj) for obj in self._objects)
 
     def __str__(self):
         """Display objects as a nice table"""
