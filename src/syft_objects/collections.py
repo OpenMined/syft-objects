@@ -683,8 +683,8 @@ Example Usage:
         # Check if there's an error
         if self._load_error:
             error_msg = html_module.escape(self._load_error)
-            # Add helpful message for fetch errors
-            if "Failed to fetch objects:" in self._load_error:
+            # Add helpful message for any fetch errors
+            if "Failed to fetch" in self._load_error or "not available" in self._load_error:
                 error_msg += " - please reload cell."
             
             html += f"""
