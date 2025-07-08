@@ -613,6 +613,13 @@ Example Usage:
             background: #e5e7eb;
             color: #9ca3af;
         }}
+        #{container_id} .btn:not(.btn-disabled) {{
+            cursor: pointer;
+            opacity: 1;
+        }}
+        #{container_id} .btn:not(.btn-disabled):hover {{
+            opacity: 0.8;
+        }}
         #{container_id} .btn-blue {{
             background: #dbeafe;
             color: #3b82f6;
@@ -722,14 +729,14 @@ Example Usage:
                 <div class="header">
                     <div class="search-controls">
                         <div style="flex: 1; min-width: 150px;">
-                            <input placeholder="Search objects..." disabled style="width: 100%; padding: 0.25rem 0.5rem 0.25rem 1.75rem; border: 1px solid #d1d5db; border-radius: 0.25rem; font-size: 0.75rem; opacity: 0.5; cursor: not-allowed;">
+                            <input id="{container_id}-search" placeholder="Search objects..." style="width: 100%; padding: 0.25rem 0.5rem 0.25rem 1.75rem; border: 1px solid #d1d5db; border-radius: 0.25rem; font-size: 0.75rem;">
                         </div>
                         <div style="flex: 1; min-width: 150px;">
-                            <input placeholder="Filter by Admin..." disabled style="width: 100%; padding: 0.25rem 0.5rem 0.25rem 1.75rem; border: 1px solid #d1d5db; border-radius: 0.25rem; font-size: 0.75rem; opacity: 0.5; cursor: not-allowed;">
+                            <input id="{container_id}-filter" placeholder="Filter by Admin..." style="width: 100%; padding: 0.25rem 0.5rem 0.25rem 1.75rem; border: 1px solid #d1d5db; border-radius: 0.25rem; font-size: 0.75rem;">
                         </div>
                         <div style="display: flex; gap: 0.25rem;">
                             <button class="btn btn-blue btn-disabled">Search</button>
-                            <button class="btn btn-gray btn-disabled">Clear</button>
+                            <button class="btn btn-gray" onclick="clearSearch_{container_id}()">Clear</button>
                             <button class="btn btn-green btn-disabled">New</button>
                             <button class="btn btn-blue btn-disabled">Select All</button>
                             <button class="btn btn-gray btn-disabled" title="Open widget in separate window">Open in Window</button>
@@ -850,7 +857,7 @@ Example Usage:
                 </div>
                 <div class="pagination">
                     <div></div>
-                    <span class="offline-status">Offline Mode: Interactive features temporarily disabled. Check SyftBox status to go online.</span>
+                    <span class="offline-status">Offline Mode: Some interactive features temporarily disabled. Check SyftBox status to go online.</span>
                     <div class="pagination-controls">
                         <button onclick="changePage_{container_id}(-1)" id="{container_id}-prev" disabled>Previous</button>
                         <span class="page-info" id="{container_id}-page-info">Page 1 of {total_pages}</span>
@@ -981,6 +988,129 @@ Example Usage:
                 tbody.appendChild(tr);
             }}
         }}
+        
+        // Search functionality
+        window['{container_id}_filteredObjects'] = window['{container_id}_objects'];
+        
+        function filterObjects_{container_id}() {{
+            var searchTerm = document.getElementById('{container_id}-search').value.toLowerCase();
+            var adminFilter = document.getElementById('{container_id}-filter').value.toLowerCase();
+            var allObjects = window['{container_id}_objects'];
+            
+            var filtered = allObjects.filter(function(obj) {{
+                var matchesSearch = !searchTerm || 
+                    (obj.name && obj.name.toLowerCase().includes(searchTerm)) ||
+                    (obj.description && obj.description.toLowerCase().includes(searchTerm)) ||
+                    (obj.uid && obj.uid.toLowerCase().includes(searchTerm));
+                
+                var matchesAdmin = !adminFilter || 
+                    (obj.private_url && obj.private_url.toLowerCase().includes(adminFilter));
+                
+                return matchesSearch && matchesAdmin;
+            }});
+            
+            window['{container_id}_filteredObjects'] = filtered;
+            window['{container_id}_totalObjects'] = filtered.length;
+            window['{container_id}_currentPage'] = 1;
+            
+            updateDisplay_{container_id}();
+        }}
+        
+        function clearSearch_{container_id}() {{
+            document.getElementById('{container_id}-search').value = '';
+            document.getElementById('{container_id}-filter').value = '';
+            filterObjects_{container_id}();
+        }}
+        
+        function updateDisplay_{container_id}() {{
+            var currentPage = window['{container_id}_currentPage'];
+            var itemsPerPage = window['{container_id}_itemsPerPage'];
+            var totalObjects = window['{container_id}_totalObjects'];
+            var totalPages = Math.max(1, Math.ceil(totalObjects / itemsPerPage));
+            
+            // Update page info
+            document.getElementById('{container_id}-page-info').textContent = 'Page ' + currentPage + ' of ' + totalPages;
+            
+            // Update buttons
+            document.getElementById('{container_id}-prev').disabled = currentPage === 1;
+            document.getElementById('{container_id}-next').disabled = currentPage === totalPages;
+            
+            // Update table
+            var tbody = document.getElementById('{container_id}-tbody');
+            tbody.innerHTML = '';
+            
+            var start = (currentPage - 1) * itemsPerPage;
+            var end = Math.min(start + itemsPerPage, totalObjects);
+            var objects = window['{container_id}_filteredObjects'];
+            
+            for (var i = start; i < end; i++) {{
+                var obj = objects[i];
+                if (!obj) continue;
+                
+                var name = obj.name || 'Unnamed Object';
+                var uid = obj.uid || '';
+                var uidShort = uid.substring(0, 8) + '...';
+                var created = obj.created_at || 'Unknown';
+                var description = (obj.description || "Object '" + name + "' with explicit mock...").substring(0, 40) + '...';
+                
+                // Extract email from private_url
+                var email = 'unknown@example.com';
+                if (obj.private_url && obj.private_url.startsWith('syft://')) {{
+                    var parts = obj.private_url.split('/');
+                    if (parts.length >= 3) {{
+                        email = parts[2];
+                    }}
+                }}
+                
+                // Determine file type from metadata or default
+                var fileType = '.txt';
+                if (obj.metadata && obj.metadata.file_extension) {{
+                    fileType = obj.metadata.file_extension;
+                }}
+                
+                var tr = document.createElement('tr');
+                var originalIndex = window['{container_id}_objects'].indexOf(obj);
+                tr.onclick = function(idx) {{ return function() {{ copyObjectCode_{container_id}(idx); }}; }}(originalIndex);
+                tr.style.cursor = 'pointer';
+                
+                // Escape all user-provided content
+                var escapedName = escapeHtml_{container_id}(name);
+                var escapedDesc = escapeHtml_{container_id}(description);
+                var escapedEmail = escapeHtml_{container_id}(email);
+                
+                tr.innerHTML = '<td><input type="checkbox" class="checkbox" disabled></td>' +
+                    '<td>' + (originalIndex + 1) + '</td>' +
+                    '<td><div class="truncate" style="font-weight: 500;" title="' + escapedName + '">' + escapedName + '</div></td>' +
+                    '<td><div class="truncate" style="color: #6b7280;" title="' + escapedDesc + '">' + escapedDesc + '</div></td>' +
+                    '<td><div class="admin-email"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span class="truncate">' + escapedEmail + '</span></div></td>' +
+                    '<td><span class="uid-text">' + uidShort + '</span></td>' +
+                    '<td><div class="date-text"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg><span class="truncate">' + created + '</span></div></td>' +
+                    '<td><span class="type-badge">' + fileType + '</span></td>' +
+                    '<td><div style="display: flex; gap: 0.125rem;"><button class="btn btn-slate btn-disabled" title="Edit mock file"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" x2="22" y1="12" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg><span>Mock</span></button><button class="btn btn-gray btn-disabled" title="Edit private file"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Private</span></button></div></td>' +
+                    '<td><div style="display: flex; gap: 0.125rem;"><button class="btn btn-blue btn-disabled" title="View object details">Info</button><button class="btn btn-purple btn-disabled" title="Copy local file path">Path</button><button class="btn btn-red btn-disabled" title="Delete object"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg></button></div></td>';
+                tbody.appendChild(tr);
+            }}
+        }}
+        
+        // Override changePage to use filtered objects
+        function changePage_{container_id}(direction) {{
+            var currentPage = window['{container_id}_currentPage'];
+            var itemsPerPage = window['{container_id}_itemsPerPage'];
+            var totalObjects = window['{container_id}_totalObjects'];
+            var totalPages = Math.max(1, Math.ceil(totalObjects / itemsPerPage));
+            
+            currentPage += direction;
+            if (currentPage < 1) currentPage = 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+            
+            window['{container_id}_currentPage'] = currentPage;
+            updateDisplay_{container_id}();
+        }}
+        
+        // Add event listeners for live search
+        document.getElementById('{container_id}-search').addEventListener('input', filterObjects_{container_id});
+        document.getElementById('{container_id}-filter').addEventListener('input', filterObjects_{container_id});
+        
         </script>
         """
         
