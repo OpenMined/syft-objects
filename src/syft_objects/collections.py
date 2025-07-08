@@ -573,6 +573,13 @@ Example Usage:
             font-size: 0.75rem;
             color: #6b7280;
         }}
+        #{container_id} .pagination .offline-status {{
+            font-size: 0.75rem;
+            color: #dc2626;
+            font-style: italic;
+            margin-left: 1rem;
+            opacity: 0.8;
+        }}
         #{container_id} .truncate {{
             overflow: hidden;
             text-overflow: ellipsis;
@@ -830,6 +837,7 @@ Example Usage:
                     <button onclick="changePage_{container_id}(-1)" id="{container_id}-prev" disabled>Previous</button>
                     <span class="page-info" id="{container_id}-page-info">Page 1 of {total_pages}</span>
                     <button onclick="changePage_{container_id}(1)" id="{container_id}-next" {'disabled' if total_pages <= 1 else ''}>Next</button>
+                    <span class="offline-status">Offline Mode: Interactive features temporarily disabled. Check SyftBox status to go online.</span>
                 </div>
             </div>
         </div>

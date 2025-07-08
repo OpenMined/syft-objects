@@ -2976,7 +2976,7 @@
             cacheKey: d
           }
         })).then(e => (s && "no-cache" !== e.response.headers.get("x-middleware-cache") || delete n[d], e)).catch(e => {
-          throw f || delete n[d], ("Failed to fetch" === e.message || "NetworkError when attempting to fetch resource." === e.message || "Load failed" === e.message) && (0, i.markAssetError)(e), e
+          throw f || delete n[d], ("Failed to fetch — please reload cell" === e.message || "NetworkError when attempting to fetch resource." === e.message || "Load failed" === e.message) && (0, i.markAssetError)(e), e
         });
         return f && s ? p({}).then(e => (n[d] = Promise.resolve(e), e)) : void 0 !== n[d] ? n[d] : n[d] = p(c ? {
           method: "HEAD"
