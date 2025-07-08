@@ -21,45 +21,47 @@ class CleanSyftObject:
     @property
     def name(self) -> str:
         """The object's name"""
-        return self._obj.name
+        return self._obj.get_name()
     
     @property
     def uid(self) -> str:
         """Unique identifier for this object"""
-        return str(self._obj.uid)
+        return self._obj.get_uid()
     
     @property
     def description(self) -> str:
         """Human-readable description"""
-        return self._obj.description or ""
+        return self._obj.get_description()
     
     @property
     def metadata(self) -> Dict[str, Any]:
         """User-defined metadata dictionary"""
-        return self._obj.metadata or {}
+        return self._obj.get_metadata()
     
     @metadata.setter
     def metadata(self, value: Dict[str, Any]):
         """Update metadata"""
-        self._obj.metadata = value
+        self._obj.set_metadata(value)
         self._obj.private.save()
     
     @property
     def created_at(self) -> datetime:
         """When this object was created"""
+        # Return the datetime object directly, not the ISO string
         return self._obj.created_at
     
     @property
     def updated_at(self) -> Optional[datetime]:
         """When this object was last modified"""
+        # Return the datetime object directly, not the ISO string
         return self._obj.updated_at
     
     @property
     def type(self) -> str:
         """File type extension (e.g., '.txt', '.csv') or 'folder'"""
-        if self._obj.is_folder:
+        if self._obj._is_folder:
             return "folder"
-        return self._obj.file_type or "unknown"
+        return self._obj.get_file_type() or "unknown"
     
     @property
     def file_type(self) -> str:
@@ -69,7 +71,7 @@ class CleanSyftObject:
     @property
     def is_folder(self) -> bool:
         """Check if this object represents a folder"""
-        return self._obj.is_folder
+        return self._obj._is_folder
     
     # === DATA ACCESS ===
     
@@ -102,12 +104,13 @@ class CleanSyftObject:
     @property
     def permissions(self) -> Dict[str, List[str]]:
         """Get all permissions in a simple dictionary format"""
+        perms = self._obj.get_permissions()
         return {
-            "discovery": list(self._obj.syftobject_permissions or []),
-            "mock_read": list(self._obj.mock_permissions or []),
-            "mock_write": list(self._obj.mock_write_permissions or []),
-            "private_read": list(self._obj.private_permissions or []),
-            "private_write": list(self._obj.private_write_permissions or [])
+            "discovery": perms["syftobject"],
+            "mock_read": perms["mock_read"],
+            "mock_write": perms["mock_write"],
+            "private_read": perms["private_read"],
+            "private_write": perms["private_write"]
         }
     
     # Individual permission properties for backend compatibility
@@ -178,10 +181,11 @@ class CleanSyftObject:
     @property
     def urls(self) -> Dict[str, str]:
         """Get syft:// URLs for all components"""
+        urls = self._obj.get_urls()
         return {
-            "mock": self._obj.mock_url,
-            "private": self._obj.private_url,
-            "metadata": self._obj.syftobject
+            "mock": urls["mock"],
+            "private": urls["private"],
+            "metadata": urls["syftobject"]
         }
     
     # Individual URL properties for backend compatibility
@@ -203,27 +207,28 @@ class CleanSyftObject:
     @property
     def paths(self) -> Dict[str, Optional[str]]:
         """Get local filesystem paths for all components"""
+        paths = self._obj.get_path()
         return {
-            "mock": self._obj.mock_path,
-            "private": self._obj.private_path,
-            "metadata": self._obj.syftobject_path
+            "mock": paths["mock"],
+            "private": paths["private"],
+            "metadata": paths["syftobject"]
         }
     
     # Individual path properties
     @property
     def mock_path(self) -> Optional[str]:
         """Local filesystem path for mock data"""
-        return self._obj.mock_path
+        return self._obj.mock.get_path()
     
     @property
     def private_path(self) -> Optional[str]:
         """Local filesystem path for private data"""
-        return self._obj.private_path
+        return self._obj.private.get_path()
     
     @property
     def syftobject_path(self) -> Optional[str]:
         """Local filesystem path for metadata file"""
-        return self._obj.syftobject_path
+        return self._obj.syftobject_config.get_path()
     
     # === ACTIONS ===
     
@@ -252,7 +257,7 @@ class CleanSyftObject:
             "permissions": self.permissions,
             "urls": self.urls,
             "paths": self.paths,
-            "is_folder": self._obj.is_folder
+            "is_folder": self._obj._is_folder
         }
     
     # === DISPLAY ===

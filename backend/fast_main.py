@@ -8,11 +8,16 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 from pathlib import Path as PathLib
 
-from fastapi import FastAPI, Depends, HTTPException, Body, Path, Request
+from fastapi import FastAPI, Depends, HTTPException, Body, Path, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse, PlainTextResponse, RedirectResponse, FileResponse
 from loguru import logger
 from fastapi.staticfiles import StaticFiles
+
+# Import filesystem editor components
+import sys
+sys.path.append(str(PathLib(__file__).parent))
+from filesystem_editor import FileSystemManager, generate_editor_html
 
 try:
     from syft_objects import objects
@@ -1069,6 +1074,44 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
     except Exception as e:
         logger.error(f"Error deleting object {object_uid}: {e}")
         raise HTTPException(status_code=500, detail=f"Error deleting object: {str(e)}")
+
+# Filesystem Editor endpoints
+filesystem_manager = FileSystemManager()
+
+@app.get("/editor", response_class=HTMLResponse)
+async def editor_page(path: Optional[str] = Query(None)):
+    """Serve the filesystem editor HTML page."""
+    initial_path = path if path else str(PathLib.home())
+    return HTMLResponse(content=generate_editor_html(initial_path))
+
+@app.get("/api/filesystem/list")
+async def list_directory(path: str = Query(...)):
+    """List directory contents."""
+    return filesystem_manager.list_directory(path)
+
+@app.get("/api/filesystem/read")
+async def read_file(path: str = Query(...)):
+    """Read file contents."""
+    return filesystem_manager.read_file(path)
+
+@app.post("/api/filesystem/write")
+async def write_file(
+    path: str = Body(...),
+    content: str = Body(...),
+    create_dirs: bool = Body(False)
+):
+    """Write content to a file."""
+    return filesystem_manager.write_file(path, content, create_dirs)
+
+@app.post("/api/filesystem/create-directory")
+async def create_directory(path: str = Body(...)):
+    """Create a new directory."""
+    return filesystem_manager.create_directory(path)
+
+@app.delete("/api/filesystem/delete")
+async def delete_item(path: str = Query(...), recursive: bool = Query(False)):
+    """Delete a file or directory."""
+    return filesystem_manager.delete_item(path, recursive)
 
 # Widget endpoints to match original server exactly
 @app.get("/widget")

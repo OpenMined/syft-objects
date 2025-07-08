@@ -78,7 +78,7 @@ class PrivateAccessor(DataAccessor):
             self._syft_object._save_yaml(file_path, create_syftbox_permissions)
         else:
             # Use existing syftobject path
-            syftobject_path = self._syft_object.syftobject_path
+            syftobject_path = self._syft_object._syftobject_path
             if syftobject_path:
                 self._syft_object._save_yaml(syftobject_path, create_syftbox_permissions)
             else:
@@ -93,7 +93,7 @@ class SyftObjectConfigAccessor:
     
     def get_path(self) -> str:
         """Get the local file path for the .syftobject.yaml file"""
-        return self._syft_object.syftobject_path
+        return self._syft_object._syftobject_path
     
     def get_url(self) -> str:
         """Get the syft:// URL for the .syftobject.yaml file"""
@@ -180,6 +180,29 @@ class SyftObject(BaseModel):
         """Get accessor for syftobject configuration and metadata"""
         return SyftObjectConfigAccessor(self)
     
+    # Setter methods for all getters
+    def set_name(self, name: str) -> None:
+        """Set the human-readable name for this object"""
+        self.name = name
+    
+    def set_description(self, description: str) -> None:
+        """Set the description of this object"""
+        self.description = description
+    
+    def set_metadata(self, metadata: dict) -> None:
+        """Set the arbitrary metadata dictionary"""
+        self.metadata = metadata.copy()
+    
+    def set_updated_at(self, timestamp: datetime = None) -> None:
+        """Set the last update timestamp (defaults to current UTC time)"""
+        self.updated_at = timestamp or utcnow()
+    
+    def set_type(self, object_type: str) -> None:
+        """Set the object type (file or folder)"""
+        if object_type not in ["file", "folder"]:
+            raise ValueError(f"Invalid object type: {object_type}. Must be 'file' or 'folder'")
+        self.object_type = object_type
+    
     # New API methods with get_ prefixes
     def get_uid(self) -> str:
         """Get the unique identifier for this object"""
@@ -251,7 +274,7 @@ class SyftObject(BaseModel):
             "syftobject": self.syftobject
         }
     
-    def get_paths(self) -> dict:
+    def get_path(self) -> dict:
         """Get all local file paths for this object"""
         return {
             "private": self._get_local_file_path(self.private_url),
@@ -269,25 +292,25 @@ class SyftObject(BaseModel):
             "created_at": self.get_created_at(),
             "updated_at": self.get_updated_at(),
             "urls": self.get_urls(),
-            "paths": self.get_paths(),
+            "paths": self.get_path(),
             "permissions": self.get_permissions(),
             "metadata": self.get_metadata()
         }
 
-    # Internal/hidden properties for backward compatibility
+    # Internal/hidden properties for backward compatibility - moved from public API
     @property
-    def private_path(self) -> str:
-        """Get the full local file path for the private object"""
+    def _private_path(self) -> str:
+        """Get the full local file path for the private object (internal use)"""
         return self._get_local_file_path(self.private_url)
     
     @property
-    def mock_path(self) -> str:
-        """Get the full local file path for the mock object"""
+    def _mock_path(self) -> str:
+        """Get the full local file path for the mock object (internal use)"""
         return self._get_local_file_path(self.mock_url)
     
     @property
-    def syftobject_path(self) -> str:
-        """Get the full local file path for the .syftobject.yaml file"""
+    def _syftobject_path(self) -> str:
+        """Get the full local file path for the .syftobject.yaml file (internal use)"""
         # First try to get path from the syftobject field
         if hasattr(self, 'syftobject') and self.syftobject:
             return self._get_local_file_path(self.syftobject)
@@ -298,6 +321,22 @@ class SyftObject(BaseModel):
         if syftobject_yaml_path:
             return syftobject_yaml_path
         return ""
+    
+    # Backward compatibility properties for internal code
+    @property
+    def private_path(self) -> str:
+        """DEPRECATED: Use private.get_path() instead"""
+        return self._private_path
+    
+    @property
+    def mock_path(self) -> str:
+        """DEPRECATED: Use mock.get_path() instead"""
+        return self._mock_path
+    
+    @property
+    def syftobject_path(self) -> str:
+        """DEPRECATED: Use syftobject_config.get_path() instead"""
+        return self._syftobject_path
     
     
     @model_validator(mode='after')
@@ -515,7 +554,7 @@ class SyftObject(BaseModel):
         else:
             raise ValueError(f"Invalid file_type: {file_type}. Must be 'mock', 'private', or 'syftobject'.")
     
-    def delete(self, user_email: str = None) -> bool:
+    def delete_obj(self, user_email: str = None) -> bool:
         """
         Delete this syft-object and all its associated files.
         
