@@ -491,7 +491,7 @@ Example Usage:
             display: flex;
             gap: 0.25rem;
             flex-wrap: wrap;
-            padding: 0.5rem;
+            padding: 0.5rem 0 0.5rem 4%;
             background: #ffffff;
             border-radius: 0.25rem;
             border: 1px solid #e5e7eb;
