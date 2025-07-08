@@ -265,9 +265,8 @@ class ObjectsCollection:
         # Only ensure loaded if this is not a cached search result
         if not self._cached:
             self._ensure_loaded()
-        # Wrap each object in clean API
-        from .clean_api import wrap_syft_object
-        return [wrap_syft_object(obj) for obj in self._objects]
+        # Return raw SyftObject instances (clean_api was removed)
+        return self._objects.copy()
 
     def get_by_indices(self, indices):
         """Get objects by list of indices"""
@@ -303,10 +302,7 @@ class ObjectsCollection:
         
         # For integer indices, objects are sorted by created_at (oldest first)
         # so objects[0] returns oldest, objects[-1] returns newest
-        obj = self._objects[index]
-        # Wrap in clean API
-        from .clean_api import wrap_syft_object
-        return wrap_syft_object(obj)
+        return self._objects[index]
 
     def __len__(self):
         if not self._cached:
@@ -316,9 +312,8 @@ class ObjectsCollection:
     def __iter__(self):
         if not self._cached:
             self._ensure_loaded()
-        # Wrap each object in clean API
-        from .clean_api import wrap_syft_object
-        return (wrap_syft_object(obj) for obj in self._objects)
+        # Return raw SyftObject instances
+        return iter(self._objects)
 
     def __str__(self):
         """Display objects as a nice table"""
@@ -356,46 +351,46 @@ Import Convention:
   import syft_objects as syo
 
 Interactive UI:
-  so.objects              # Show interactive table with search & selection
+  syo.objects              # Show interactive table with search & selection
   • Use search box to filter in real-time
   • Check boxes to select objects  
   • Click "Generate Code" for copy-paste Python code
 
 Programmatic Usage:
-  so.objects[0]           # Get oldest object (by creation date)
-  so.objects[-1]          # Get newest object (by creation date)
-  so.objects['<uid>']     # Get object by its UID
-  so.objects[:3]          # Get first 3 objects (oldest first)
-  len(so.objects)         # Count objects
+  syo.objects[0]           # Get oldest object (by creation date)
+  syo.objects[-1]          # Get newest object (by creation date)
+  syo.objects['<uid>']     # Get object by its UID
+  syo.objects[:3]          # Get first 3 objects (oldest first)
+  len(syo.objects)         # Count objects
 
 Search & Filter:
-  so.objects.search("financial")        # Search for 'financial' in names/emails
-  so.objects.filter_by_email("andrew")  # Filter by email containing 'andrew'
-  so.objects.get_by_indices([0,1,5])    # Get specific objects by index
+  syo.objects.search("financial")        # Search for 'financial' in names/emails
+  syo.objects.filter_by_email("andrew")  # Filter by email containing 'andrew'
+  syo.objects.get_by_indices([0,1,5])    # Get specific objects by index
   
 Utility Methods:
-  so.objects.list_unique_emails()       # List all unique emails
-  so.objects.list_unique_names()        # List all unique object names
-  so.objects.refresh()                  # Manually refresh the collection
+  syo.objects.list_unique_emails()       # List all unique emails
+  syo.objects.list_unique_names()        # List all unique object names
+  syo.objects.refresh()                  # Manually refresh the collection
   
 Example Usage:
   import syft_objects as syo
   
   # Browse and select objects interactively
-  so.objects
+  syo.objects
   
   # Selected objects:
-  objects = [so.objects[i] for i in [0, 1, 16, 20, 23]]
+  objects = [syo.objects[i] for i in [0, 1, 16, 20, 23]]
   
   # Access object properties:
-  obj = so.objects[0]
+  obj = syo.objects[0]
   print(obj.name)           # Object name
-              print(obj.private_url)        # Private syft:// URL
-    print(obj.mock_url)           # Mock syft:// URL
+  print(obj.private_url)    # Private syft:// URL
+  print(obj.mock_url)       # Mock syft:// URL
   print(obj.description)    # Object description
   
   # Refresh after creating new objects:
-  so.objects.refresh()
+  syo.objects.refresh()
         """
         print(help_text)
 

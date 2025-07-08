@@ -42,7 +42,13 @@ app = FastAPI(
 # Add CORS middleware for development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins while debugging
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:*",
+        "http://127.0.0.1:*"
+    ],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -99,12 +105,30 @@ async def get_status() -> Dict[str, Any]:
     }
 
 @app.get("/api/client-info")
-async def get_client_info(request: Request):
-    """Get client information including user email."""
-    # Temporarily allow all operations while debugging
+async def get_client_info() -> Dict[str, Any]:
+    """Get SyftBox client information for form defaults."""
+    user_email = "admin@example.com"  # fallback
+    
+    if SYFTBOX_AVAILABLE:
+        try:
+            client = get_syftbox_client()
+            if client:
+                user_email = getattr(client, 'email', 'admin@example.com')
+        except Exception:
+            pass
+    
     return {
-        "user_email": "*",  # Wildcard user that should have all permissions
-        "permissions": ["read", "write", "admin"]
+        "user_email": user_email,
+        "defaults": {
+            "admin_email": user_email,
+            "permissions": {
+                "private_read": user_email,
+                "private_write": user_email,
+                "mock_read": "public",
+                "mock_write": user_email,
+                "syftobject": "public"
+            }
+        }
     }
 
 @app.get("/api/objects")
@@ -156,7 +180,7 @@ async def get_objects(
             except:
                 pass
             
-            # Get the raw object (no CleanSyftObject at this commit)
+            # SyftObject instances are now used directly (CleanSyftObject was removed)
             raw_obj = obj
             
             # Get file type - try multiple approaches
@@ -663,7 +687,7 @@ async def save_file_content(
         if not target_obj:
             raise HTTPException(status_code=404, detail="Object not found")
         
-        # Get the raw object (no CleanSyftObject at this commit)
+        # Get the SyftObject instance
         raw_obj = target_obj
         
         # Check write permissions for the file type
@@ -753,7 +777,7 @@ async def update_object_permissions(
         if not target_obj:
             raise HTTPException(status_code=404, detail="Object not found")
         
-        # Get the raw object (no CleanSyftObject at this commit)
+        # Get the SyftObject instance
         raw_obj = target_obj
         
         # Check if user has permission to update permissions (must be owner)
@@ -859,11 +883,11 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
         if not target_obj:
             raise HTTPException(status_code=404, detail="Object not found")
         
-        # Get the raw object (no CleanSyftObject at this commit)
+        # Get the SyftObject instance
         raw_obj = target_obj
         
-        # Check permissions using the object's _can_delete method
-        if hasattr(raw_obj, '_can_delete'):
+        # Check permissions using the object's can_delete method
+        if hasattr(raw_obj, 'can_delete'):
             # Get current user email if not provided
             if not user_email:
                 try:
@@ -1052,56 +1076,42 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
         raise HTTPException(status_code=500, detail=f"Error deleting object: {str(e)}")
 
 # Filesystem Editor endpoints
-fs_manager = FileSystemManager(os.path.expanduser("~"))
+filesystem_manager = FileSystemManager()
 
-@app.get("/editor")
-async def editor(path: str = None):
-    """Serve the file editor interface."""
-    return HTMLResponse(generate_editor_html(path))
+@app.get("/editor", response_class=HTMLResponse)
+async def editor_page(path: Optional[str] = Query(None)):
+    """Serve the filesystem editor HTML page."""
+    initial_path = path if path else str(PathLib.home())
+    return HTMLResponse(content=generate_editor_html(initial_path))
 
 @app.get("/api/filesystem/list")
-async def list_directory(
-    path: str = Query(...),
-    user_email: str = Query(None)
-):
-    """List directory contents with permission checks."""
-    if not user_email:
-        raise HTTPException(status_code=400, detail="user_email is required")
-    return fs_manager.list_directory(path, user_email)
+async def list_directory(path: str = Query(...)):
+    """List directory contents."""
+    return filesystem_manager.list_directory(path)
 
 @app.get("/api/filesystem/read")
-async def read_file(
-    path: str = Query(...),
-    user_email: str = Query(None)
-):
-    """Read file contents with permission checks."""
-    if not user_email:
-        raise HTTPException(status_code=400, detail="user_email is required")
-    content = fs_manager.read_file(path, user_email)
-    return {"content": content}
+async def read_file(path: str = Query(...)):
+    """Read file contents."""
+    return filesystem_manager.read_file(path)
 
 @app.post("/api/filesystem/write")
 async def write_file(
     path: str = Body(...),
     content: str = Body(...),
-    user_email: str = Body(None)
+    create_dirs: bool = Body(False)
 ):
-    """Write file contents with permission checks."""
-    if not user_email:
-        raise HTTPException(status_code=400, detail="user_email is required")
-    fs_manager.write_file(path, content, user_email)
-    return {"message": "File saved successfully"}
+    """Write content to a file."""
+    return filesystem_manager.write_file(path, content, create_dirs)
+
+@app.post("/api/filesystem/create-directory")
+async def create_directory(path: str = Body(...)):
+    """Create a new directory."""
+    return filesystem_manager.create_directory(path)
 
 @app.delete("/api/filesystem/delete")
-async def delete_item(
-    path: str = Query(...),
-    user_email: str = Query(None)
-):
-    """Delete file with permission checks."""
-    if not user_email:
-        raise HTTPException(status_code=400, detail="user_email is required")
-    fs_manager.delete_file(path, user_email)
-    return {"message": "File deleted successfully"}
+async def delete_item(path: str = Query(...), recursive: bool = Query(False)):
+    """Delete a file or directory."""
+    return filesystem_manager.delete_item(path, recursive)
 
 # Widget endpoints to match original server exactly
 @app.get("/widget")
@@ -1138,15 +1148,6 @@ async def root():
         </body>
         </html>
         """)
-
-# Add favicon handler
-@app.get("/favicon.ico")
-async def favicon():
-    """Serve favicon."""
-    favicon_path = os.path.join(os.path.dirname(__file__), "static", "favicon.ico")
-    if os.path.exists(favicon_path):
-        return FileResponse(favicon_path)
-    return PlainTextResponse("")  # Return empty response if favicon doesn't exist
 
 if __name__ == "__main__":
     import uvicorn
