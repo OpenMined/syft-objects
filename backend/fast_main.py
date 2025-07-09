@@ -837,7 +837,7 @@ async def save_file_content(
                 has_permission = user_email in write_perms
             
             if not has_permission:
-                owner_email = raw_obj.get_owner_email() if hasattr(raw_obj, 'get_owner_email') else 'unknown'
+                owner_email = raw_obj.get_owner() if hasattr(raw_obj, 'get_owner') else raw_obj.get_owner_email() if hasattr(raw_obj, 'get_owner_email') else 'unknown'
                 logger.warning(f"User {user_email} attempted to write {file_type} file for object {object_uid} - DENIED")
                 raise HTTPException(
                     status_code=403,
@@ -954,7 +954,7 @@ async def update_object_permissions(
             client = get_syftbox_client()
             user_email = client.email if client and hasattr(client, 'email') else None
             
-            owner_email = raw_obj.get_owner_email() if hasattr(raw_obj, 'get_owner_email') else 'unknown'
+            owner_email = raw_obj.get_owner() if hasattr(raw_obj, 'get_owner') else raw_obj.get_owner_email() if hasattr(raw_obj, 'get_owner_email') else 'unknown'
             
             if user_email != owner_email:
                 logger.warning(f"User {user_email or 'unknown'} attempted to update permissions for object {object_uid} owned by {owner_email} - DENIED")
@@ -1089,7 +1089,7 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
                     pass
             
             if not raw_obj.can_delete(user_email):
-                owner_email = raw_obj.get_owner_email() if hasattr(raw_obj, 'get_owner_email') else 'unknown'
+                owner_email = raw_obj.get_owner() if hasattr(raw_obj, 'get_owner') else raw_obj.get_owner_email() if hasattr(raw_obj, 'get_owner_email') else 'unknown'
                 logger.warning(f"User {user_email or 'unknown'} attempted to delete object {object_uid} owned by {owner_email} - DENIED")
                 raise HTTPException(
                     status_code=403, 
@@ -1343,7 +1343,7 @@ async def get_object_metadata(object_uid: str) -> Dict[str, Any]:
                 "mock": target_obj.mock.path if hasattr(target_obj, 'mock') else getattr(target_obj, 'mock_path', None),
                 "syftobject": target_obj.syftobject_config.path if hasattr(target_obj, 'syftobject_config') else getattr(target_obj, 'syftobject_path', None)
             },
-            "owner_email": target_obj.get_info()["metadata"].get("owner_email", "unknown") if hasattr(target_obj, 'get_info') else target_obj.metadata.get("owner_email", "unknown")
+            "owner_email": target_obj.get_owner() if hasattr(target_obj, 'get_owner') else target_obj.get_info()["metadata"].get("owner_email", "unknown") if hasattr(target_obj, 'get_info') else target_obj.metadata.get("owner_email", "unknown")
         }
         
         # Add mock note if available

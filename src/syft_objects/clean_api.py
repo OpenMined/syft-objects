@@ -58,7 +58,8 @@ class CleanSyftObject:
             "updated_at": self._CleanSyftObject__obj.updated_at.isoformat() if self._CleanSyftObject__obj.updated_at else None,
             "is_folder": self._CleanSyftObject__obj.is_folder,
             "metadata": self._CleanSyftObject__obj.metadata,
-            "permissions": self.get_permissions()
+            "permissions": self.get_permissions(),
+            "owner_email": self.get_owner()
         }
     
     def get_path(self) -> str:
@@ -88,6 +89,39 @@ class CleanSyftObject:
             "mock": self._CleanSyftObject__obj.mock_url,
             "syftobject": self._CleanSyftObject__obj.syftobject
         }
+    
+    def get_owner(self) -> str:
+        """Get the owner email by reverse engineering from the object's file paths"""
+        # First try to get from metadata (preferred method)
+        metadata = self.get_metadata()
+        if 'owner_email' in metadata:
+            return metadata['owner_email']
+        if 'email' in metadata:
+            return metadata['email']
+        
+        # Fall back to extracting from URL structure
+        # URLs typically look like: syft://user@example.com/path/to/file
+        private_url = self._CleanSyftObject__obj.private_url
+        if private_url and "://" in private_url:
+            # Extract the part after :// and before the first /
+            url_part = private_url.split("://")[1]
+            if "/" in url_part:
+                # Get the datasite part (everything before the first /)
+                datasite_part = url_part.split("/")[0]
+                # If it contains @, it's likely an email
+                if "@" in datasite_part:
+                    return datasite_part
+        
+        # Try mock URL as fallback
+        mock_url = self._CleanSyftObject__obj.mock_url
+        if mock_url and "://" in mock_url:
+            url_part = mock_url.split("://")[1]
+            if "/" in url_part:
+                datasite_part = url_part.split("/")[0]
+                if "@" in datasite_part:
+                    return datasite_part
+        
+        return "unknown"
     
     # ===== Setter Methods =====
     def set_name(self, name: str) -> None:
