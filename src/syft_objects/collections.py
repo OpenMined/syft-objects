@@ -222,12 +222,15 @@ class ObjectsCollection:
 
         for syft_obj in self._objects:
             email = self._get_object_email(syft_obj)
-            name = syft_obj.name or ""
-            desc = syft_obj.description or ""
-            created_str = syft_obj.created_at.strftime("%Y-%m-%d %H:%M UTC") if getattr(syft_obj, 'created_at', None) else ""
-            updated_str = syft_obj.updated_at.strftime("%Y-%m-%d %H:%M UTC") if getattr(syft_obj, 'updated_at', None) else ""
+            name = syft_obj.get_name() if hasattr(syft_obj, 'get_name') else (syft_obj.name if hasattr(syft_obj, 'name') else "")
+            desc = syft_obj.get_description() if hasattr(syft_obj, 'get_description') else (syft_obj.description if hasattr(syft_obj, 'description') else "")
+            created_at = syft_obj.get_created_at() if hasattr(syft_obj, 'get_created_at') else (syft_obj.created_at if hasattr(syft_obj, 'created_at') else None)
+            updated_at = syft_obj.get_updated_at() if hasattr(syft_obj, 'get_updated_at') else (syft_obj.updated_at if hasattr(syft_obj, 'updated_at') else None)
+            created_str = created_at.strftime("%Y-%m-%d %H:%M UTC") if created_at else ""
+            updated_str = updated_at.strftime("%Y-%m-%d %H:%M UTC") if updated_at else ""
             system_keys = {"_file_operations"}
-            meta_values = [str(v).lower() for k, v in syft_obj.metadata.items() if k not in system_keys]
+            metadata = syft_obj.get_metadata() if hasattr(syft_obj, 'get_metadata') else (syft_obj.metadata if hasattr(syft_obj, 'metadata') else {})
+            meta_values = [str(v).lower() for k, v in metadata.items() if k not in system_keys]
             
             # Debug specific search term
             if keyword == "xyz123notfound":
@@ -338,8 +341,10 @@ class ObjectsCollection:
             table_data = []
             for i, syft_obj in enumerate(self._objects):
                 email = self._get_object_email(syft_obj)
-                name = syft_obj.name or "Unnamed Object"
-                table_data.append([i, email, name, syft_obj.private_url, syft_obj.mock_url])
+                name = syft_obj.get_name() if hasattr(syft_obj, 'get_name') else (syft_obj.name if hasattr(syft_obj, 'name') else "Unnamed Object")
+                private_url = syft_obj.get_urls()['private'] if hasattr(syft_obj, 'get_urls') else (syft_obj.private_url if hasattr(syft_obj, 'private_url') else "N/A")
+                mock_url = syft_obj.get_urls()['mock'] if hasattr(syft_obj, 'get_urls') else (syft_obj.mock_url if hasattr(syft_obj, 'mock_url') else "N/A")
+                table_data.append([i, email, name, private_url, mock_url])
 
             headers = ["Index", "Email", "Object Name", "Private URL", "Mock URL"]
             return tabulate(table_data, headers=headers, tablefmt="grid")
@@ -347,7 +352,7 @@ class ObjectsCollection:
             lines = ["Available Syft Objects:" if self._objects else "No syft objects available"]
             for i, syft_obj in enumerate(self._objects):
                 email = self._get_object_email(syft_obj)
-                name = syft_obj.name or "Unnamed Object"
+                name = syft_obj.get_name() if hasattr(syft_obj, 'get_name') else (syft_obj.name if hasattr(syft_obj, 'name') else "Unnamed Object")
                 lines.append(f"{i}: {name} ({email})")
             return "\n".join(lines)
 
