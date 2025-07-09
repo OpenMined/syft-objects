@@ -1040,26 +1040,9 @@ async def update_object_permissions(
         else:
             target_obj.updated_at = datetime.now()
         
-        # Save the object to its .syftobject.yaml file
-        try:
-            if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'save'):
-                # CleanSyftObject with save method
-                target_obj.private.save(create_syftbox_permissions=True)
-                logger.info(f"Object saved using .private.save() method")
-            else:
-                # Raw SyftObject
-                raw_obj = target_obj._CleanSyftObject__obj if hasattr(target_obj, '_CleanSyftObject__obj') else target_obj
-                if hasattr(raw_obj, 'save_yaml'):
-                    if hasattr(raw_obj, 'syftobject_path') and raw_obj.syftobject_path:
-                        raw_obj.save_yaml(raw_obj.syftobject_path, create_syftbox_permissions=True)
-                        logger.info(f"Object saved to {raw_obj.syftobject_path} using save_yaml method")
-                    else:
-                        logger.warning("Could not determine local path for syftobject file")
-                else:
-                    logger.warning("Object does not have save_yaml method")
-        except Exception as save_error:
-            logger.error(f"Error saving object to yaml: {save_error}")
-            raise HTTPException(status_code=500, detail=f"Error saving permissions: {save_error}")
+        # The object is file-backed, so changes are automatically saved
+        # No need to explicitly save since _sync_to_disk() is called on every attribute change
+        logger.info("Permissions updated - changes automatically synced to disk")
         
         # Refresh the collection to reflect changes
         objects.refresh()

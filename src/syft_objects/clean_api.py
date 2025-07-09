@@ -354,15 +354,6 @@ class PrivateAccessor:
         from .models import utcnow
         self._CleanSyftObject__obj.updated_at = utcnow()
     
-    def save(self, file_path: str | Path = None, create_syftbox_permissions: bool = True) -> None:
-        """Save the syft object (alias for save_yaml)"""
-        if file_path is None:
-            # Use the syftobject path if available
-            if hasattr(self._CleanSyftObject__obj, 'syftobject_path') and self._CleanSyftObject__obj.syftobject_path:
-                file_path = self._CleanSyftObject__obj.syftobject_path
-            else:
-                raise ValueError("No file path provided and no syftobject_path available")
-        self._CleanSyftObject__obj.save_yaml(file_path, create_syftbox_permissions)
 
 
 class SyftObjectConfigAccessor:

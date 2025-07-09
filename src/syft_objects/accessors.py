@@ -84,17 +84,6 @@ class PrivateAccessor(DataAccessor):
         """Set admin permissions for private data"""
         self._syft_object.metadata["admin_permissions"] = admin
     
-    def save(self, file_path: str = None, create_syftbox_permissions: bool = True) -> None:
-        """Save the syft object - moved from main object to private accessor"""
-        if file_path:
-            self._syft_object._save_yaml(file_path, create_syftbox_permissions)
-        else:
-            # Use existing syftobject path
-            syftobject_path = self._syft_object.syftobject_path
-            if syftobject_path:
-                self._syft_object._save_yaml(syftobject_path, create_syftbox_permissions)
-            else:
-                raise ValueError("No file path provided and no existing syftobject path found")
 
 
 class SyftObjectConfigAccessor:
