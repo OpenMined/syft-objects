@@ -24,10 +24,12 @@ try:
     from syft_objects.collections import ObjectsCollection
     from syft_objects.models import SyftObject
     from syft_objects.client import get_syftbox_client, SYFTBOX_AVAILABLE
+    from syft_objects.validation import validate_mock_real_compatibility, MockRealValidationError
 except ImportError:
     logger.error("syft-objects not available")
     objects = None
     ObjectsCollection = None
+    MockRealValidationError = None
     SyftObject = None
     get_syftbox_client = None
     SYFTBOX_AVAILABLE = False
@@ -871,6 +873,36 @@ async def save_file_content(
         # Write the content to the file
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(content_str)
+        
+        # Validate mock/real compatibility after update
+        try:
+            # Get both file paths
+            if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'get_path'):
+                private_path = target_obj.private.get_path()
+            else:
+                private_path = raw_obj.private_path
+                
+            if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'get_path'):
+                mock_path = target_obj.mock.get_path()
+            else:
+                mock_path = raw_obj.mock_path
+            
+            # Only validate if both files exist
+            if private_path and mock_path and PathLib(private_path).exists() and PathLib(mock_path).exists():
+                validate_mock_real_compatibility(mock_path, private_path, skip_validation=False)
+        except MockRealValidationError as e:
+            # Validation failed - provide helpful error message
+            logger.warning(f"Mock/Real validation failed after file update: {e}")
+            # Note: We don't rollback the file write, but we inform the user
+            return {
+                "message": f"File {file_type} saved, but validation warning occurred",
+                "warning": str(e),
+                "object_uid": object_uid,
+                "file_type": file_type,
+                "file_path": str(file_path),
+                "content_length": len(content_str),
+                "timestamp": datetime.now()
+            }
         
         # Refresh the objects collection to reflect any changes
         objects.refresh()

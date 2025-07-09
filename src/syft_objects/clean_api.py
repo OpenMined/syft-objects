@@ -205,6 +205,16 @@ class MockAccessor:
     def get_write_permissions(self) -> list[str]:
         """Get write permissions for the mock data"""
         return self._CleanSyftObject__obj.mock_write_permissions.copy()
+    
+    def get_note(self) -> Optional[str]:
+        """Get the mock note describing the mock data characteristics"""
+        return self._CleanSyftObject__obj.metadata.get("mock_note")
+    
+    def set_note(self, note: str) -> None:
+        """Set the mock note"""
+        self._CleanSyftObject__obj.metadata["mock_note"] = note
+        from .models import utcnow
+        self._CleanSyftObject__obj.updated_at = utcnow()
 
 
 class PrivateAccessor:

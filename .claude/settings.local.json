@@ -13,7 +13,15 @@
       "Bash(touch:*)",
       "Bash(uv run pytest:*)",
       "Bash(uv run:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(git push:*)",
+      "Bash(git push:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(mv:*)",
+      "Bash(rg:*)",
+      "Bash(rm:*)",
+      "Bash(git add:*)",
+      "Bash(uv run pytest:*)"
     ],
     "deny": []
   }

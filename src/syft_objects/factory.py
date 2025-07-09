@@ -20,6 +20,10 @@ from .file_ops import (
     generate_syftbox_urls,
     generate_syftobject_url
 )
+from .validation import validate_mock_real_compatibility, MockRealValidationError
+from .config import config
+from .prompts import prompt_with_timeout
+from .mock_analyzer import suggest_mock_note
 
 
 def detect_user_email():
@@ -80,7 +84,10 @@ def syobj(
     mock_write: Optional[List[str]] = None,
     private_read: Optional[List[str]] = None,
     private_write: Optional[List[str]] = None,
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None,
+    skip_validation: bool = False,
+    mock_note: Optional[str] = None,
+    suggest_mock_notes: Optional[bool] = None
 ) -> SyftObject:
     """
     🔐 **Share files with explicit mock vs private control** 
@@ -167,7 +174,6 @@ def syobj(
         
         # Move folders to SyftBox locations
         if move_files_to_syftbox and syftbox_client:
-            from .file_ops import move_object_to_syftbox_location
             move_object_to_syftbox_location(private_source_path, private_url, syftbox_client)
             move_object_to_syftbox_location(mock_source_path, mock_url, syftbox_client)
         else:
@@ -318,6 +324,17 @@ def syobj(
         created_files.append(mock_file_path)
         mock_source_path = mock_file_path
     
+    # === VALIDATE MOCK/REAL COMPATIBILITY ===
+    if not skip_validation and not is_folder:
+        try:
+            validate_mock_real_compatibility(mock_source_path, private_source_path, skip_validation=False)
+        except MockRealValidationError as e:
+            # Clean up any files we created before raising
+            for file_path in created_files:
+                if file_path.exists():
+                    file_path.unlink()
+            raise
+    
     # === PERMISSION HANDLING ===
     final_discovery_read = discovery_read or ["public"]
     final_mock_read = mock_read or ["public"]
@@ -356,6 +373,50 @@ def syobj(
             # When we created the file, we can move it
             if move_file_to_syftbox_location(mock_source_path, final_mock_path, syftbox_client):
                 files_moved_to_syftbox.append(f"{mock_source_path} → {final_mock_path}")
+    
+    # === HANDLE MOCK NOTES ===
+    # Check if we should suggest mock notes
+    if suggest_mock_notes is None:
+        suggest_mock_notes = config.suggest_mock_notes
+    
+    # If no mock note provided and suggestions are enabled
+    if not mock_note and suggest_mock_notes and not is_folder:
+        # Get suggestion from analyzer
+        suggestion = suggest_mock_note(
+            mock_path=mock_source_path if isinstance(mock_source_path, Path) else Path(mock_source_path) if mock_source_path else None,
+            private_path=private_source_path if isinstance(private_source_path, Path) else Path(private_source_path) if private_source_path else None,
+            mock_contents=mock_contents,
+            private_contents=private_contents,
+            sensitivity=config.mock_note_sensitivity
+        )
+        
+        # If we have a suggestion and it involves comparison
+        if suggestion and (private_file or private_contents):
+            # Check if this is a sensitive suggestion
+            is_sensitive = any(
+                indicator in suggestion.lower() 
+                for indicator in ["sample", "%", "rows", "first", "last", "subset"]
+            )
+            
+            if is_sensitive and config.mock_note_sensitivity == "ask":
+                # Use timeout prompt
+                mock_note = prompt_with_timeout(
+                    f"Mock note suggestion: '{suggestion}'",
+                    timeout=config.mock_note_timeout,
+                    accept_value=suggestion
+                )
+            elif not is_sensitive or config.mock_note_sensitivity == "always":
+                # Auto-accept non-sensitive suggestions
+                mock_note = suggestion
+                print(f"✓ Auto-added mock note: {mock_note}")
+        elif suggestion:
+            # Safe suggestions (mock-only analysis)
+            mock_note = suggestion
+            print(f"✓ Added mock note: {mock_note}")
+    
+    # Add mock note to metadata if provided
+    if mock_note:
+        clean_metadata["mock_note"] = mock_note
     
     # === AUTO-GENERATE DESCRIPTION ===
     if description is None:
@@ -416,7 +477,6 @@ def syobj(
         save_path.parent.mkdir(parents=True, exist_ok=True)
         import yaml
         # Convert data to JSON-serializable format (handle UUID, datetime)
-        from .models import SyftObject
         temp_obj = SyftObject(**syft_obj_data)
         json_data = temp_obj.model_dump(mode='json')
         with open(save_path, 'w') as f:

@@ -13,6 +13,7 @@ from .client import get_syftbox_client, extract_local_path_from_syft_url
 from .permissions import set_file_permissions_wrapper
 from .display import create_html_display
 from .data_accessor import DataAccessor
+from .validation import MockRealValidationError
 
 
 def utcnow():
@@ -262,10 +263,11 @@ class SyftObject(BaseModel):
         
         # Only validate if BOTH files have extensions - they must match
         if mock_ext and private_ext and mock_ext != private_ext:
-            raise ValueError(
-                f"Mock and private files must have matching extensions. "
+            raise MockRealValidationError(
                 f"Mock file has '.{mock_ext}' but private file has '.{private_ext}'. "
-                f"Mock: {self.mock_url}, Private: {self.private_url}"
+                f"Mock: {self.mock_url}, Private: {self.private_url}",
+                file_type="extension",
+                suggestion="Ensure mock and private files have matching extensions"
             )
         
         return self
