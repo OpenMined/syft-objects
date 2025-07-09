@@ -99,7 +99,7 @@ class MockAnalyzer:
             if ext == ".csv":
                 rows = self._count_csv_rows(mock_path, mock_contents)
                 if rows > 0:
-                    suggestions.append((7, f"{rows} rows"))
+                    suggestions.append((7, f"{rows} data rows"))
             elif ext == ".json":
                 if self._is_json_structure_only(mock_path, mock_contents):
                     suggestions.append((8, "JSON structure"))
@@ -207,13 +207,17 @@ class MockAnalyzer:
             return False
     
     def _count_csv_rows(self, path: Optional[Path], contents: Optional[str]) -> int:
-        """Count rows in a CSV file"""
+        """Count data rows in a CSV file (excluding header)"""
         try:
             if contents:
-                return len(contents.strip().split('\n'))
+                lines = contents.strip().split('\n')
+                # Subtract 1 for header if there are any lines
+                return max(0, len(lines) - 1)
             elif path and path.exists():
                 with open(path, 'r', encoding='utf-8') as f:
-                    return sum(1 for _ in csv.reader(f))
+                    row_count = sum(1 for _ in csv.reader(f))
+                    # Subtract 1 for header if there are any rows
+                    return max(0, row_count - 1)
         except:
             pass
         return 0
