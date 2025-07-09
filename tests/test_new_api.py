@@ -64,7 +64,10 @@ class TestNewAPI:
         obj.set_metadata({"key": "value"})
         assert obj.get_metadata() == {"key": "value"}
         
-        obj.update_metadata({"key2": "value2"})
+        # Test merging metadata manually
+        current = obj.get_metadata()
+        current.update({"key2": "value2"})
+        obj.set_metadata(current)
         metadata = obj.get_metadata()
         assert metadata["key"] == "value"
         assert metadata["key2"] == "value2"

@@ -147,12 +147,6 @@ class CleanSyftObject:
         from .models import utcnow
         self._CleanSyftObject__obj.updated_at = utcnow()
     
-    def update_metadata(self, metadata: dict) -> None:
-        """Update the object's metadata (merges with existing)"""
-        self._CleanSyftObject__obj.metadata.update(metadata)
-        from .models import utcnow
-        self._CleanSyftObject__obj.updated_at = utcnow()
-    
     # ===== Accessor Properties =====
     @property
     def mock(self):
@@ -235,7 +229,7 @@ class CleanSyftObject:
             'get_updated_at', 'get_metadata', 'get_file_type', 'get_info',
             'get_path', 'get_read_permissions', 'get_write_permissions', 'get_admin_permissions', 'get_urls', 'get_owner',
             # Setters
-            'set_name', 'set_description', 'set_metadata', 'update_metadata',
+            'set_name', 'set_description', 'set_metadata',
             'set_read_permissions', 'set_write_permissions', 'set_admin_permissions',
             # Accessors
             'mock', 'private', 'syftobject_config',

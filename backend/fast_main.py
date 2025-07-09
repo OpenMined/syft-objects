@@ -1490,8 +1490,11 @@ async def update_object_metadata(
             updated_fields.append("description")
         
         if "metadata" in updates:
-            if hasattr(target_obj, 'update_metadata'):
-                target_obj.update_metadata(updates["metadata"])
+            if hasattr(target_obj, 'set_metadata'):
+                # Get current metadata and merge with updates
+                current_metadata = target_obj.get_metadata() if hasattr(target_obj, 'get_metadata') else {}
+                current_metadata.update(updates["metadata"])
+                target_obj.set_metadata(current_metadata)
             else:
                 target_obj.metadata.update(updates["metadata"])
             updated_fields.append("metadata")
