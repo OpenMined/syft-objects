@@ -198,7 +198,7 @@ class CleanSyftObject:
             # Getters
             'get_uid', 'get_name', 'get_description', 'get_created_at',
             'get_updated_at', 'get_metadata', 'get_file_type', 'get_info',
-            'get_path', 'get_permissions', 'get_urls',
+            'get_path', 'get_permissions', 'get_urls', 'get_owner',
             # Setters
             'set_name', 'set_description', 'set_metadata', 'update_metadata',
             'set_permissions',
