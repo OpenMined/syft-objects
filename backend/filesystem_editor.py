@@ -964,6 +964,37 @@ def generate_editor_html(initial_path: str = None) -> str:
                     const data = await response.json();
                     
                     if (!response.ok) {{
+                        // Handle permission denied or file not found
+                        if (response.status === 403 || response.status === 404) {{
+                            // Show permission denied message instead of editor
+                            this.currentFile = null;
+                            this.editor.value = '';
+                            this.isModified = false;
+                            this.updateUI();
+                            
+                            // Hide editor, show empty state with custom message
+                            this.editor.style.display = 'none';
+                            this.emptyState.style.display = 'flex';
+                            const title = response.status === 403 ? 'Permission Denied' : 'File Not Found';
+                            const message = response.status === 403 ? 
+                                'You do not have permission to access this file. It may not exist locally or you may need to request access.' : 
+                                'The requested file could not be found. It may have been moved or deleted.';
+                            
+                            this.emptyState.innerHTML = `
+                                <div style="text-align: center; padding: 40px;">
+                                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5" style="margin: 0 auto 16px;">
+                                        <path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <h3 style="color: #374151; font-size: 18px; margin: 0 0 8px 0; font-weight: 600;">
+                                        ${{title}}
+                                    </h3>
+                                    <p style="color: #6b7280; font-size: 14px; margin: 0; max-width: 400px;">
+                                        ${{message}}
+                                    </p>
+                                </div>
+                            `;
+                            return;
+                        }}
                         throw new Error(data.detail || 'Failed to load file');
                     }}
                     
