@@ -2,7 +2,7 @@
 
 import pytest
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock, call
+from unittest.mock import Mock, patch, PropertyMock, MagicMock, call
 from datetime import datetime
 from uuid import uuid4
 
@@ -77,20 +77,25 @@ class TestObjectsCollection:
         """Test _get_object_email extraction"""
         collection = ObjectsCollection()
         
-        # Test valid syft URL
-        mock_obj = Mock()
-        mock_obj.private_url = "syft://test@example.com/private/objects/test.txt"
+        # Test valid syft URL - create a simple object with the required attribute
+        from types import SimpleNamespace
+        mock_obj = SimpleNamespace(private_url="syft://test@example.com/private/objects/test.txt")
         email = collection._get_object_email(mock_obj)
         assert email == "test@example.com"
         
         # Test invalid URL format
-        mock_obj.private_url = "invalid://url"
-        email = collection._get_object_email(mock_obj)
+        mock_obj2 = SimpleNamespace(private_url="invalid://url")
+        email = collection._get_object_email(mock_obj2)
         assert email == "unknown@example.com"
         
-        # Test exception handling
-        mock_obj.private_url = Mock(side_effect=Exception("Error"))
-        email = collection._get_object_email(mock_obj)
+        # Test exception handling - create object that will raise exception
+        class BadObject:
+            @property
+            def private_url(self):
+                raise Exception("Error")
+        
+        mock_obj3 = BadObject()
+        email = collection._get_object_email(mock_obj3)
         assert email == "unknown@example.com"
     
     @patch('syft_objects.collections.SYFTBOX_AVAILABLE', False)

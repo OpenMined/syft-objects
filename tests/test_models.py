@@ -376,7 +376,7 @@ class TestSyftObject:
         file_path.write_text(sample_yaml_content)
         
         # Load object
-        obj = SyftObject.load_yaml(file_path)
+        obj = SyftObject._load_yaml(file_path)
         
         assert obj.name == "test_object"
         assert obj.uid == UUID("12345678-1234-5678-1234-567812345678")
@@ -389,7 +389,7 @@ class TestSyftObject:
         file_path.write_text("name: test")
         
         with pytest.raises(ValueError, match="File must have .syftobject.yaml extension"):
-            SyftObject.load_yaml(file_path)
+            SyftObject._load_yaml(file_path)
     
     @patch('syft_objects.models.set_file_permissions_wrapper')
     def test_create_syftbox_permissions(self, mock_set_perms):
@@ -824,4 +824,4 @@ class TestSyftObject:
     def test_load_yaml_file_not_found(self):
         """Test load_yaml with non-existent file"""
         with pytest.raises(FileNotFoundError):
-            SyftObject.load_yaml("/nonexistent/file.syftobject.yaml")
+            SyftObject._load_yaml("/nonexistent/file.syftobject.yaml")

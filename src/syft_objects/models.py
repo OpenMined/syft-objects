@@ -2,9 +2,10 @@
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 from uuid import UUID, uuid4
 import yaml
+import os
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -21,8 +22,13 @@ def utcnow():
 
 class SyftObject(BaseModel):
     """
-    A distributed object with mock/real pattern for file discovery and addressing
+    A distributed object with mock/real pattern for file discovery and addressing.
+    This implementation is file-backed - all attributes are stored in and read from
+    the .syftobject.yaml file on disk.
     """
+    # Path to the .syftobject.yaml file (internal use only)
+    _yaml_path: Optional[Path] = None
+    
     # Mandatory metadata
     uid: UUID = Field(default_factory=uuid4, description="Unique identifier for the object")
     private_url: str = Field(description="Syft:// path to the private object", alias="private")
@@ -66,6 +72,82 @@ class SyftObject(BaseModel):
     # Arbitrary metadata
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Arbitrary metadata")
     
+    def __init__(self, **data):
+        """Initialize a file-backed SyftObject"""
+        # Extract yaml path if provided
+        yaml_path = data.pop('_yaml_path', None)
+        
+        # Initialize with BaseModel
+        super().__init__(**data)
+        
+        # Set the yaml path
+        if yaml_path:
+            self._yaml_path = Path(yaml_path) if not isinstance(yaml_path, Path) else yaml_path
+        
+        # If we have a yaml path, sync to disk immediately
+        if self._yaml_path:
+            self._sync_to_disk()
+    
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Override setattr to sync changes to disk"""
+        # Handle internal attributes normally
+        if name.startswith('_'):
+            object.__setattr__(self, name, value)
+            return
+        
+        # Set the attribute using parent class
+        super().__setattr__(name, value)
+        
+        # Sync to disk if we have a yaml path
+        if hasattr(self, '_yaml_path') and self._yaml_path:
+            self._sync_to_disk()
+    
+    def _sync_to_disk(self) -> None:
+        """Sync current state to the yaml file"""
+        if not self._yaml_path:
+            return
+        
+        # Ensure directory exists
+        self._yaml_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Convert to dict and handle datetime/UUID serialization
+        data = self.model_dump(mode='json')
+        
+        # Write to YAML file
+        with open(self._yaml_path, 'w') as f:
+            yaml.dump(data, f, default_flow_style=False, sort_keys=True, indent=2)
+    
+    @classmethod
+    def from_yaml(cls, file_path: str | Path) -> 'SyftObject':
+        """Load a SyftObject from a yaml file with file-backed storage"""
+        file_path = Path(file_path)
+        
+        # Validate that the file has the correct extension
+        if not file_path.name.endswith('.syftobject.yaml'):
+            raise ValueError(f"File must have .syftobject.yaml extension, got: {file_path.name}")
+        
+        with open(file_path, 'r') as f:
+            data = yaml.safe_load(f)
+        
+        # Add the yaml path to the data
+        data['_yaml_path'] = file_path
+        
+        return cls(**data)
+    
+    def refresh(self) -> None:
+        """Refresh attributes from disk"""
+        if not self._yaml_path or not self._yaml_path.exists():
+            return
+        
+        with open(self._yaml_path, 'r') as f:
+            data = yaml.safe_load(f)
+        
+        # Update all attributes
+        for key, value in data.items():
+            if hasattr(self, key) and not key.startswith('_'):
+                # Use object.__setattr__ to avoid triggering sync
+                object.__setattr__(self, key, value)
+    
     @property
     def is_folder(self) -> bool:
         """Check if this object represents a folder."""
@@ -96,6 +178,10 @@ class SyftObject(BaseModel):
     @property
     def syftobject_path(self) -> str:
         """Get the full local file path for the .syftobject.yaml file"""
+        # If we have a yaml path set, use it
+        if self._yaml_path:
+            return str(self._yaml_path.absolute())
+        
         # First try to get path from the syftobject field
         if hasattr(self, 'syftobject') and self.syftobject:
             return self._get_local_file_path(self.syftobject)
@@ -281,15 +367,11 @@ class SyftObject(BaseModel):
                 # Add .syftobject.yaml to existing extension
                 file_path = Path(str(file_path) + '.syftobject.yaml')
         
-        # Ensure directory exists
-        file_path.parent.mkdir(parents=True, exist_ok=True)
+        # Update the yaml path
+        self._yaml_path = file_path
         
-        # Convert to dict and handle datetime/UUID serialization
-        data = self.model_dump(mode='json')
-        
-        # Write to YAML file
-        with open(file_path, 'w') as f:
-            yaml.dump(data, f, default_flow_style=False, sort_keys=True, indent=2)
+        # Sync to disk
+        self._sync_to_disk()
         
         # Create SyftBox permission files if requested
         if create_syftbox_permissions:
@@ -298,15 +380,8 @@ class SyftObject(BaseModel):
     @classmethod
     def _load_yaml(cls, file_path: str | Path) -> 'SyftObject':
         """Load a syft object from a .syftobject.yaml file"""
-        file_path = Path(file_path)
-        
-        # Validate that the file has the correct extension
-        if not file_path.name.endswith('.syftobject.yaml'):
-            raise ValueError(f"File must have .syftobject.yaml extension, got: {file_path.name}")
-        
-        with open(file_path, 'r') as f:
-            data = yaml.safe_load(f)
-        return cls(**data)
+        # This now uses from_yaml which provides file-backed storage
+        return cls.from_yaml(file_path)
 
     def _create_syftbox_permissions(self, syftobject_file_path: Path) -> None:
         """Create SyftBox permission files for the syft object"""
@@ -490,5 +565,3 @@ class SyftObject(BaseModel):
         except Exception as e:
             print(f"Error deleting standard object: {e}")
             return False
-    
- 

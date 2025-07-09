@@ -4,6 +4,7 @@ import os
 import hashlib
 import time
 import shutil
+import yaml
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, List
@@ -180,22 +181,55 @@ def syobj(
         syftobj_filename = f"{folder_name}.syftobject.yaml"
         final_syftobject_path = generate_syftobject_url(email, syftobj_filename, syftbox_client)
         
-        return SyftObject(
-            uid=uid,
-            private_url=private_url,
-            mock_url=mock_url,
-            syftobject=final_syftobject_path,
-            name=name,
-            object_type="folder",  # KEY: Mark as folder
-            description=description or f"Folder object: {name}",
-            updated_at=utcnow(),
-            metadata=clean_metadata,
-            syftobject_permissions=discovery_read or ["public"],
-            mock_permissions=mock_read or ["public"],
-            mock_write_permissions=mock_write or [],
-            private_permissions=private_read or [email],
-            private_write_permissions=private_write or [email]
-        )
+        # Create folder SyftObject data
+        folder_obj_data = {
+            "uid": uid,
+            "private_url": private_url,
+            "mock_url": mock_url,
+            "syftobject": final_syftobject_path,
+            "name": name,
+            "object_type": "folder",  # KEY: Mark as folder
+            "description": description or f"Folder object: {name}",
+            "created_at": utcnow(),
+            "updated_at": utcnow(),
+            "metadata": clean_metadata,
+            "syftobject_permissions": discovery_read or ["public"],
+            "mock_permissions": mock_read or ["public"],
+            "mock_write_permissions": mock_write or [],
+            "private_permissions": private_read or [email],
+            "private_write_permissions": private_write or [email]
+        }
+        
+        # Save folder yaml for file-backed storage
+        if auto_save:
+            save_path = tmp_dir / syftobj_filename
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+            import yaml
+            with open(save_path, 'w') as f:
+                yaml.dump(folder_obj_data, f, default_flow_style=False, sort_keys=True, indent=2)
+            
+            # Create file-backed object
+            folder_obj = SyftObject.from_yaml(save_path)
+            
+            # Move yaml to SyftBox if needed
+            if move_files_to_syftbox and syftbox_client:
+                if move_file_to_syftbox_location(save_path, final_syftobject_path, syftbox_client):
+                    clean_metadata["_file_operations"] = {
+                        "syftobject_yaml_path": str(save_path),
+                        "files_moved_to_syftbox": [f"{save_path} → {final_syftobject_path}"]
+                    }
+                    folder_obj.metadata.update(clean_metadata)
+            
+            # Create permissions
+            if create_syftbox_permissions:
+                folder_obj._create_syftbox_permissions(save_path)
+        else:
+            # Create in-memory object
+            folder_obj = SyftObject(**folder_obj_data)
+        
+        # Wrap in clean API
+        from .clean_api import wrap_syft_object
+        return wrap_syft_object(folder_obj)
     
     # === VALIDATE INPUT ===
     has_mock_content = mock_contents is not None or mock_file is not None
@@ -332,22 +366,30 @@ def syobj(
         else:
             description = f"Auto-generated object: {name}"
     
-    # === CREATE SYFT OBJECT ===
-    syft_obj = SyftObject(
-        uid=uid,
-        private_url=final_private_path,
-        mock_url=final_mock_path,
-        syftobject=final_syftobject_path,
-        name=name,
-        description=description,
-        updated_at=utcnow(),
-        metadata=clean_metadata,
-        syftobject_permissions=final_discovery_read,
-        mock_permissions=final_mock_read,
-        mock_write_permissions=final_mock_write,
-        private_permissions=final_private_read,
-        private_write_permissions=final_private_write
-    )
+    # === DETERMINE SAVE LOCATION ===
+    if save_to:
+        save_path = Path(save_to)
+    else:
+        safe_name = name.lower().replace(" ", "_").replace("-", "_")
+        save_path = tmp_dir / f"{safe_name}_{uid_short}.syftobject.yaml"
+    
+    # === CREATE SYFT OBJECT DATA ===
+    syft_obj_data = {
+        "uid": uid,
+        "private_url": final_private_path,
+        "mock_url": final_mock_path,
+        "syftobject": final_syftobject_path,
+        "name": name,
+        "description": description,
+        "created_at": utcnow(),
+        "updated_at": utcnow(),
+        "metadata": clean_metadata,
+        "syftobject_permissions": final_discovery_read,
+        "mock_permissions": final_mock_read,
+        "mock_write_permissions": final_mock_write,
+        "private_permissions": final_private_read,
+        "private_write_permissions": final_private_write
+    }
     
     # === TRACK FILE OPERATIONS ===
     file_operations = {
@@ -357,18 +399,27 @@ def syobj(
         "syftobject_yaml_path": None  # Will be set during save
     }
     clean_metadata["_file_operations"] = file_operations
+    syft_obj_data["metadata"] = clean_metadata
     
-    # === AUTO-SAVE ===
+    # === SAVE YAML FIRST (for file-backed storage) ===
     if auto_save:
-        # Determine save location
-        if save_to:
-            save_path = save_to
-        else:
-            safe_name = name.lower().replace(" ", "_").replace("-", "_")
-            save_path = tmp_dir / f"{safe_name}_{uid_short}.syftobject.yaml"
+        # Ensure the file ends with .syftobject.yaml
+        if not save_path.name.endswith('.syftobject.yaml'):
+            if save_path.suffix == '.yaml':
+                save_path = save_path.with_suffix('.syftobject.yaml')
+            elif save_path.suffix == '':
+                save_path = save_path.with_suffix('.syftobject.yaml')
+            else:
+                save_path = Path(str(save_path) + '.syftobject.yaml')
         
-        # Save the syftobject.yaml file
-        syft_obj.save_yaml(save_path, create_syftbox_permissions=False)
+        # Save the YAML file directly
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        import yaml
+        with open(save_path, 'w') as f:
+            yaml.dump(syft_obj_data, f, default_flow_style=False, sort_keys=True, indent=2)
+        
+        # === CREATE FILE-BACKED SYFT OBJECT ===
+        syft_obj = SyftObject.from_yaml(save_path)
         
         # Move .syftobject.yaml file to SyftBox location if available
         final_syftobj_path = save_path
@@ -389,14 +440,14 @@ def syobj(
                         pass
         
         # Track the final syftobject.yaml file path
-        clean_metadata["_file_operations"]["syftobject_yaml_path"] = str(final_syftobj_path)
-        
-        # Update the syft object's metadata
-        syft_obj.metadata.update(clean_metadata)
+        syft_obj.metadata["_file_operations"]["syftobject_yaml_path"] = str(final_syftobj_path)
         
         # Create SyftBox permission files in the final location
         if create_syftbox_permissions:
             syft_obj._create_syftbox_permissions(Path(final_syftobj_path))
+    else:
+        # If not auto-saving, create in-memory object with yaml path set to None
+        syft_obj = SyftObject(**syft_obj_data)
     
     # Wrap in clean API
     from .clean_api import wrap_syft_object
