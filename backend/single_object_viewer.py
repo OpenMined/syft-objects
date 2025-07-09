@@ -61,26 +61,27 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: white;
-            padding: 0;
+            background: #f8f9fa;
+            padding: 12px;
             margin: 0;
-            color: #1f2937;
-            font-size: 14px;
+            color: #374151;
+            font-size: 13px;
+            line-height: 1.5;
         }}
         
         .widget-container {{
             background: white;
-            border-radius: 0;
-            box-shadow: none;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             width: 100%;
-            max-width: none;
-            margin: 0;
+            max-width: 1200px;
+            margin: 0 auto;
             overflow: hidden;
         }}
         
         .widget-header {{
-            background: #f3f4f6;
-            padding: 16px 20px;
+            background: white;
+            padding: 12px 16px;
             border-bottom: 1px solid #e5e7eb;
             display: flex;
             align-items: center;
@@ -88,40 +89,42 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .widget-title {{
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
             color: #111827;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }}
         
         .uid-badge {{
             font-size: 11px;
-            font-family: monospace;
-            background: #e5e7eb;
-            padding: 2px 6px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            background: #f3f4f6;
+            padding: 2px 8px;
             border-radius: 4px;
             color: #6b7280;
+            font-weight: 500;
         }}
         
         .tabs {{
             display: flex;
-            background: #f9fafb;
+            background: #f8f9fa;
             border-bottom: 1px solid #e5e7eb;
             overflow-x: auto;
         }}
         
         .tab {{
-            padding: 12px 24px;
+            padding: 10px 20px;
             cursor: pointer;
             border: none;
             background: none;
-            font-size: 14px;
+            font-size: 13px;
             color: #6b7280;
             white-space: nowrap;
             transition: all 0.2s;
             position: relative;
+            font-weight: 500;
         }}
         
         .tab:hover {{
@@ -146,7 +149,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .tab-content {{
             display: none;
-            padding: 24px;
+            padding: 16px;
             animation: fadeIn 0.3s ease-in-out;
         }}
         
@@ -166,27 +169,28 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .form-group {{
-            margin-bottom: 20px;
+            margin-bottom: 12px;
         }}
         
         .form-label {{
             display: block;
-            font-size: 12px;
-            font-weight: 500;
-            color: #374151;
-            margin-bottom: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #6b7280;
+            margin-bottom: 4px;
             text-transform: uppercase;
-            letter-spacing: 0.025em;
+            letter-spacing: 0.05em;
         }}
         
         .form-input {{
             width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 14px;
+            padding: 6px 10px;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            font-size: 13px;
             transition: all 0.2s;
             font-family: inherit;
+            background: white;
         }}
         
         .form-input:focus {{
@@ -203,20 +207,21 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         textarea.form-input {{
             resize: vertical;
-            min-height: 80px;
+            min-height: 60px;
         }}
         
         .info-grid {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
         }}
         
         .info-item {{
-            background: #f9fafb;
-            padding: 12px 16px;
-            border-radius: 6px;
+            background: #f8f9fa;
+            padding: 10px 12px;
+            border-radius: 4px;
+            border: 1px solid #e5e7eb;
         }}
         
         .info-label {{
@@ -228,16 +233,18 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .info-value {{
-            font-size: 14px;
+            font-size: 13px;
             color: #111827;
-            font-family: monospace;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-weight: 500;
         }}
         
         .file-section {{
-            background: #f9fafb;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 16px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid #e5e7eb;
         }}
         
         .file-header {{
@@ -248,9 +255,9 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .file-title {{
-            font-size: 16px;
-            font-weight: 500;
-            color: #111827;
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
         }}
         
         .file-info {{
@@ -263,72 +270,77 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .file-iframe {{
             width: 100%;
-            height: 625px;
-            border: none;
-            border-radius: 6px;
+            height: 400px;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
             background: white;
         }}
         
         .btn {{
-            padding: 6px 16px;
-            border-radius: 6px;
-            font-size: 13px;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 12px;
             font-weight: 500;
-            border: none;
+            border: 1px solid transparent;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.15s;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
+            line-height: 1.5;
         }}
         
         .btn-primary {{
-            background-color: rgba(59, 130, 246, 0.2);
-            color: #3b82f6;
-            border: none;
+            background-color: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
         }}
         
         .btn-primary:hover {{
-            background-color: rgba(59, 130, 246, 0.3);
+            background-color: #2563eb;
+            border-color: #2563eb;
         }}
         
         .btn-secondary {{
-            background: #e5e7eb;
+            background: white;
             color: #374151;
-            border: none;
+            border: 1px solid #d1d5db;
         }}
         
         .btn-secondary:hover {{
-            background: #d1d5db;
+            background: #f9fafb;
+            border-color: #9ca3af;
         }}
         
         .btn-danger {{
-            background: rgba(239, 68, 68, 0.2);
-            color: #dc2626;
-            border: none;
+            background: #ef4444;
+            color: white;
+            border-color: #ef4444;
         }}
         
         .btn-danger:hover {{
-            background: rgba(239, 68, 68, 0.3);
+            background: #dc2626;
+            border-color: #dc2626;
         }}
         
         .permissions-section {{
-            background: #f9fafb;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 16px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid #e5e7eb;
         }}
         
         .permissions-title {{
-            font-size: 16px;
-            font-weight: 500;
-            color: #111827;
-            margin-bottom: 16px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 12px;
         }}
         
         .permission-group {{
-            margin-bottom: 16px;
-            padding-bottom: 16px;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
             border-bottom: 1px solid #e5e7eb;
         }}
         
@@ -339,10 +351,10 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .permission-label {{
-            font-size: 14px;
-            font-weight: 500;
-            color: #374151;
-            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #6b7280;
+            margin-bottom: 6px;
         }}
         
         .email-list {{
@@ -355,12 +367,13 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         .email-tag {{
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            background: #dbeafe;
-            color: #1e40af;
-            border-radius: 4px;
-            font-size: 13px;
+            gap: 4px;
+            padding: 3px 8px;
+            background: #e0e7ff;
+            color: #3730a3;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 500;
         }}
         
         .email-tag .remove {{
@@ -442,17 +455,17 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .action-buttons {{
             display: flex;
-            gap: 12px;
-            margin-top: 24px;
-            padding-top: 20px;
+            gap: 8px;
+            margin-top: 16px;
+            padding-top: 16px;
             border-top: 1px solid #e5e7eb;
         }}
         
         .status-message {{
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 13px;
-            margin-bottom: 16px;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-bottom: 12px;
             display: none;
         }}
         
@@ -470,8 +483,8 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .loading {{
             display: inline-block;
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
             border: 2px solid #f3f4f6;
             border-top-color: #3b82f6;
             border-radius: 50%;
@@ -491,7 +504,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                 <span class="uid-badge">{object_uid[:8]}...</span>
             </div>
             <button class="btn btn-primary" onclick="refreshObject()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
                 </svg>
                 Refresh
@@ -553,13 +566,13 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             
             <div class="action-buttons">
                 <button class="btn btn-primary" onclick="saveOverview()">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z"/>
                     </svg>
                     Save Changes
                 </button>
                 <button class="btn btn-danger" onclick="deleteObject()">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"/>
                     </svg>
                     Delete Object
