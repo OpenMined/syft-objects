@@ -342,17 +342,19 @@ class TestObjectsCollection:
         """Test to_list method"""
         objects = [Mock(), Mock()]
         
-        # Test with cached collection
-        collection = ObjectsCollection(objects=objects)
-        result = collection.to_list()
-        assert result == objects
-        
-        # Test with non-cached collection
-        collection = ObjectsCollection()
-        collection._cached = False
-        with patch.object(collection, '_ensure_loaded'):
+        # Mock the wrap_syft_object function to return the input unchanged
+        with patch('syft_objects.clean_api.wrap_syft_object', side_effect=lambda x: x):
+            # Test with cached collection
+            collection = ObjectsCollection(objects=objects)
             result = collection.to_list()
-            assert result == []
+            assert result == objects
+            
+            # Test with non-cached collection
+            collection = ObjectsCollection()
+            collection._cached = False
+            with patch.object(collection, '_ensure_loaded'):
+                result = collection.to_list()
+                assert result == []
     
     def test_get_by_indices(self):
         """Test get_by_indices method"""
