@@ -110,11 +110,12 @@ class TestCreateObject:
             with patch('syft_objects.factory.detect_user_email', return_value="test@example.com"):
                 obj = create_object()
                 
-                assert isinstance(obj, SyftObject)
-                assert obj.name.startswith("Auto Object")
-                assert "Object" in obj.description and "with explicit" in obj.description
-                assert obj.private_permissions == ["test@example.com"]
-                assert obj.mock_permissions == ["public"]
+                # create_object returns a wrapped object, not raw SyftObject
+                assert hasattr(obj, 'get_name')  # CleanSyftObject has get_name method
+                assert obj.get_name().startswith("Auto Object")
+                assert "Object" in obj.get_description() and "with explicit" in obj.get_description()
+                assert obj.get_private_permissions() == ["test@example.com"]
+                assert obj.get_mock_permissions() == ["public"]
     
     def test_with_content_strings(self):
         """Test create_object with content strings"""

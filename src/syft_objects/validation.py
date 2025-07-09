@@ -18,7 +18,7 @@ class MockRealValidationError(ValueError):
         full_message = f"Mock/Real Validation Error: {message}"
         if suggestion:
             full_message += f"\n\nSuggestion: {suggestion}"
-        full_message += "\n\nTo skip validation, use: syobj(..., skip_validation=True)"
+        full_message += "\n\nTo skip validation, use: create_object(..., skip_validation=True)"
         
         super().__init__(full_message)
 

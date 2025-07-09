@@ -207,7 +207,11 @@ async def get_objects(
             if hasattr(obj, 'get_urls'):
                 # This is a CleanSyftObject
                 urls = obj.get_urls()
-                perms = obj.get_permissions()
+                perms = {
+                    "syftobject": {"read": obj.get_read_permissions()},
+                    "mock": {"read": obj.mock.get_read_permissions(), "write": obj.mock.get_write_permissions()},
+                    "private": {"read": obj.private.get_read_permissions(), "write": obj.private.get_write_permissions()}
+                }
                 obj_data = {
                     "index": actual_index,
                     "uid": obj.get_uid(),
