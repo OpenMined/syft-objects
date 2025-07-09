@@ -331,7 +331,7 @@ async def create_object(
         extended_metadata = metadata.copy()
         extended_metadata.update({
             "description": description,
-            "email": user_email,
+            "owner_email": user_email,
             "auto_save": True,
             "move_files_to_syftbox": True,
             "create_syftbox_permissions": True

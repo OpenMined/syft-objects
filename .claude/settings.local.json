@@ -37,7 +37,9 @@
       "Bash(cp:*)",
       "Bash(find:*)",
       "Bash(grep:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git branch:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": []
   }
