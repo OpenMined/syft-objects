@@ -127,8 +127,10 @@ class ObjectsCollection:
                         for syftobj_file in public_objects_dir.glob("*.syftobject.yaml"):
                             try:
                                 from .models import SyftObject
+                                from .clean_api import CleanSyftObject
                                 syft_obj = SyftObject._load_yaml(syftobj_file)
-                                self._objects.append(syft_obj)
+                                clean_obj = CleanSyftObject(syft_obj)
+                                self._objects.append(clean_obj)
                             except Exception:
                                 continue
                     
@@ -137,8 +139,10 @@ class ObjectsCollection:
                         for syftobj_file in private_objects_dir.glob("*.syftobject.yaml"):
                             try:
                                 from .models import SyftObject
+                                from .clean_api import CleanSyftObject
                                 syft_obj = SyftObject._load_yaml(syftobj_file)
-                                self._objects.append(syft_obj)
+                                clean_obj = CleanSyftObject(syft_obj)
+                                self._objects.append(clean_obj)
                             except Exception:
                                 continue
                     
@@ -159,8 +163,10 @@ class ObjectsCollection:
                                 print(f"Debug: Found {syftobj_file.relative_to(app_data_dir)}")
                             try:
                                 from .models import SyftObject
+                                from .clean_api import CleanSyftObject
                                 syft_obj = SyftObject._load_yaml(syftobj_file)
-                                self._objects.append(syft_obj)
+                                clean_obj = CleanSyftObject(syft_obj)
+                                self._objects.append(clean_obj)
                             except Exception as e:
                                 if "DEBUG_SYFT_OBJECTS" in os.environ:
                                     print(f"Debug: Error loading {syftobj_file}: {e}")
@@ -173,8 +179,10 @@ class ObjectsCollection:
                                 continue
                             try:
                                 from .models import SyftObject
+                                from .clean_api import CleanSyftObject
                                 syft_obj = SyftObject._load_yaml(syftobj_file)
-                                self._objects.append(syft_obj)
+                                clean_obj = CleanSyftObject(syft_obj)
+                                self._objects.append(clean_obj)
                             except Exception as e:
                                 # Debug: print errors during development
                                 if "DEBUG_SYFT_OBJECTS" in os.environ:

@@ -25,6 +25,7 @@ export PATH="$VIRTUAL_ENV/bin:$PATH"
 # Install only core dependencies needed for the server and library
 echo "📦 Installing minimal server dependencies..."
 # Install syft-objects package without dependencies
+uv pip uninstall syft-objects
 uv pip install -e . --no-deps
 # Install minimal dependencies for server + syft-objects core functionality
 uv pip install \
