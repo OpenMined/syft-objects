@@ -317,6 +317,37 @@ class MockAccessor:
                 return f"{base_url}/editor?path={path}"
         return None
     
+    def _repr_html_(self) -> str:
+        """HTML representation for Jupyter display"""
+        if self.is_folder():
+            path = self.get_path()
+            if path:
+                return f'''
+                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
+                    <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">📁 Mock Folder</h3>
+                    <div style="margin-bottom: 8px; font-size: 12px; color: #666;">
+                        <strong>Path:</strong> <code>{path}</code>
+                    </div>
+                    <iframe src="http://localhost:8004/editor?path={path}" 
+                            style="width: 100%; height: 600px; border: 1px solid #ccc; border-radius: 4px;">
+                    </iframe>
+                </div>
+                '''
+        else:
+            # For files, show basic info
+            path = self.get_path()
+            return f'''
+            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
+                <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">🔍 Mock File</h3>
+                <div style="margin-bottom: 8px; font-size: 12px; color: #666;">
+                    <strong>Path:</strong> <code>{path or 'Not found'}</code>
+                </div>
+                <div style="font-size: 12px; color: #666;">
+                    Use <code>.get_path()</code> to get the file path, or access via the main object viewer.
+                </div>
+            </div>
+            '''
+    
     def move_path(self, new_path: str, user_email: str = None) -> bool:
         """Move the mock file to a new location (requires admin permissions)
         
@@ -435,6 +466,37 @@ class PrivateAccessor:
             if path:
                 return f"{base_url}/editor?path={path}"
         return None
+    
+    def _repr_html_(self) -> str:
+        """HTML representation for Jupyter display"""
+        if self.is_folder():
+            path = self.get_path()
+            if path:
+                return f'''
+                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
+                    <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">🔐 Private Folder</h3>
+                    <div style="margin-bottom: 8px; font-size: 12px; color: #666;">
+                        <strong>Path:</strong> <code>{path}</code>
+                    </div>
+                    <iframe src="http://localhost:8004/editor?path={path}" 
+                            style="width: 100%; height: 600px; border: 1px solid #ccc; border-radius: 4px;">
+                    </iframe>
+                </div>
+                '''
+        else:
+            # For files, show basic info
+            path = self.get_path()
+            return f'''
+            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
+                <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">🔐 Private File</h3>
+                <div style="margin-bottom: 8px; font-size: 12px; color: #666;">
+                    <strong>Path:</strong> <code>{path or 'Not found'}</code>
+                </div>
+                <div style="font-size: 12px; color: #666;">
+                    Use <code>.get_path()</code> to get the file path, or access via the main object viewer.
+                </div>
+            </div>
+            '''
     
     def move_path(self, new_path: str, user_email: str = None) -> bool:
         """Move the private file to a new location (requires admin permissions)
