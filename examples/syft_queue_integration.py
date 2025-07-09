@@ -20,7 +20,7 @@ from datetime import datetime
 import tempfile
 
 # Import the updated syft-objects with folder support
-from syft_objects import syobj
+from syft_objects import create_object
 from syft_objects.models import SyftObject
 
 
@@ -136,7 +136,7 @@ class JobManager:
         print(f"📁 Submitting job folder: {job_name}")
         
         # Create folder object using the new syft-objects functionality
-        job_object = syobj(
+        job_object = create_object(
             name=f"Job: {job_name}",
             private_folder=str(job_folder_path),  # Use new private_folder parameter
             mock_read=["reviewers", "queue_admin"],  # Reviewers can see job exists

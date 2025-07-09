@@ -8,7 +8,8 @@ from unittest.mock import Mock, patch, MagicMock
 from uuid import UUID
 import yaml
 
-from syft_objects.factory import detect_user_email, syobj
+from syft_objects.factory import detect_user_email
+from syft_objects import create_object
 from syft_objects.models import SyftObject
 
 
@@ -100,14 +101,14 @@ class TestDetectUserEmail:
                         assert email == "user@example.com"
 
 
-class TestSyobj:
-    """Test syobj factory function"""
+class TestCreateObject:
+    """Test create_object factory function"""
     
     def test_minimal_creation(self):
-        """Test syobj with minimal parameters"""
+        """Test create_object with minimal parameters"""
         with patch('syft_objects.factory.get_syftbox_client', return_value=None):
             with patch('syft_objects.factory.detect_user_email', return_value="test@example.com"):
-                obj = syobj()
+                obj = create_object()
                 
                 assert isinstance(obj, SyftObject)
                 assert obj.name.startswith("Auto Object")
@@ -116,9 +117,9 @@ class TestSyobj:
                 assert obj.mock_permissions == ["public"]
     
     def test_with_content_strings(self):
-        """Test syobj with content strings"""
+        """Test create_object with content strings"""
         with patch('syft_objects.factory.get_syftbox_client', return_value=None):
-            obj = syobj(
+            obj = create_object(
                 name="Test Object",
                 private_contents="Private data",
                 mock_contents="Mock data"
@@ -129,7 +130,7 @@ class TestSyobj:
             assert "public" in obj.mock_url
     
     def test_with_files(self, temp_dir):
-        """Test syobj with file paths"""
+        """Test create_object with file paths"""
         # Create test files
         private_file = temp_dir / "private.txt"
         private_file.write_text("Private file content")
@@ -138,7 +139,7 @@ class TestSyobj:
         mock_file.write_text("Mock file content")
         
         with patch('syft_objects.factory.get_syftbox_client', return_value=None):
-            obj = syobj(
+            obj = create_object(
                 name="File Object",
                 private_file=str(private_file),
                 mock_file=str(mock_file)
@@ -149,21 +150,21 @@ class TestSyobj:
             assert "public" in obj.mock_url
     
     def test_file_not_found(self):
-        """Test syobj with non-existent file"""
+        """Test create_object with non-existent file"""
         with patch('syft_objects.factory.get_syftbox_client', return_value=None):
             with pytest.raises(FileNotFoundError, match="Private file not found"):
-                syobj(private_file="/nonexistent/file.txt")
+                create_object(private_file="/nonexistent/file.txt")
     
     def test_mock_file_not_found(self):
-        """Test syobj with non-existent mock file"""
+        """Test create_object with non-existent mock file"""
         with patch('syft_objects.factory.get_syftbox_client', return_value=None):
             with pytest.raises(FileNotFoundError, match="Mock file not found"):
-                syobj(mock_file="/nonexistent/mock_file.txt")
+                create_object(mock_file="/nonexistent/mock_file.txt")
     
     def test_auto_generate_name_from_content(self):
         """Test automatic name generation from content"""
         with patch('syft_objects.factory.get_syftbox_client', return_value=None):
-            obj = syobj(private_contents="Some test content")
+            obj = create_object(private_contents="Some test content")
             
             assert obj.name.startswith("Content")
             assert len(obj.name.split()[-1]) == 8  # Hash suffix
@@ -172,7 +173,7 @@ class TestSyobj:
         """Test default name when no content or files provided but name=None"""
         with patch('syft_objects.factory.get_syftbox_client', return_value=None):
             # Pass some content so auto-generation doesn't happen, but name=None to trigger fallback
-            obj = syobj(name=None, mock_contents="", private_contents="")
+            obj = create_object(name=None, mock_contents="", private_contents="")
             
             assert obj.name == "Syft Object"
     
@@ -182,14 +183,14 @@ class TestSyobj:
         test_file.write_text("col1,col2\n1,2")
         
         with patch('syft_objects.factory.get_syftbox_client', return_value=None):
-            obj = syobj(private_file=str(test_file))
+            obj = create_object(private_file=str(test_file))
             
             assert obj.name == "My Data File"
     
     def test_permissions_customization(self):
         """Test custom permissions"""
         with patch('syft_objects.factory.get_syftbox_client', return_value=None):
-            obj = syobj(
+            obj = create_object(
                 name="Custom Perms",
                 discovery_read=["user1@example.com"],
                 mock_read=["user2@example.com", "user3@example.com"],
@@ -215,7 +216,7 @@ class TestSyobj:
         }
         
         with patch('syft_objects.factory.get_syftbox_client', return_value=None):
-            obj = syobj(name="Meta Object", metadata=metadata)
+            obj = create_object(name="Meta Object", metadata=metadata)
             
             assert obj.description == "Custom description"
             assert obj.private_permissions == ["custom@example.com"]
@@ -233,7 +234,7 @@ class TestSyobj:
         mock_get_client.return_value = mock_client
         mock_move.return_value = True
         
-        obj = syobj(
+        obj = create_object(
             name="Move Test",
             private_contents="Private data",
             mock_contents="Mock data",
@@ -261,7 +262,7 @@ class TestSyobj:
         test_file = temp_dir / "original.txt"
         test_file.write_text("Original content")
         
-        obj = syobj(
+        obj = create_object(
             name="Copy Test",
             private_file=str(test_file),
             metadata={"move_files_to_syftbox": True}
@@ -275,7 +276,7 @@ class TestSyobj:
         """Test with auto_save disabled"""
         with patch('syft_objects.factory.get_syftbox_client', return_value=None):
             with patch.object(SyftObject, 'save_yaml') as mock_save:
-                obj = syobj(
+                obj = create_object(
                     name="No Save",
                     metadata={"auto_save": False}
                 )
@@ -287,7 +288,7 @@ class TestSyobj:
         save_path = temp_dir / "custom" / "location.yaml"
         
         with patch('syft_objects.factory.get_syftbox_client', return_value=None):
-            obj = syobj(
+            obj = create_object(
                 name="Custom Save",
                 metadata={"save_to": str(save_path)}
             )
@@ -302,7 +303,7 @@ class TestSyobj:
         mock_file.write_text("Mock from file")
         
         with patch('syft_objects.factory.get_syftbox_client', return_value=None):
-            obj = syobj(
+            obj = create_object(
                 name="Mixed",
                 private_contents="Private from string",
                 mock_file=str(mock_file)
@@ -315,7 +316,7 @@ class TestSyobj:
     def test_only_mock_content(self):
         """Test with only mock content provided"""
         with patch('syft_objects.factory.get_syftbox_client', return_value=None):
-            obj = syobj(
+            obj = create_object(
                 name="Mock Only",
                 mock_contents="Only mock data"
             )
@@ -327,7 +328,7 @@ class TestSyobj:
     def test_only_private_content(self):
         """Test with only private content provided"""
         with patch('syft_objects.factory.get_syftbox_client', return_value=None):
-            obj = syobj(
+            obj = create_object(
                 name="Private Only",
                 private_contents="Only private data"
             )
@@ -339,8 +340,8 @@ class TestSyobj:
     def test_uid_uniqueness(self):
         """Test that each object gets unique UID"""
         with patch('syft_objects.factory.get_syftbox_client', return_value=None):
-            obj1 = syobj(name="Object 1")
-            obj2 = syobj(name="Object 2")
+            obj1 = create_object(name="Object 1")
+            obj2 = create_object(name="Object 2")
             
             assert obj1.uid != obj2.uid
             assert isinstance(obj1.uid, UUID)
@@ -350,7 +351,7 @@ class TestSyobj:
         """Test automatic description generation"""
         with patch('syft_objects.factory.get_syftbox_client', return_value=None):
             # With content strings
-            obj1 = syobj(
+            obj1 = create_object(
                 name="Content Object",
                 private_contents="data",
                 mock_contents="mock"
@@ -359,7 +360,7 @@ class TestSyobj:
             
             # With files
             with patch('pathlib.Path.exists', return_value=True):
-                obj2 = syobj(
+                obj2 = create_object(
                     name="File Object",
                     private_file="private.txt",
                     mock_file="mock.txt"
@@ -387,7 +388,7 @@ class TestSyobj:
         with patch('syft_objects.factory.get_syftbox_client', return_value=mock_client):
             with patch('syft_objects.factory.move_file_to_syftbox_location', return_value=True) as mock_move:
                 with patch('syft_objects.factory.copy_file_to_syftbox_location', return_value=True) as mock_copy:
-                    obj = syobj(
+                    obj = create_object(
                         name="Copy Test",
                         private_file=str(private_file),
                         mock_file=str(mock_file),
@@ -416,7 +417,7 @@ class TestSyobj:
         with patch('syft_objects.factory.get_syftbox_client', return_value=mock_client):
             with patch('syft_objects.client.SyftBoxURL', side_effect=Exception("URL error")):
                 with patch('syft_objects.factory.move_file_to_syftbox_location', return_value=True):
-                    obj = syobj(
+                    obj = create_object(
                         name="Exception Test",
                         private_file=str(test_file),
                         metadata={"auto_save": True, "move_files_to_syftbox": True}
@@ -453,7 +454,7 @@ class TestSyobj:
             with patch('syft_objects.client.SYFTBOX_AVAILABLE', True):
                 # Mock move_file_to_syftbox_location to return True (successful move)
                 with patch('syft_objects.factory.move_file_to_syftbox_location', return_value=True):
-                    obj = syobj(
+                    obj = create_object(
                         name="test_movement",
                         private_file=str(private_file),
                         mock_file=str(mock_file),
@@ -489,7 +490,7 @@ class TestSyobj:
                 # Mock SyftBoxURL constructor to raise exception (lines 299, 301-302)
                 with patch('syft_objects.client.SyftBoxURL', side_effect=Exception("URL parsing failed")):
                     # This will trigger URL processing in the save logic which should hit lines 298-302
-                    obj = syobj(
+                    obj = create_object(
                         name="test_url_exception", 
                         private_file=str(private_file),
                         metadata={"auto_save": True, "move_files_to_syftbox": True}
@@ -520,7 +521,7 @@ class TestSyobj:
                 with patch('syft_objects.factory.move_file_to_syftbox_location', return_value=True):
                     # Create object with content strings - this creates temp files
                     # No private_file or mock_file params passed, so hits else branches
-                    obj = syobj(
+                    obj = create_object(
                         name="test_else_movement",
                         private_contents="Private content from string",
                         mock_contents="Mock content from string", 
@@ -571,7 +572,7 @@ class TestSyobj:
                 # This seems like dead code or a bug in the logic
                 
                 # Just create a normal object to verify
-                obj = syobj(
+                obj = create_object(
                     name="dead_code_test",
                     private_file=str(test_file),
                     metadata={"auto_save": False}  # Don't save to avoid other issues
@@ -607,7 +608,7 @@ class TestSyobj:
                 with patch('syft_objects.client.SyftBoxURL', return_value=mock_url_obj):
                     # Mock move_file_to_syftbox_location to return True
                     with patch('syft_objects.factory.move_file_to_syftbox_location', return_value=True):
-                        obj = syobj(
+                        obj = create_object(
                             name="test_url_conversion",
                             private_file=str(private_file),
                             metadata={"auto_save": True, "move_files_to_syftbox": True}

@@ -444,23 +444,53 @@ Example Usage:
         for i, obj in enumerate(self._objects):
             # Use original index if this is a sliced collection, otherwise use current index
             display_index = self._original_indices[i] if self._original_indices else i
+            
+            # Handle both CleanSyftObject and regular SyftObject instances
+            if hasattr(obj, 'get_name'):
+                # CleanSyftObject instance - use getter methods
+                name = obj.get_name() or "Unnamed"
+                uid = str(obj.get_uid())
+                created_at = obj.get_created_at()
+                description = obj.get_description() or ''
+                metadata = obj.get_metadata()
+                urls = obj.get_urls()
+                private_url = urls.get('private', '')
+                mock_url = urls.get('mock', '')
+            else:
+                # Regular SyftObject instance - use direct attribute access
+                name = getattr(obj, 'name', None) or "Unnamed"
+                uid = str(getattr(obj, 'uid', ''))
+                created_at = getattr(obj, 'created_at', None)
+                description = getattr(obj, 'description', '')
+                metadata = getattr(obj, 'metadata', {})
+                private_url = getattr(obj, 'private_url', '')
+                mock_url = getattr(obj, 'mock_url', '')
+            
             obj_data = {
                 'display_index': display_index,  # Store the correct index to display
-                'name': obj.name or "Unnamed",
-                'uid': str(obj.uid),
-                'created_at': obj.created_at.strftime("%m/%d/%Y, %H:%M:%S UTC") if hasattr(obj, 'created_at') and obj.created_at else "Unknown",
-                'description': getattr(obj, 'description', ''),
+                'name': name,
+                'uid': uid,
+                'created_at': created_at.strftime("%m/%d/%Y, %H:%M:%S UTC") if created_at else "Unknown",
+                'description': description,
                 'mock_data': None,
                 'private_data': None,
-                'private_url': getattr(obj, 'private_url', ''),
-                'mock_url': getattr(obj, 'mock_url', ''),
-                'metadata': getattr(obj, 'metadata', {})
+                'private_url': private_url,
+                'mock_url': mock_url,
+                'metadata': metadata
             }
             
             # Try to read mock data if available
             try:
-                if hasattr(obj, 'mock_path') and obj.mock_path:
-                    mock_path = Path(obj.mock_path)
+                mock_path_str = None
+                if hasattr(obj, 'get_name'):
+                    # CleanSyftObject instance - use mock accessor
+                    mock_path_str = obj.mock.get_path()
+                else:
+                    # Regular SyftObject instance - use direct attribute access
+                    mock_path_str = getattr(obj, 'mock_path', None)
+                
+                if mock_path_str:
+                    mock_path = Path(mock_path_str)
                     if mock_path.exists() and mock_path.is_file():
                         with open(mock_path, 'r', encoding='utf-8') as f:
                             content = f.read()
@@ -473,8 +503,16 @@ Example Usage:
             
             # Try to read private data if available (only in development/local mode)
             try:
-                if hasattr(obj, 'private_path') and obj.private_path:
-                    private_path = Path(obj.private_path)
+                private_path_str = None
+                if hasattr(obj, 'get_name'):
+                    # CleanSyftObject instance - use private accessor
+                    private_path_str = obj.private.get_path()
+                else:
+                    # Regular SyftObject instance - use direct attribute access
+                    private_path_str = getattr(obj, 'private_path', None)
+                
+                if private_path_str:
+                    private_path = Path(private_path_str)
                     if private_path.exists() and private_path.is_file():
                         with open(private_path, 'r', encoding='utf-8') as f:
                             content = f.read()
@@ -810,15 +848,30 @@ Example Usage:
             obj = self._objects[reverse_i]
             # Use original index if this is a sliced collection, otherwise use current index
             display_index = self._original_indices[reverse_i] if self._original_indices else reverse_i
-            name = html_module.escape(obj.name or "Unnamed Object")
+            
+            # Get attributes using CleanSyftObject methods
+            name = obj.get_name() if hasattr(obj, 'get_name') else (obj.name if hasattr(obj, 'name') else "Unnamed Object")
+            name = html_module.escape(name or "Unnamed Object")
             email = html_module.escape(self._get_object_email(obj))
-            uid = str(obj.uid)
-            created = obj.created_at.strftime("%m/%d/%Y, %H:%M:%S UTC") if hasattr(obj, 'created_at') and obj.created_at else "Unknown"
-            description = html_module.escape(obj.description or f"Object '{name}' with explicit mock...")[:40] + "..."
+            uid = obj.get_uid() if hasattr(obj, 'get_uid') else str(obj.uid)
+            
+            # Get created_at handling both CleanSyftObject and raw objects
+            created_at = obj.get_created_at() if hasattr(obj, 'get_created_at') else (obj.created_at if hasattr(obj, 'created_at') else None)
+            created = created_at.strftime("%m/%d/%Y, %H:%M:%S UTC") if created_at else "Unknown"
+            
+            # Get description
+            desc = obj.get_description() if hasattr(obj, 'get_description') else (obj.description if hasattr(obj, 'description') else "")
+            description = html_module.escape(desc or f"Object '{name}' with explicit mock...")[:40] + "..."
             
             # Determine file type
             file_type = ".txt"  # Default
-            if hasattr(obj, 'mock_path') and obj.mock_path:
+            if hasattr(obj, 'mock') and hasattr(obj.mock, 'get_path'):
+                # CleanSyftObject accessor
+                path = Path(obj.mock.get_path())
+                if path.suffix:
+                    file_type = path.suffix
+            elif hasattr(obj, 'mock_path'):
+                # Raw SyftObject
                 path = Path(obj.mock_path)
                 if path.suffix:
                     file_type = path.suffix

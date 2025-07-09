@@ -12,7 +12,7 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.syft_objects import syobj
+from src.syft_objects import create_object
 from src.syft_objects.config import config
 
 
@@ -21,7 +21,7 @@ def demo_manual_mock_note():
     print("\n=== Example 1: Manual Mock Note ===")
     
     # Create an object with a manual mock note
-    obj = syobj(
+    obj = create_object(
         "user_analytics",
         private_contents="user_id,timestamp,action,value\n" + "\n".join(
             f"{i},2024-01-{i%30+1:02d},{['click','view','purchase'][i%3]},{i*10}"
@@ -46,7 +46,7 @@ def demo_automatic_suggestion():
     
     try:
         # Create CSV with automatic analysis
-        obj = syobj(
+        obj = create_object(
             "sales_data",
             mock_contents="product,price,quantity\nWidget A,10.99,5\nWidget B,20.50,3\n"
         )
@@ -63,7 +63,7 @@ def demo_mock_note_api():
     print("\n=== Example 3: Mock Note API ===")
     
     # Create object without note
-    obj = syobj(
+    obj = create_object(
         "model_weights",
         mock_contents='{"layers": 10, "parameters": null, "architecture": "transformer"}',
         private_contents='{"layers": 10, "parameters": [1.23, 4.56, ...], "architecture": "transformer"}'
@@ -80,7 +80,7 @@ def demo_synthetic_data():
     """Example 4: Synthetic data with privacy guarantees"""
     print("\n=== Example 4: Synthetic Data with Privacy ===")
     
-    obj = syobj(
+    obj = create_object(
         "patient_records",
         mock_contents="age,condition,treatment\n45,diabetes,metformin\n52,hypertension,lisinopril",
         private_contents="[PRIVATE MEDICAL DATA]",

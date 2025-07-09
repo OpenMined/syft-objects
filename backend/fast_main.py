@@ -306,8 +306,8 @@ async def create_object(
     logger.info(f"  legacy filename: {filename}")
     
     try:
-        # Import the syobj factory function
-        from syft_objects.factory import syobj
+        # Import the create_object factory function
+        from syft_objects import create_object
         
         # Get the current SyftBox client to get user info
         client = None
@@ -369,7 +369,7 @@ async def create_object(
             
             # Create the object using the dual file approach
             if private_file_path and mock_file_path:
-                new_object = syobj(
+                new_object = create_object(
                     name=name,
                     private_file=str(private_file_path),
                     mock_file=str(mock_file_path),
@@ -381,7 +381,7 @@ async def create_object(
                     metadata=extended_metadata
                 )
             elif private_file_path:
-                new_object = syobj(
+                new_object = create_object(
                     name=name,
                     private_file=str(private_file_path),
                     mock_contents=f"[AUTO-GENERATED] Mock content for {name}",
@@ -393,7 +393,7 @@ async def create_object(
                     metadata=extended_metadata
                 )
             else:  # only mock file
-                new_object = syobj(
+                new_object = create_object(
                     name=name,
                     private_contents=f"[AUTO-GENERATED] Private content for {name}",
                     mock_file=str(mock_file_path),
@@ -427,7 +427,7 @@ async def create_object(
             mock_file_path.write_text(f"[DEMO DATA] {mock_content}")
             
             # Create the object using file paths to preserve filenames
-            new_object = syobj(
+            new_object = create_object(
                 name=name,
                 private_file=str(private_file_path),
                 mock_file=str(mock_file_path),
@@ -440,7 +440,7 @@ async def create_object(
             )
         else:
             # Create the object using content (original behavior)
-            new_object = syobj(
+            new_object = create_object(
                 name=name,
                 private_contents=file_content or f"Content for {name}",
                 mock_contents=f"[DEMO] Mock content for {name}",

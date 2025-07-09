@@ -1,6 +1,6 @@
 # syft-objects - Distributed file discovery and addressing system 
 
-__version__ = "0.9.38"
+__version__ = "0.9.39"
 
 # Internal imports (hidden from public API)
 from . import models as _models
@@ -18,7 +18,6 @@ from . import file_ops as _file_ops
 from . import display as _display
 
 # Public API - only expose essential user-facing functionality
-from .factory import syobj
 from .collections import ObjectsCollection
 from .config import config
 
@@ -29,7 +28,7 @@ objects = ObjectsCollection()
 def create_object(name=None, **kwargs):
     """Create a new SyftObject with explicit naming.
     
-    This is an alias for syobj() with a clearer name.
+    Creates a new SyftObject with the specified parameters.
     
     Args:
         name: Optional name for the object
@@ -87,7 +86,6 @@ __all__ = [
     "create_object", # Function for creating objects
     "delete_object", # Function for deleting objects
     "objects",       # Global collection instance
-    "syobj",         # Legacy factory function
     "config",        # Configuration instance
 ]
 
