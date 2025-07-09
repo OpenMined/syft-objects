@@ -61,8 +61,8 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f8f9fa;
-            padding: 12px;
+            background: white;
+            padding: 0;
             margin: 0;
             color: #374151;
             font-size: 13px;
@@ -71,11 +71,11 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .widget-container {{
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border-radius: 0;
+            box-shadow: none;
             width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
+            max-width: none;
+            margin: 0;
             overflow: hidden;
         }}
         
