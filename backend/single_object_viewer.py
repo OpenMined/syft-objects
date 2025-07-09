@@ -15,9 +15,26 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
     description = target_obj.get_description() if hasattr(target_obj, 'get_description') else target_obj.description
     
     # Get file paths for editor links
-    mock_path = target_obj.mock.path if hasattr(target_obj, 'mock') else getattr(target_obj, 'mock_path', None)
-    private_path = target_obj.private.path if hasattr(target_obj, 'private') else getattr(target_obj, 'private_path', None)
-    syftobject_path = target_obj.syftobject_config.path if hasattr(target_obj, 'syftobject_config') else getattr(target_obj, 'syftobject_path', None)
+    if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'get_path'):
+        mock_path = target_obj.mock.get_path()
+    elif hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'path'):
+        mock_path = target_obj.mock.path
+    else:
+        mock_path = getattr(target_obj, 'mock_path', None)
+    
+    if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'get_path'):
+        private_path = target_obj.private.get_path()
+    elif hasattr(target_obj, 'private') and hasattr(target_obj.private, 'path'):
+        private_path = target_obj.private.path
+    else:
+        private_path = getattr(target_obj, 'private_path', None)
+    
+    if hasattr(target_obj, 'syftobject_config') and hasattr(target_obj.syftobject_config, 'get_path'):
+        syftobject_path = target_obj.syftobject_config.get_path()
+    elif hasattr(target_obj, 'syftobject_config') and hasattr(target_obj.syftobject_config, 'path'):
+        syftobject_path = target_obj.syftobject_config.path
+    else:
+        syftobject_path = getattr(target_obj, 'syftobject_path', None)
     
     html = f"""
 <!DOCTYPE html>
