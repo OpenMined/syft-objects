@@ -9,7 +9,7 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from syft_objects.factory import syobj
+from syft_objects import create_object
 
 def test_mock_write_permissions():
     """Test that admin has write access to mock by default"""
@@ -20,7 +20,7 @@ def test_mock_write_permissions():
         test_dir = Path(temp_dir)
         
         # Create test object with minimal parameters
-        obj = syobj(
+        obj = create_object(
             name="test_object",
             mock_contents="test mock content",
             private_contents="test private content"

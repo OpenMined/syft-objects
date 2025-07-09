@@ -1,7 +1,7 @@
 """Tests for the new SyftObject API"""
 
 import pytest
-from syft_objects import syobj
+from syft_objects import create_object
 
 
 class TestNewAPI:
@@ -9,7 +9,7 @@ class TestNewAPI:
     
     def test_getter_methods(self):
         """Test all getter methods work correctly"""
-        obj = syobj(
+        obj = create_object(
             name="Test Object",
             metadata={"description": "Test Description"},
             private_contents="Private data",
@@ -45,7 +45,7 @@ class TestNewAPI:
     
     def test_setter_methods(self):
         """Test all setter methods work correctly"""
-        obj = syobj(
+        obj = create_object(
             name="Original Name",
             metadata={"description": "Original Description"},
             private_contents="Private data",
@@ -70,7 +70,7 @@ class TestNewAPI:
     
     def test_accessor_objects(self):
         """Test accessor objects work correctly"""
-        obj = syobj(
+        obj = create_object(
             name="Test Object",
             private_contents="Private data",
             mock_contents="Mock data"
@@ -96,7 +96,7 @@ class TestNewAPI:
     
     def test_both_apis_work(self):
         """Test that both old property access and new getter methods work"""
-        obj = syobj(
+        obj = create_object(
             name="Test Object",
             metadata={"description": "Test Description"},
             private_contents="Private data",
@@ -119,7 +119,7 @@ class TestNewAPI:
     
     def test_dir_shows_both_apis(self):
         """Test that dir() shows both old and new API"""
-        obj = syobj(
+        obj = create_object(
             name="Test Object",
             private_contents="Private data",
             mock_contents="Mock data"

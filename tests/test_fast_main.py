@@ -197,9 +197,9 @@ class TestFastAPIEndpoints:
         assert response.status_code == 503
     
     @patch('backend.fast_main.objects')
-    @patch('syft_objects.factory.syobj')
+    @patch('syft_objects.factory.create_object')
     @patch('backend.fast_main.get_syftbox_client')
-    def test_create_object_minimal(self, mock_get_client, mock_syobj, mock_objects, client):
+    def test_create_object_minimal(self, mock_get_client, mock_create_object, mock_objects, client):
         """Test POST /api/objects with minimal data"""
         mock_get_client.return_value = None
         
@@ -212,7 +212,7 @@ class TestFastAPIEndpoints:
         mock_obj.mock_url = "syft://test@example.com/public/test.txt"
         mock_obj.syftobject = "syft://test@example.com/public/test.syftobject.yaml"
         
-        mock_syobj.return_value = mock_obj
+        mock_create_object.return_value = mock_obj
         
         response = client.post("/api/objects", json={
             "name": "Test Object",
@@ -227,8 +227,8 @@ class TestFastAPIEndpoints:
         mock_objects.refresh.assert_called_once()
     
     @patch('backend.fast_main.objects')
-    @patch('syft_objects.factory.syobj')
-    def test_create_object_with_files(self, mock_syobj, mock_objects, client):
+    @patch('syft_objects.factory.create_object')
+    def test_create_object_with_files(self, mock_create_object, mock_objects, client):
         """Test POST /api/objects with file content"""
         mock_obj = Mock()
         mock_obj.uid = uuid4()
@@ -239,7 +239,7 @@ class TestFastAPIEndpoints:
         mock_obj.mock_url = "syft://test@example.com/public/data_mock.txt"
         mock_obj.syftobject = "syft://test@example.com/public/data.syftobject.yaml"
         
-        mock_syobj.return_value = mock_obj
+        mock_create_object.return_value = mock_obj
         
         response = client.post("/api/objects", json={
             "name": "File Object",
@@ -259,9 +259,9 @@ class TestFastAPIEndpoints:
         assert data["success"] is True
         assert data["object"]["name"] == "File Object"
         
-        # Check syobj was called with file paths
-        mock_syobj.assert_called_once()
-        call_args = mock_syobj.call_args
+        # Check create_object was called with file paths
+        mock_create_object.assert_called_once()
+        call_args = mock_create_object.call_args
         assert "private_file" in call_args.kwargs
         assert "mock_file" in call_args.kwargs
     

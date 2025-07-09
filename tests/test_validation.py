@@ -24,7 +24,7 @@ class TestMockRealValidationError:
         """Test basic error message formatting."""
         error = MockRealValidationError("Basic error")
         assert "Mock/Real Validation Error: Basic error" in str(error)
-        assert "To skip validation, use: syobj(..., skip_validation=True)" in str(error)
+        assert "To skip validation, use: create_object(..., skip_validation=True)" in str(error)
     
     def test_error_message_with_suggestion(self):
         """Test error message with suggestion."""
@@ -35,7 +35,7 @@ class TestMockRealValidationError:
         )
         assert "Mock/Real Validation Error: Column mismatch" in str(error)
         assert "Suggestion: Check your columns" in str(error)
-        assert "To skip validation, use: syobj(..., skip_validation=True)" in str(error)
+        assert "To skip validation, use: create_object(..., skip_validation=True)" in str(error)
     
     def test_error_attributes(self):
         """Test error attributes are stored correctly."""

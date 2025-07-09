@@ -10,17 +10,17 @@ class TestPublicAPI:
     def test_public_api_exports(self):
         """Test that only the essential items are exported"""
         public_attrs = [attr for attr in dir(syo) if not attr.startswith('_')]
-        # Should only have the 3 essential items (syobj removed)
+        # Should only have the 3 essential items (create_object removed)
         expected = {'create_object', 'delete_object', 'objects'}
         assert set(public_attrs) == expected
         
     def test_create_object_works(self):
-        """Test that create_object calls the internal syobj function"""
-        # Mock the internal syobj function
-        with patch('syft_objects.factory.syobj') as mock_syobj:
-            mock_syobj.return_value = Mock()
+        """Test that create_object calls the internal create_object function"""
+        # Mock the internal create_object function
+        with patch('syft_objects.factory.create_object') as mock_create_object:
+            mock_create_object.return_value = Mock()
             result = syo.create_object('test', private_contents='data')
-            mock_syobj.assert_called_once_with('test', private_contents='data')
+            mock_create_object.assert_called_once_with('test', private_contents='data')
             
     def test_delete_object_by_uid(self):
         """Test deleting object by UID"""

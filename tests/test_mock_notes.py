@@ -10,7 +10,7 @@ import shutil
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.syft_objects import syobj
+from src.syft_objects import create_object
 from src.syft_objects.config import config
 from src.syft_objects.mock_analyzer import MockAnalyzer, suggest_mock_note
 
@@ -43,7 +43,7 @@ class TestMockNotes:
     
     def test_manual_mock_note(self):
         """Test manually setting a mock note"""
-        obj = syobj(
+        obj = create_object(
             "test_data",
             mock_contents="sample data",
             private_contents="real data " * 100,
@@ -55,7 +55,7 @@ class TestMockNotes:
     
     def test_mock_note_api(self):
         """Test get/set mock note through API"""
-        obj = syobj(
+        obj = create_object(
             "test_data",
             mock_contents="sample",
             private_contents="real data"
@@ -144,7 +144,7 @@ class TestMockNotes:
     
     def test_mock_note_in_metadata(self):
         """Test that mock note is stored in metadata"""
-        obj = syobj(
+        obj = create_object(
             "test",
             mock_contents="mock",
             private_contents="private",

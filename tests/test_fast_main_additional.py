@@ -85,7 +85,7 @@ class TestFastAPIAdditionalEndpoints:
         with patch('backend.fast_main.Path') as mock_path:
             mock_path.return_value = mock_tmp_dir
         
-        with patch('syft_objects.factory.syobj') as mock_syobj:
+        with patch('syft_objects.factory.create_object') as mock_create_object:
             mock_obj = Mock()
             mock_obj.uid = uuid4()
             mock_obj.name = "Legacy File"
@@ -95,7 +95,7 @@ class TestFastAPIAdditionalEndpoints:
             mock_obj.mock_url = "syft://test@example.com/public/data_mock.txt"
             mock_obj.syftobject = "syft://test@example.com/public/data.syftobject.yaml"
             
-            mock_syobj.return_value = mock_obj
+            mock_create_object.return_value = mock_obj
             
             response = client.post("/api/objects", json={
                 "name": "Legacy File",
@@ -108,7 +108,7 @@ class TestFastAPIAdditionalEndpoints:
     @patch('backend.fast_main.objects')
     def test_create_object_exception(self, mock_objects, client):
         """Test POST /api/objects with exception"""
-        with patch('syft_objects.factory.syobj', side_effect=Exception("Creation failed")):
+        with patch('syft_objects.factory.create_object', side_effect=Exception("Creation failed")):
             response = client.post("/api/objects", json={
                 "name": "Test"
             })
