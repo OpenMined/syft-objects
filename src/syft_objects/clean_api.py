@@ -167,6 +167,16 @@ class CleanSyftObject:
     # ===== Actions =====
     def delete_obj(self, user_email: str = None) -> bool:
         """Delete this object with permission checking"""
+        # If no user_email provided, try to get it from SyftBox client
+        if not user_email:
+            try:
+                from .client import get_syftbox_client
+                client = get_syftbox_client()
+                if client and hasattr(client, 'email'):
+                    user_email = client.email
+            except:
+                pass
+        
         return self._CleanSyftObject__obj.delete_obj(user_email)
     
     def set_permissions(self, file_type: str, read: list[str] = None, write: list[str] = None) -> None:
