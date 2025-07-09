@@ -70,13 +70,21 @@ def create_html_display(syft_obj: 'SyftObject') -> str:
     # Show basic file information without buttons
     mock_info = ""
     if mock_file_exists:
-        mock_path = syft_obj._get_local_file_path(syft_obj.mock)
+        # Handle both CleanSyftObject (where .mock is accessor) and raw SyftObject
+        if hasattr(syft_obj.mock, 'get_path'):
+            mock_path = syft_obj.mock.get_path()
+        else:
+            mock_path = syft_obj._get_local_file_path(syft_obj.mock_url)
         if mock_path:
             mock_info = f'<div class="syft-file-info">Path: {mock_path}</div>'
     
     private_info = ""
     if private_file_exists:
-        private_path = syft_obj._get_local_file_path(syft_obj.private_url)
+        # Handle both CleanSyftObject (where .private is accessor) and raw SyftObject
+        if hasattr(syft_obj, 'private') and hasattr(syft_obj.private, 'get_path'):
+            private_path = syft_obj.private.get_path()
+        else:
+            private_path = syft_obj._get_local_file_path(syft_obj.private_url)
         if private_path:
             private_info = f'<div class="syft-file-info">Path: {private_path}</div>'
     
