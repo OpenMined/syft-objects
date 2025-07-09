@@ -22,7 +22,6 @@ from .file_ops import (
 )
 from .validation import validate_mock_real_compatibility, MockRealValidationError
 from .config import config
-from .prompts import prompt_with_timeout
 from .mock_analyzer import suggest_mock_note
 
 
@@ -398,17 +397,15 @@ def syobj(
                 for indicator in ["sample", "%", "rows", "first", "last", "subset"]
             )
             
-            if is_sensitive and config.mock_note_sensitivity == "ask":
-                # Use timeout prompt
-                mock_note = prompt_with_timeout(
-                    f"Mock note suggestion: '{suggestion}'",
-                    timeout=config.mock_note_timeout,
-                    accept_value=suggestion
-                )
-            elif not is_sensitive or config.mock_note_sensitivity == "always":
-                # Auto-accept non-sensitive suggestions
+            if config.mock_note_sensitivity == "always":
+                # Auto-accept suggestions
                 mock_note = suggestion
                 print(f"✓ Auto-added mock note: {mock_note}")
+            elif config.mock_note_sensitivity == "ask":
+                # Just show the suggestion with code to add it
+                print(f"\n💡 Mock note suggestion: '{suggestion}'")
+                print(f"   To add this note, run: obj._obj.metadata['mock_note'] = '{suggestion}'")
+                print(f"   Or set config.mock_note_sensitivity = 'always' to auto-add suggestions\n")
         elif suggestion:
             # Safe suggestions (mock-only analysis)
             mock_note = suggestion
