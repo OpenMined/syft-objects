@@ -1339,9 +1339,9 @@ async def get_object_metadata(object_uid: str) -> Dict[str, Any]:
                 "syftobject": target_obj.syftobject
             },
             "paths": {
-                "private": target_obj.private.get_path() if hasattr(target_obj, 'private') else target_obj.private_path,
-                "mock": target_obj.mock.get_path() if hasattr(target_obj, 'mock') else target_obj.mock_path,
-                "syftobject": target_obj.syftobject_config.get_path() if hasattr(target_obj, 'syftobject_config') else target_obj.syftobject_path
+                "private": target_obj.private.path if hasattr(target_obj, 'private') else getattr(target_obj, 'private_path', None),
+                "mock": target_obj.mock.path if hasattr(target_obj, 'mock') else getattr(target_obj, 'mock_path', None),
+                "syftobject": target_obj.syftobject_config.path if hasattr(target_obj, 'syftobject_config') else getattr(target_obj, 'syftobject_path', None)
             },
             "owner_email": target_obj.get_info()["metadata"].get("owner_email", "unknown") if hasattr(target_obj, 'get_info') else target_obj.metadata.get("owner_email", "unknown")
         }
