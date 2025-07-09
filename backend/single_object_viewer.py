@@ -61,18 +61,20 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f9fafb;
-            padding: 20px;
+            background: white;
+            padding: 0;
+            margin: 0;
             color: #1f2937;
             font-size: 14px;
         }}
         
         .widget-container {{
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            max-width: 1000px;
-            margin: 0 auto;
+            border-radius: 0;
+            box-shadow: none;
+            width: 100%;
+            max-width: none;
+            margin: 0;
             overflow: hidden;
         }}
         
