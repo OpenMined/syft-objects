@@ -402,13 +402,26 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             background: #fde68a;
         }}
         
+        .permissions-grid {{
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 12px;
+        }}
+        
         .permissions-section {{
             background: #f8f9fa;
-            border-radius: 0;
+            border-radius: 6px;
             padding: 10px 12px;
-            margin-bottom: 8px;
-            border-top: 1px solid #e5e7eb;
-            border-bottom: 1px solid #e5e7eb;
+            border: 1px solid #e5e7eb;
+        }}
+        
+        .permissions-section.full-width {{
+            grid-column: 1 / -1;
+        }}
+        
+        .permissions-section.half-width {{
+            grid-column: span 1;
         }}
         
         .permissions-title {{
@@ -419,9 +432,9 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .permission-group {{
-            margin-bottom: 8px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e9ecef;
         }}
         
         .permission-group:last-child {{
@@ -440,9 +453,9 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         .email-list {{
             display: flex;
             flex-wrap: wrap;
-            gap: 6px;
+            gap: 4px;
             margin-bottom: 6px;
-            min-height: 28px;
+            min-height: 24px;
             align-items: center;
         }}
         
@@ -450,11 +463,11 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            padding: 3px 8px;
+            padding: 2px 6px;
             background: #e0e7ff;
             color: #3730a3;
             border-radius: 3px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 500;
         }}
         
@@ -579,6 +592,16 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         @keyframes spin {{
             to {{ transform: rotate(360deg); }}
         }}
+        
+        @media (max-width: 768px) {{
+            .permissions-grid {{
+                grid-template-columns: 1fr;
+            }}
+            
+            .permissions-section.half-width {{
+                grid-column: 1 / -1;
+            }}
+        }}
     </style>
 </head>
 <body>
@@ -667,9 +690,9 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         <!-- Files Tab -->
         <div id="files-tab" class="tab-content">
             <div class="sub-tabs">
-                <button class="sub-tab active" onclick="switchFileTab('mock')">🔍 Mock {'Folder' if mock_is_folder else 'File'}</button>
-                <button class="sub-tab" onclick="switchFileTab('private')">🔐 Private {'Folder' if private_is_folder else 'File'}</button>
-                <button class="sub-tab" onclick="switchFileTab('config')">📋 Config (.syftobject.yaml)</button>
+                <button class="sub-tab active" onclick="switchFileTab('mock')">Mock {'Folder' if mock_is_folder else 'File'}</button>
+                <button class="sub-tab" onclick="switchFileTab('private')">Private {'Folder' if private_is_folder else 'File'}</button>
+                <button class="sub-tab" onclick="switchFileTab('config')">Config (.syftobject.yaml)</button>
             </div>
             
             <!-- Mock File Sub-Tab -->
@@ -702,54 +725,58 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         <!-- Permissions Tab -->
         <div id="permissions-tab" class="tab-content">
-            <div class="permissions-section">
-                <h3 class="permissions-title">Discovery Permissions</h3>
-                <div class="permission-group">
-                    <div class="permission-label">Who can discover this object exists</div>
-                    <div id="syftobject-read-list" class="email-list"></div>
-                    <div class="add-email">
-                        <input type="email" id="syftobject-read-input" placeholder="Add email address">
-                        <button class="btn btn-primary" onclick="addPermission('syftobject', 'read')">Add</button>
+            <div class="permissions-grid">
+                <!-- Discovery Permissions - Full Width -->
+                <div class="permissions-section full-width">
+                    <h3 class="permissions-title">Discovery Permissions</h3>
+                    <div class="permission-group">
+                        <div class="permission-label">Who can discover this object exists</div>
+                        <div id="syftobject-read-list" class="email-list"></div>
+                        <div class="add-email">
+                            <input type="email" id="syftobject-read-input" placeholder="Add email address">
+                            <button class="btn btn-primary" onclick="addPermission('syftobject', 'read')">Add</button>
+                        </div>
                     </div>
                 </div>
-            </div>
-            
-            <div class="permissions-section">
-                <h3 class="permissions-title">Mock File Permissions</h3>
-                <div class="permission-group">
-                    <div class="permission-label">Read Access</div>
-                    <div id="mock-read-list" class="email-list"></div>
-                    <div class="add-email">
-                        <input type="email" id="mock-read-input" placeholder="Add email address">
-                        <button class="btn btn-primary" onclick="addPermission('mock', 'read')">Add</button>
+                
+                <!-- Mock and Private Permissions - Side by Side -->
+                <div class="permissions-section half-width">
+                    <h3 class="permissions-title">Mock File Permissions</h3>
+                    <div class="permission-group">
+                        <div class="permission-label">Read Access</div>
+                        <div id="mock-read-list" class="email-list"></div>
+                        <div class="add-email">
+                            <input type="email" id="mock-read-input" placeholder="Add email address">
+                            <button class="btn btn-primary" onclick="addPermission('mock', 'read')">Add</button>
+                        </div>
+                    </div>
+                    <div class="permission-group">
+                        <div class="permission-label">Write Access</div>
+                        <div id="mock-write-list" class="email-list"></div>
+                        <div class="add-email">
+                            <input type="email" id="mock-write-input" placeholder="Add email address">
+                            <button class="btn btn-primary" onclick="addPermission('mock', 'write')">Add</button>
+                        </div>
                     </div>
                 </div>
-                <div class="permission-group">
-                    <div class="permission-label">Write Access</div>
-                    <div id="mock-write-list" class="email-list"></div>
-                    <div class="add-email">
-                        <input type="email" id="mock-write-input" placeholder="Add email address">
-                        <button class="btn btn-primary" onclick="addPermission('mock', 'write')">Add</button>
+                
+                <div class="permissions-section half-width">
+                    <h3 class="permissions-title">Private File Permissions</h3>
+                    <div class="permission-group">
+                        <div class="permission-label">Read Access</div>
+                        <div id="private-read-list" class="email-list"></div>
+                        <div class="add-email">
+                            <input type="email" id="private-read-input" placeholder="Add email address">
+                            <button class="btn btn-primary" onclick="addPermission('private', 'read')">Add</button>
+                        </div>
                     </div>
-                </div>
-            </div>
-            
-            <div class="permissions-section">
-                <h3 class="permissions-title">Private File Permissions</h3>
-                <div class="permission-group">
-                    <div class="permission-label">Read Access</div>
-                    <div id="private-read-list" class="email-list"></div>
-                    <div class="add-email">
-                        <input type="email" id="private-read-input" placeholder="Add email address">
-                        <button class="btn btn-primary" onclick="addPermission('private', 'read')">Add</button>
-                    </div>
-                </div>
-                <div class="permission-group">
-                    <div class="permission-label">Write Access</div>
-                    <div id="private-write-list" class="email-list"></div>
-                    <div class="add-email">
-                        <input type="email" id="private-write-input" placeholder="Add email address">
-                        <button class="btn btn-primary" onclick="addPermission('private', 'write')">Add</button>
+                    <div class="permission-group">
+                        <div class="permission-label">Write Access</div>
+                        <div id="private-write-list" class="email-list"></div>
+                        <div class="add-email">
+                            <input type="email" id="private-write-input" placeholder="Add email address">
+                            <button class="btn btn-primary" onclick="addPermission('private', 'write')">Add</button>
+                        </div>
                     </div>
                 </div>
             </div>
