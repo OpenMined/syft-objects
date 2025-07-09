@@ -1089,30 +1089,41 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
         if not target_obj:
             raise HTTPException(status_code=404, detail="Object not found")
         
-        # Get the raw object if this is a CleanSyftObject
-        raw_obj = target_obj._CleanSyftObject__obj if hasattr(target_obj, '_CleanSyftObject__obj') else target_obj
+        # Get current user email if not provided
+        if not user_email:
+            try:
+                from syft_objects.client import get_syftbox_client
+                client = get_syftbox_client()
+                if client and hasattr(client, 'email'):
+                    user_email = client.email
+            except:
+                pass
         
-        # Check permissions using the object's can_delete method
-        if hasattr(raw_obj, 'can_delete'):
-            # Get current user email if not provided
-            if not user_email:
-                try:
-                    from syft_objects.client import get_syftbox_client
-                    client = get_syftbox_client()
-                    if client and hasattr(client, 'email'):
-                        user_email = client.email
-                except:
-                    pass
-            
-            if not raw_obj.can_delete(user_email):
-                owner_email = raw_obj.get_owner() if hasattr(raw_obj, 'get_owner') else raw_obj.get_owner_email() if hasattr(raw_obj, 'get_owner_email') else 'unknown'
-                logger.warning(f"User {user_email or 'unknown'} attempted to delete object {object_uid} owned by {owner_email} - DENIED")
-                raise HTTPException(
-                    status_code=403, 
-                    detail=f"Permission denied. Only the owner ({owner_email}) can delete this object."
-                )
-            else:
-                logger.info(f"User {user_email} authorized to delete object {object_uid}")
+        # Get owner email using CleanSyftObject's get_owner method
+        owner_email = target_obj.get_owner() if hasattr(target_obj, 'get_owner') else 'unknown'
+        
+        # For CleanSyftObject, we need to check the raw object's can_delete method
+        can_delete = False
+        if hasattr(target_obj, '_CleanSyftObject__obj'):
+            # This is a CleanSyftObject
+            raw_obj = target_obj._CleanSyftObject__obj
+            if hasattr(raw_obj, 'can_delete'):
+                can_delete = raw_obj.can_delete(user_email)
+        elif hasattr(target_obj, 'can_delete'):
+            # This is a raw SyftObject
+            can_delete = target_obj.can_delete(user_email)
+            # Also try to get owner email from raw object if we don't have it
+            if owner_email == 'unknown' and hasattr(target_obj, 'get_owner_email'):
+                owner_email = target_obj.get_owner_email()
+        
+        if not can_delete:
+            logger.warning(f"User {user_email or 'unknown'} attempted to delete object {object_uid} owned by {owner_email} - DENIED")
+            raise HTTPException(
+                status_code=403, 
+                detail=f"Permission denied. Only the owner ({owner_email}) can delete this object."
+            )
+        else:
+            logger.info(f"User {user_email} authorized to delete object {object_uid}")
         
         # Try to use the object's own delete method first
         if hasattr(target_obj, 'delete_obj'):
