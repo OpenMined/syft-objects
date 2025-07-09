@@ -302,11 +302,12 @@ class MockAccessor:
         from .models import utcnow
         self._CleanSyftObject__obj.updated_at = utcnow()
     
-    def move_path(self, new_path: str) -> bool:
-        """Move the mock file to a new location
+    def move_path(self, new_path: str, user_email: str = None) -> bool:
+        """Move the mock file to a new location (requires admin permissions)
         
         Args:
             new_path: New syft:// URL or local path for the mock file
+            user_email: Email of the user attempting the move (optional, will try to detect)
             
         Returns:
             bool: True if successful, False otherwise
@@ -316,6 +317,14 @@ class MockAccessor:
         
         try:
             client = get_syftbox_client()
+            
+            # Check admin permissions
+            if not user_email and client and hasattr(client, 'email'):
+                user_email = client.email
+            
+            admin_perms = self.get_admin_permissions()
+            if user_email and user_email not in admin_perms:
+                return False  # Not authorized
             
             # Get current local path
             current_local = extract_local_path_from_syft_url(
@@ -397,11 +406,12 @@ class PrivateAccessor:
         from .models import utcnow
         self._CleanSyftObject__obj.updated_at = utcnow()
     
-    def move_path(self, new_path: str) -> bool:
-        """Move the private file to a new location
+    def move_path(self, new_path: str, user_email: str = None) -> bool:
+        """Move the private file to a new location (requires admin permissions)
         
         Args:
             new_path: New syft:// URL or local path for the private file
+            user_email: Email of the user attempting the move (optional, will try to detect)
             
         Returns:
             bool: True if successful, False otherwise
@@ -411,6 +421,14 @@ class PrivateAccessor:
         
         try:
             client = get_syftbox_client()
+            
+            # Check admin permissions
+            if not user_email and client and hasattr(client, 'email'):
+                user_email = client.email
+            
+            admin_perms = self.get_admin_permissions()
+            if user_email and user_email not in admin_perms:
+                return False  # Not authorized
             
             # Get current local path
             current_local = extract_local_path_from_syft_url(
@@ -493,11 +511,12 @@ class SyftObjectConfigAccessor:
         from .models import utcnow
         self._CleanSyftObject__obj.updated_at = utcnow()
     
-    def move_path(self, new_path: str) -> bool:
-        """Move the syftobject config file to a new location
+    def move_path(self, new_path: str, user_email: str = None) -> bool:
+        """Move the syftobject config file to a new location (requires admin permissions)
         
         Args:
             new_path: New syft:// URL or local path for the .syftobject.yaml file
+            user_email: Email of the user attempting the move (optional, will try to detect)
             
         Returns:
             bool: True if successful, False otherwise
@@ -507,6 +526,14 @@ class SyftObjectConfigAccessor:
         
         try:
             client = get_syftbox_client()
+            
+            # Check admin permissions
+            if not user_email and client and hasattr(client, 'email'):
+                user_email = client.email
+            
+            admin_perms = self.get_admin_permissions()
+            if user_email and user_email not in admin_perms:
+                return False  # Not authorized
             
             # Get current local path
             current_local = extract_local_path_from_syft_url(
