@@ -735,12 +735,20 @@ async def get_file_content(syft_url: str) -> PlainTextResponse:
         
         for obj in objects:
             # Handle both CleanSyftObject and raw SyftObject
-            raw_obj = obj._obj if hasattr(obj, '_obj') else obj
-            if raw_obj.private_url == syft_url:
+            if hasattr(obj, 'get_urls'):
+                urls = obj.get_urls()
+                private_url = urls.get('private', '')
+                mock_url = urls.get('mock', '')
+            else:
+                raw_obj = obj._obj if hasattr(obj, '_obj') else obj
+                private_url = raw_obj.private_url
+                mock_url = raw_obj.mock_url
+                
+            if private_url == syft_url:
                 target_obj = obj
                 is_private = True
                 break
-            elif raw_obj.mock_url == syft_url:
+            elif mock_url == syft_url:
                 target_obj = obj
                 is_mock = True
                 break
@@ -753,13 +761,21 @@ async def get_file_content(syft_url: str) -> PlainTextResponse:
             if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'get_path'):
                 file_path = target_obj.private.get_path()
             else:
-                raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+                # For CleanSyftObject, access the wrapped object properly
+                if hasattr(target_obj, '_CleanSyftObject__obj'):
+                    raw_obj = target_obj._CleanSyftObject__obj
+                else:
+                    raw_obj = target_obj
                 file_path = raw_obj.private_path
         elif is_mock:
             if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'get_path'):
                 file_path = target_obj.mock.get_path()
             else:
-                raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+                # For CleanSyftObject, access the wrapped object properly
+                if hasattr(target_obj, '_CleanSyftObject__obj'):
+                    raw_obj = target_obj._CleanSyftObject__obj
+                else:
+                    raw_obj = target_obj
                 file_path = raw_obj.mock_path
         else:
             raise HTTPException(status_code=400, detail="Invalid file type")
