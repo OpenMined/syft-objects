@@ -285,11 +285,13 @@ def generate_editor_html(initial_path: str = None) -> str:
         }}
 
         body {{
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             margin: 0;
             padding: 0;
-            background: hsl(var(--background));
-            color: hsl(var(--foreground));
+            background: white;
+            color: #374151;
+            font-size: 13px;
+            line-height: 1.5;
         }}
 
         .container {{
@@ -316,12 +318,12 @@ def generate_editor_html(initial_path: str = None) -> str:
         }}
 
         .panel-header {{
-            background: white;
-            padding: 12px 16px;
-            border-bottom: none;
-            font-weight: 500;
-            color: hsl(var(--foreground));
-            font-size: 0.95rem;
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-bottom: 1px solid #e5e7eb;
+            font-weight: 600;
+            color: #374151;
+            font-size: 12px;
         }}
 
         .panel-content {{
@@ -334,12 +336,12 @@ def generate_editor_html(initial_path: str = None) -> str:
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 8px;
-            padding: 12px 16px;
+            gap: 6px;
+            padding: 8px 12px;
             background: white;
-            border-bottom: none;
-            font-size: 0.9rem;
-            max-height: 100px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 11px;
+            max-height: 60px;
             overflow-y: auto;
         }}
 
@@ -412,13 +414,13 @@ def generate_editor_html(initial_path: str = None) -> str:
         }}
 
         .file-icon {{
-            width: 20px;
-            height: 20px;
-            font-size: 16px;
+            width: 16px;
+            height: 16px;
+            font-size: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: hsl(var(--muted-foreground));
+            color: #6b7280;
         }}
 
         .file-details {{
@@ -428,16 +430,17 @@ def generate_editor_html(initial_path: str = None) -> str:
 
         .file-name {{
             font-weight: 500;
-            color: hsl(var(--foreground));
+            color: #111827;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            font-size: 12px;
         }}
 
         .file-meta {{
-            font-size: 0.85rem;
-            color: hsl(var(--muted-foreground));
-            margin-top: 2px;
+            font-size: 10px;
+            color: #6b7280;
+            margin-top: 1px;
         }}
 
         .editor-container {{
@@ -472,37 +475,54 @@ def generate_editor_html(initial_path: str = None) -> str:
         }}
 
         .btn {{
-            padding: 8px 16px;
+            padding: 4px 10px;
             border: none;
-            border-radius: 0;
-            font-size: 0.9rem;
+            border-radius: 4px;
+            font-size: 11px;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
+            transition: all 0.15s;
+            display: inline-flex;
             align-items: center;
-            gap: 6px;
-            background: white;
-            color: hsl(var(--foreground));
+            gap: 3px;
+            line-height: 1.4;
         }}
 
         .btn-primary {{
-            background: hsl(var(--primary));
-            color: hsl(var(--primary-foreground));
-            border-color: transparent;
+            background: #bfdbfe;
+            color: #1e3a8a;
         }}
 
         .btn-primary:hover {{
-            background: hsl(var(--primary) / 0.9);
+            background: #93c5fd;
         }}
 
         .btn-secondary {{
-            background: hsl(var(--secondary));
-            color: hsl(var(--secondary-foreground));
+            background: #e9d5ff;
+            color: #581c87;
         }}
 
         .btn-secondary:hover {{
-            background: hsl(var(--secondary) / 0.8);
+            background: #d8b4fe;
+        }}
+        
+        /* Additional pastel button colors */
+        .btn-mint {{
+            background: #d1fae5;
+            color: #065f46;
+        }}
+        
+        .btn-mint:hover {{
+            background: #a7f3d0;
+        }}
+        
+        .btn-lavender {{
+            background: #e9d5ff;
+            color: #581c87;
+        }}
+        
+        .btn-lavender:hover {{
+            background: #d8b4fe;
         }}
 
         .btn:disabled {{
@@ -678,7 +698,7 @@ def generate_editor_html(initial_path: str = None) -> str:
         <div class="main-content">
             <div class="panel">
                 <div class="panel-header">
-                    📁 File Explorer
+                    File Explorer
                 </div>
                 <div class="breadcrumb" id="breadcrumb">
                     <div class="loading">Loading...</div>
@@ -696,16 +716,18 @@ def generate_editor_html(initial_path: str = None) -> str:
                         <div class="editor-title" id="editorTitle">No file selected</div>
                         <div class="editor-actions">
                             <button class="btn btn-secondary toggle-explorer-btn" id="toggleExplorerBtn" title="Toggle File Explorer">
-                                📂
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 3h6l2 3h10a2 2 0 012 2v10a2 2 0 01-2 2H3a2 2 0 01-2-2V5a2 2 0 012-2z"/>
+                                </svg>
                             </button>
                             <button class="btn btn-primary" id="saveBtn" disabled>
-                                💾 Save
+                                Save
                             </button>
-                            <button class="btn btn-secondary" id="newFileBtn">
-                                📄 New File
+                            <button class="btn btn-lavender" id="newFileBtn">
+                                New File
                             </button>
-                            <button class="btn btn-secondary" id="newFolderBtn">
-                                📁 New Folder
+                            <button class="btn btn-mint" id="newFolderBtn">
+                                New Folder
                             </button>
                         </div>
                     </div>
@@ -850,7 +872,9 @@ def generate_editor_html(initial_path: str = None) -> str:
                 }}
                 
                 this.fileList.innerHTML = items.map(item => {{
-                    const icon = item.is_directory ? '📁' : (item.is_editable ? '📄' : '📋');
+                    const icon = item.is_directory 
+                        ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h6l2 3h10a2 2 0 012 2v10a2 2 0 01-2 2H3a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>'
+                        : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>';
                     const sizeText = item.is_directory ? 'Directory' : this.formatFileSize(item.size);
                     const modifiedText = new Date(item.modified).toLocaleString();
                     
@@ -916,7 +940,7 @@ def generate_editor_html(initial_path: str = None) -> str:
                     // Add home link at beginning
                     breadcrumbHtml = `
                         <div class="breadcrumb-item">
-                            <a href="#" class="breadcrumb-link" data-path="/">🏠 Home</a>
+                            <a href="#" class="breadcrumb-link" data-path="/">Home</a>
                             <span class="breadcrumb-separator">›</span>
                         </div>
                     ` + breadcrumbHtml;
@@ -1117,10 +1141,10 @@ def generate_editor_html(initial_path: str = None) -> str:
                 
                 if (this.fileOnlyMode) {{
                     document.body.classList.add('file-only-mode');
-                    this.toggleExplorerBtn.innerHTML = '📂 Show Explorer';
+                    this.toggleExplorerBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h6l2 3h10a2 2 0 012 2v10a2 2 0 01-2 2H3a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg> Show';
                 }} else {{
                     document.body.classList.remove('file-only-mode');
-                    this.toggleExplorerBtn.innerHTML = '📂';
+                    this.toggleExplorerBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h6l2 3h10a2 2 0 012 2v10a2 2 0 01-2 2H3a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>';
                 }}
             }}
             
