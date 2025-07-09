@@ -36,6 +36,16 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
     else:
         syftobject_path = getattr(target_obj, 'syftobject_path', None)
     
+    # Check if paths point to folders
+    mock_is_folder = False
+    private_is_folder = False
+    
+    if mock_path:
+        mock_is_folder = Path(mock_path).is_dir() if Path(mock_path).exists() else False
+    
+    if private_path:
+        private_is_folder = Path(private_path).is_dir() if Path(private_path).exists() else False
+    
     html = f"""
 <!DOCTYPE html>
 <html>
@@ -559,7 +569,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         <div id="files-tab" class="tab-content">
             <div class="file-section">
                 <div class="file-header">
-                    <h3 class="file-title">Mock File</h3>
+                    <h3 class="file-title">🔍 Mock {'Folder' if mock_is_folder else 'File'}</h3>
                     <button class="btn btn-secondary" onclick="openInEditor('mock')">
                         Open in Editor
                     </button>
@@ -572,7 +582,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             
             <div class="file-section">
                 <div class="file-header">
-                    <h3 class="file-title">Private File</h3>
+                    <h3 class="file-title">🔐 Private {'Folder' if private_is_folder else 'File'}</h3>
                     <button class="btn btn-secondary" onclick="openInEditor('private')">
                         Open in Editor
                     </button>

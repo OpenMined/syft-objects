@@ -76,28 +76,65 @@ def create_static_display(syft_obj: 'SyftObject') -> str:
     mock_exists = syft_obj._check_file_exists(syft_obj.mock_url)
     private_exists = syft_obj._check_file_exists(syft_obj.private_url)
     
-    # Get file previews (first 500 chars)
-    mock_preview = ''
-    private_preview = ''
+    # Check if paths point to folders or files
+    mock_is_folder = False
+    private_is_folder = False
+    
     if mock_exists and mock_path != 'Not found':
-        try:
-            with open(mock_path, 'r', encoding='utf-8') as f:
-                content = f.read(500)
-                mock_preview = html.escape(content)
-                if len(content) == 500:
-                    mock_preview += '...'
-        except:
-            mock_preview = 'Unable to read file content'
+        mock_is_folder = Path(mock_path).is_dir() if Path(mock_path).exists() else False
     
     if private_exists and private_path != 'Not found':
-        try:
-            with open(private_path, 'r', encoding='utf-8') as f:
-                content = f.read(500)
-                private_preview = html.escape(content)
-                if len(content) == 500:
-                    private_preview += '...'
-        except:
-            private_preview = 'Unable to read file content'
+        private_is_folder = Path(private_path).is_dir() if Path(private_path).exists() else False
+    
+    # Get file/folder previews
+    mock_preview = ''
+    private_preview = ''
+    
+    # Handle mock preview
+    if mock_exists and mock_path != 'Not found':
+        if mock_is_folder:
+            # For folders, show iframe to editor
+            mock_preview = f'''
+            <div class="syft-folder-editor">
+                <div style="margin-bottom: 8px; font-size: 12px; color: #6b7280;">📁 Folder contents (editable):</div>
+                <iframe src="http://localhost:8004/editor?path={mock_path}" 
+                        style="width: 100%; height: 400px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                </iframe>
+            </div>
+            '''
+        else:
+            # For files, show text preview
+            try:
+                with open(mock_path, 'r', encoding='utf-8') as f:
+                    content = f.read(500)
+                    mock_preview = html.escape(content)
+                    if len(content) == 500:
+                        mock_preview += '...'
+            except:
+                mock_preview = 'Unable to read file content'
+    
+    # Handle private preview
+    if private_exists and private_path != 'Not found':
+        if private_is_folder:
+            # For folders, show iframe to editor
+            private_preview = f'''
+            <div class="syft-folder-editor">
+                <div style="margin-bottom: 8px; font-size: 12px; color: #6b7280;">📁 Folder contents (editable):</div>
+                <iframe src="http://localhost:8004/editor?path={private_path}" 
+                        style="width: 100%; height: 400px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                </iframe>
+            </div>
+            '''
+        else:
+            # For files, show text preview
+            try:
+                with open(private_path, 'r', encoding='utf-8') as f:
+                    content = f.read(500)
+                    private_preview = html.escape(content)
+                    if len(content) == 500:
+                        private_preview += '...'
+            except:
+                private_preview = 'Unable to read file content'
     
     # Generate HTML
     return f'''
@@ -458,24 +495,24 @@ def create_static_display(syft_obj: 'SyftObject') -> str:
                 
                 <div class="syft-file-section">
                     <div class="syft-file-header">
-                        <h4 class="syft-file-title">🔍 Mock File</h4>
+                        <h4 class="syft-file-title">🔍 Mock {"Folder" if mock_is_folder else "File"}</h4>
                         <span class="syft-file-status {"available" if mock_exists else "not-found"}">
                             {"✓ Available" if mock_exists else "✗ Not Found"}
                         </span>
                     </div>
                     <div class="syft-file-info">Path: {html.escape(str(mock_path))}</div>
-                    {f'<div class="syft-file-preview">{mock_preview}</div>' if mock_preview else ''}
+                    {mock_preview if mock_preview else ''}
                 </div>
                 
                 <div class="syft-file-section">
                     <div class="syft-file-header">
-                        <h4 class="syft-file-title">🔐 Private File</h4>
+                        <h4 class="syft-file-title">🔐 Private {"Folder" if private_is_folder else "File"}</h4>
                         <span class="syft-file-status {"available" if private_exists else "not-found"}">
                             {"✓ Available" if private_exists else "✗ Not Found"}
                         </span>
                     </div>
                     <div class="syft-file-info">Path: {html.escape(str(private_path))}</div>
-                    {f'<div class="syft-file-preview">{private_preview}</div>' if private_preview else ''}
+                    {private_preview if private_preview else ''}
                 </div>
                 
                 <div class="syft-file-section">

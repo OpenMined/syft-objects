@@ -44,6 +44,21 @@ class MockAccessor(DataAccessor):
     def set_admin_permissions(self, admin: List[str]) -> None:
         """Set admin permissions for mock data"""
         self._syft_object.metadata["admin_permissions"] = admin
+    
+    def is_folder(self) -> bool:
+        """Check if the mock is a folder"""
+        mock_path = self.get_path()
+        if mock_path and Path(mock_path).exists():
+            return Path(mock_path).is_dir()
+        return False
+
+    def get_editor_url(self, base_url: str = "http://localhost:8004") -> str:
+        """Get the editor URL for folder mocks"""
+        if self.is_folder():
+            path = self.get_path()
+            if path:
+                return f"{base_url}/editor?path={path}"
+        return None
 
 
 class PrivateAccessor(DataAccessor):
@@ -83,6 +98,21 @@ class PrivateAccessor(DataAccessor):
     def set_admin_permissions(self, admin: List[str]) -> None:
         """Set admin permissions for private data"""
         self._syft_object.metadata["admin_permissions"] = admin
+    
+    def is_folder(self) -> bool:
+        """Check if the private is a folder"""
+        private_path = self.get_path()
+        if private_path and Path(private_path).exists():
+            return Path(private_path).is_dir()
+        return False
+
+    def get_editor_url(self, base_url: str = "http://localhost:8004") -> str:
+        """Get the editor URL for folder privates"""
+        if self.is_folder():
+            path = self.get_path()
+            if path:
+                return f"{base_url}/editor?path={path}"
+        return None
     
 
 

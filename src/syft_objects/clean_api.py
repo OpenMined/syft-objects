@@ -302,6 +302,21 @@ class MockAccessor:
         from .models import utcnow
         self._CleanSyftObject__obj.updated_at = utcnow()
     
+    def is_folder(self) -> bool:
+        """Check if the mock is a folder"""
+        mock_path = self.get_path()
+        if mock_path and Path(mock_path).exists():
+            return Path(mock_path).is_dir()
+        return False
+
+    def get_editor_url(self, base_url: str = "http://localhost:8004") -> str:
+        """Get the editor URL for folder mocks"""
+        if self.is_folder():
+            path = self.get_path()
+            if path:
+                return f"{base_url}/editor?path={path}"
+        return None
+    
     def move_path(self, new_path: str, user_email: str = None) -> bool:
         """Move the mock file to a new location (requires admin permissions)
         
@@ -405,6 +420,21 @@ class PrivateAccessor:
         self._CleanSyftObject__obj.metadata["admin_permissions"] = admin.copy()
         from .models import utcnow
         self._CleanSyftObject__obj.updated_at = utcnow()
+    
+    def is_folder(self) -> bool:
+        """Check if the private is a folder"""
+        private_path = self.get_path()
+        if private_path and Path(private_path).exists():
+            return Path(private_path).is_dir()
+        return False
+
+    def get_editor_url(self, base_url: str = "http://localhost:8004") -> str:
+        """Get the editor URL for folder privates"""
+        if self.is_folder():
+            path = self.get_path()
+            if path:
+                return f"{base_url}/editor?path={path}"
+        return None
     
     def move_path(self, new_path: str, user_email: str = None) -> bool:
         """Move the private file to a new location (requires admin permissions)

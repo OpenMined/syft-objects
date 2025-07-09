@@ -212,6 +212,11 @@ async def get_objects(
                     "mock": {"read": obj.mock.get_read_permissions(), "write": obj.mock.get_write_permissions()},
                     "private": {"read": obj.private.get_read_permissions(), "write": obj.private.get_write_permissions()}
                 }
+                
+                # Check if paths are folders
+                mock_is_folder = obj.mock.is_folder() if hasattr(obj, 'mock') and hasattr(obj.mock, 'is_folder') else False
+                private_is_folder = obj.private.is_folder() if hasattr(obj, 'private') and hasattr(obj.private, 'is_folder') else False
+                
                 obj_data = {
                     "index": actual_index,
                     "uid": obj.get_uid(),
@@ -222,6 +227,8 @@ async def get_objects(
                     "private_url": urls['private'],
                     "mock_url": urls['mock'],
                     "syftobject_url": urls['syftobject'],
+                    "mock_is_folder": mock_is_folder,
+                    "private_is_folder": private_is_folder,
                     "created_at": obj.get_created_at().isoformat() if obj.get_created_at() else None,
                     "updated_at": obj.get_updated_at().isoformat() if obj.get_updated_at() else None,
                     "permissions": {
@@ -239,6 +246,15 @@ async def get_objects(
                 }
             else:
                 # This is a raw SyftObject
+                # Check if paths are folders
+                mock_is_folder = False
+                private_is_folder = False
+                
+                if hasattr(obj, 'mock_path') and obj.mock_path:
+                    mock_is_folder = PathLib(obj.mock_path).is_dir() if PathLib(obj.mock_path).exists() else False
+                if hasattr(obj, 'private_path') and obj.private_path:
+                    private_is_folder = PathLib(obj.private_path).is_dir() if PathLib(obj.private_path).exists() else False
+                
                 obj_data = {
                     "index": actual_index,
                     "uid": str(obj.uid),
@@ -249,6 +265,8 @@ async def get_objects(
                     "private_url": obj.private_url,
                     "mock_url": obj.mock_url,
                     "syftobject_url": obj.syftobject,
+                    "mock_is_folder": mock_is_folder,
+                    "private_is_folder": private_is_folder,
                     "created_at": obj.created_at.isoformat() if obj.created_at else None,
                     "updated_at": obj.updated_at.isoformat() if obj.updated_at else None,
                     "permissions": {
