@@ -7,7 +7,7 @@ import syft_objects
 
 def test_version():
     """Test version is defined"""
-    assert syft_objects.__version__ == "0.9.32"
+    assert syft_objects.__version__ == "0.9.39"
 
 
 def test_exports():
@@ -64,6 +64,7 @@ def test_delete_object_function():
     mock_obj = Mock()
     mock_obj.delete_obj.return_value = True
     mock_obj.uid = "test-uid"
+    mock_obj.get_uid.return_value = "test-uid"
     
     with patch.object(syft_objects.objects, '_objects', [mock_obj]):
         with patch.object(syft_objects.objects, '_cached', True):  # Skip loading

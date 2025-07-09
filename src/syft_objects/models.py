@@ -394,35 +394,6 @@ class SyftObject(BaseModel):
         set_file_permissions_wrapper(self.mock_url, self.mock_permissions, self.mock_write_permissions)
         set_file_permissions_wrapper(self.private_url, self.private_permissions, self.private_write_permissions)
 
-    def set_permissions(self, file_type: str, read: list[str] = None, write: list[str] = None, syftobject_file_path: str | Path = None) -> None:
-        """
-        Update permissions for a file in this object (mock, private, or syftobject).
-        Uses the minimal permission utilities from permissions.py.
-        """
-        if file_type == "mock":
-            if read is not None:
-                self.mock_permissions = read
-            if write is not None:
-                self.mock_write_permissions = write
-            # Update syft.pub.yaml if possible
-            set_file_permissions_wrapper(self.mock_url, self.mock_permissions, self.mock_write_permissions)
-        elif file_type == "private":
-            if read is not None:
-                self.private_permissions = read
-            if write is not None:
-                self.private_write_permissions = write
-            # Update syft.pub.yaml if possible
-            set_file_permissions_wrapper(self.private_url, self.private_permissions, self.private_write_permissions)
-        elif file_type == "syftobject":
-            if read is not None:
-                self.syftobject_permissions = read
-            # Discovery files are read-only, so use syftobject_path or provided path
-            if syftobject_file_path:
-                set_file_permissions_wrapper(str(syftobject_file_path), self.syftobject_permissions)
-            elif self.syftobject:
-                set_file_permissions_wrapper(self.syftobject, self.syftobject_permissions)
-        else:
-            raise ValueError(f"Invalid file_type: {file_type}. Must be 'mock', 'private', or 'syftobject'.")
     
     def delete_obj(self, user_email: str = None) -> bool:
         """Delete this object with permission checking"""

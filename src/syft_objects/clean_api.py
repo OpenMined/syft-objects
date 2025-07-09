@@ -58,7 +58,11 @@ class CleanSyftObject:
             "updated_at": self._CleanSyftObject__obj.updated_at.isoformat() if self._CleanSyftObject__obj.updated_at else None,
             "is_folder": self._CleanSyftObject__obj.is_folder,
             "metadata": self._CleanSyftObject__obj.metadata,
-            "permissions": self.get_permissions(),
+            "permissions": {
+                "read": self.get_read_permissions(),
+                "write": self.get_write_permissions(),
+                "admin": self.get_admin_permissions()
+            },
             "owner_email": self.get_owner()
         }
     
@@ -66,21 +70,22 @@ class CleanSyftObject:
         """Get the primary (mock) path of the object"""
         return self._CleanSyftObject__obj.mock_path
     
-    def get_permissions(self) -> dict:
-        """Get all permissions for the object"""
-        return {
-            "syftobject": {
-                "read": self._CleanSyftObject__obj.syftobject_permissions.copy()
-            },
-            "mock": {
-                "read": self._CleanSyftObject__obj.mock_permissions.copy(),
-                "write": self._CleanSyftObject__obj.mock_write_permissions.copy()
-            },
-            "private": {
-                "read": self._CleanSyftObject__obj.private_permissions.copy(),
-                "write": self._CleanSyftObject__obj.private_write_permissions.copy()
-            }
-        }
+    def get_read_permissions(self) -> list[str]:
+        """Get read permissions for the syftobject (discovery)"""
+        return self._CleanSyftObject__obj.syftobject_permissions.copy()
+    
+    def get_write_permissions(self) -> list[str]:
+        """Get write permissions for the object (currently same as admin)"""
+        # For now, write permissions are managed at the file level
+        # Return the owner's email as they have write access
+        owner = self.get_owner()
+        return [owner] if owner != "unknown" else []
+    
+    def get_admin_permissions(self) -> list[str]:
+        """Get admin permissions for the object"""
+        # Admin permissions are typically the owner's email
+        owner = self.get_owner()
+        return [owner] if owner != "unknown" else []
     
     def get_urls(self) -> dict:
         """Get all URLs for the object"""
@@ -179,9 +184,29 @@ class CleanSyftObject:
         
         return self._CleanSyftObject__obj.delete_obj(user_email)
     
-    def set_permissions(self, file_type: str, read: list[str] = None, write: list[str] = None) -> None:
-        """Set permissions for this object"""
-        self._CleanSyftObject__obj.set_permissions(file_type, read, write)
+    def set_read_permissions(self, read: list[str]) -> None:
+        """Set read permissions for the syftobject (discovery)"""
+        self._CleanSyftObject__obj.syftobject_permissions = read.copy()
+        from .models import utcnow
+        self._CleanSyftObject__obj.updated_at = utcnow()
+    
+    def set_write_permissions(self, write: list[str]) -> None:
+        """Set write permissions for the object files"""
+        # Set write permissions for both mock and private files
+        self._CleanSyftObject__obj.mock_write_permissions = write.copy()
+        self._CleanSyftObject__obj.private_write_permissions = write.copy()
+        from .models import utcnow
+        self._CleanSyftObject__obj.updated_at = utcnow()
+    
+    def set_admin_permissions(self, admin: list[str]) -> None:
+        """Set admin permissions for the object"""
+        # Admin permissions control who can modify the object metadata and permissions
+        # Store in metadata for now
+        if "admin_permissions" not in self._CleanSyftObject__obj.metadata:
+            self._CleanSyftObject__obj.metadata["admin_permissions"] = []
+        self._CleanSyftObject__obj.metadata["admin_permissions"] = admin.copy()
+        from .models import utcnow
+        self._CleanSyftObject__obj.updated_at = utcnow()
     
     @property
     def type(self) -> str:
@@ -208,10 +233,10 @@ class CleanSyftObject:
             # Getters
             'get_uid', 'get_name', 'get_description', 'get_created_at',
             'get_updated_at', 'get_metadata', 'get_file_type', 'get_info',
-            'get_path', 'get_permissions', 'get_urls', 'get_owner',
+            'get_path', 'get_read_permissions', 'get_write_permissions', 'get_admin_permissions', 'get_urls', 'get_owner',
             # Setters
             'set_name', 'set_description', 'set_metadata', 'update_metadata',
-            'set_permissions',
+            'set_read_permissions', 'set_write_permissions', 'set_admin_permissions',
             # Accessors
             'mock', 'private', 'syftobject_config',
             # Actions
@@ -242,13 +267,36 @@ class MockAccessor:
         """Get the syft:// URL for the mock data"""
         return self._CleanSyftObject__obj.mock_url
     
-    def get_permissions(self) -> list[str]:
+    def get_read_permissions(self) -> list[str]:
         """Get read permissions for the mock data"""
         return self._CleanSyftObject__obj.mock_permissions.copy()
     
     def get_write_permissions(self) -> list[str]:
         """Get write permissions for the mock data"""
         return self._CleanSyftObject__obj.mock_write_permissions.copy()
+    
+    def get_admin_permissions(self) -> list[str]:
+        """Get admin permissions for the mock data (same as object admin)"""
+        admin_perms = self._CleanSyftObject__obj.metadata.get("admin_permissions", [])
+        return admin_perms.copy() if admin_perms else []
+    
+    def set_read_permissions(self, read: list[str]) -> None:
+        """Set read permissions for the mock data"""
+        self._CleanSyftObject__obj.mock_permissions = read.copy()
+        from .models import utcnow
+        self._CleanSyftObject__obj.updated_at = utcnow()
+    
+    def set_write_permissions(self, write: list[str]) -> None:
+        """Set write permissions for the mock data"""
+        self._CleanSyftObject__obj.mock_write_permissions = write.copy()
+        from .models import utcnow
+        self._CleanSyftObject__obj.updated_at = utcnow()
+    
+    def set_admin_permissions(self, admin: list[str]) -> None:
+        """Set admin permissions for the mock data (updates object admin)"""
+        self._CleanSyftObject__obj.metadata["admin_permissions"] = admin.copy()
+        from .models import utcnow
+        self._CleanSyftObject__obj.updated_at = utcnow()
     
     def get_note(self) -> Optional[str]:
         """Get the mock note describing the mock data characteristics"""
@@ -275,13 +323,36 @@ class PrivateAccessor:
         """Get the syft:// URL for the private data"""
         return self._CleanSyftObject__obj.private_url
     
-    def get_permissions(self) -> list[str]:
+    def get_read_permissions(self) -> list[str]:
         """Get read permissions for the private data"""
         return self._CleanSyftObject__obj.private_permissions.copy()
     
     def get_write_permissions(self) -> list[str]:
         """Get write permissions for the private data"""
         return self._CleanSyftObject__obj.private_write_permissions.copy()
+    
+    def get_admin_permissions(self) -> list[str]:
+        """Get admin permissions for the private data (same as object admin)"""
+        admin_perms = self._CleanSyftObject__obj.metadata.get("admin_permissions", [])
+        return admin_perms.copy() if admin_perms else []
+    
+    def set_read_permissions(self, read: list[str]) -> None:
+        """Set read permissions for the private data"""
+        self._CleanSyftObject__obj.private_permissions = read.copy()
+        from .models import utcnow
+        self._CleanSyftObject__obj.updated_at = utcnow()
+    
+    def set_write_permissions(self, write: list[str]) -> None:
+        """Set write permissions for the private data"""
+        self._CleanSyftObject__obj.private_write_permissions = write.copy()
+        from .models import utcnow
+        self._CleanSyftObject__obj.updated_at = utcnow()
+    
+    def set_admin_permissions(self, admin: list[str]) -> None:
+        """Set admin permissions for the private data (updates object admin)"""
+        self._CleanSyftObject__obj.metadata["admin_permissions"] = admin.copy()
+        from .models import utcnow
+        self._CleanSyftObject__obj.updated_at = utcnow()
     
     def save(self, file_path: str | Path = None, create_syftbox_permissions: bool = True) -> None:
         """Save the syft object (alias for save_yaml)"""
@@ -308,9 +379,38 @@ class SyftObjectConfigAccessor:
         """Get the syft:// URL for the syftobject configuration"""
         return self._CleanSyftObject__obj.syftobject
     
-    def get_permissions(self) -> list[str]:
-        """Get permissions for the syftobject configuration (discovery)"""
+    def get_read_permissions(self) -> list[str]:
+        """Get read permissions for the syftobject configuration (discovery)"""
         return self._CleanSyftObject__obj.syftobject_permissions.copy()
+    
+    def get_write_permissions(self) -> list[str]:
+        """Get write permissions for the syftobject configuration"""
+        # SyftObject config write permissions are typically admin-only
+        admin_perms = self._CleanSyftObject__obj.metadata.get("admin_permissions", [])
+        return admin_perms.copy() if admin_perms else []
+    
+    def get_admin_permissions(self) -> list[str]:
+        """Get admin permissions for the syftobject configuration"""
+        admin_perms = self._CleanSyftObject__obj.metadata.get("admin_permissions", [])
+        return admin_perms.copy() if admin_perms else []
+    
+    def set_read_permissions(self, read: list[str]) -> None:
+        """Set read permissions for the syftobject configuration (discovery)"""
+        self._CleanSyftObject__obj.syftobject_permissions = read.copy()
+        from .models import utcnow
+        self._CleanSyftObject__obj.updated_at = utcnow()
+    
+    def set_write_permissions(self, write: list[str]) -> None:
+        """Set write permissions for the syftobject configuration (updates admin)"""
+        self._CleanSyftObject__obj.metadata["admin_permissions"] = write.copy()
+        from .models import utcnow
+        self._CleanSyftObject__obj.updated_at = utcnow()
+    
+    def set_admin_permissions(self, admin: list[str]) -> None:
+        """Set admin permissions for the syftobject configuration"""
+        self._CleanSyftObject__obj.metadata["admin_permissions"] = admin.copy()
+        from .models import utcnow
+        self._CleanSyftObject__obj.updated_at = utcnow()
 
 
 def wrap_syft_object(obj) -> CleanSyftObject:
