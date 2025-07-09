@@ -88,6 +88,12 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             justify-content: space-between;
         }}
         
+        .header-buttons {{
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }}
+        
         .widget-title {{
             font-size: 14px;
             font-weight: 600;
@@ -611,12 +617,20 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                 <span id="object-name">{name}</span>
                 <span class="uid-badge">{object_uid[:8]}...</span>
             </div>
-            <button class="btn btn-primary" onclick="refreshObject()">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-                </svg>
-                Refresh
-            </button>
+            <div class="header-buttons">
+                <button class="btn btn-secondary" onclick="openInNewTab()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/>
+                    </svg>
+                    Open in New Tab
+                </button>
+                <button class="btn btn-primary" onclick="refreshObject()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                    </svg>
+                    Refresh
+                </button>
+            </div>
         </div>
         
         <div class="tabs">
@@ -1110,6 +1124,11 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             if (path) {{
                 window.open(`/editor?path=${{encodeURIComponent(path)}}`, '_blank');
             }}
+        }}
+        
+        function openInNewTab() {{
+            const currentUrl = window.location.href;
+            window.open(currentUrl, '_blank');
         }}
         
         function refreshObject() {{
