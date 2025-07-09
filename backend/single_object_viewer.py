@@ -338,6 +338,11 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             line-height: 1.4;
         }}
         
+        .btn-sm {{
+            padding: 3px 8px;
+            font-size: 10px;
+        }}
+        
         .btn-primary {{
             background-color: #bfdbfe;
             color: #1e3a8a;
@@ -551,12 +556,45 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             margin-top: 12px;
         }}
         
-        .action-buttons {{
+        .tab-header {{
             display: flex;
-            gap: 8px;
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid #e5e7eb;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }}
+        
+        .tab-title {{
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+            margin: 0;
+        }}
+        
+        .danger-zone {{
+            margin-top: 24px;
+            padding: 12px;
+            border: 1px solid #fecaca;
+            border-radius: 6px;
+            background: #fef2f2;
+        }}
+        
+        .danger-zone-header {{
+            margin-bottom: 8px;
+        }}
+        
+        .danger-zone-title {{
+            font-size: 13px;
+            font-weight: 600;
+            color: #7f1d1d;
+            margin: 0 0 2px 0;
+        }}
+        
+        .danger-zone-description {{
+            font-size: 11px;
+            color: #991b1b;
+            margin: 0;
         }}
         
         .status-message {{
@@ -629,6 +667,16 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         <!-- Overview Tab -->
         <div id="overview-tab" class="tab-content active">
+            <div class="tab-header">
+                <h3 class="tab-title">Object Details</h3>
+                <button class="btn btn-primary btn-sm" onclick="saveOverview()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z"/>
+                    </svg>
+                    Save Changes
+                </button>
+            </div>
+            
             <div class="form-group">
                 <label class="form-label">Name</label>
                 <input type="text" id="name-input" class="form-input" value="{name}">
@@ -671,14 +719,12 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                 <textarea id="mock-note-input" class="form-input" placeholder="Describe what makes this mock data different from the real data..."></textarea>
             </div>
             
-            <div class="action-buttons">
-                <button class="btn btn-primary" onclick="saveOverview()">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z"/>
-                    </svg>
-                    Save Changes
-                </button>
-                <button class="btn btn-danger" onclick="deleteObject()">
+            <div class="danger-zone">
+                <div class="danger-zone-header">
+                    <h4 class="danger-zone-title">Danger Zone</h4>
+                    <p class="danger-zone-description">This action cannot be undone</p>
+                </div>
+                <button class="btn btn-danger btn-sm" onclick="deleteObject()">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"/>
                     </svg>
@@ -725,6 +771,16 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         <!-- Permissions Tab -->
         <div id="permissions-tab" class="tab-content">
+            <div class="tab-header">
+                <h3 class="tab-title">Access Control</h3>
+                <button class="btn btn-primary btn-sm" onclick="savePermissions()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z"/>
+                    </svg>
+                    Save Permissions
+                </button>
+            </div>
+            
             <div class="permissions-grid">
                 <!-- Discovery Permissions - Full Width -->
                 <div class="permissions-section full-width">
@@ -779,10 +835,6 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                         </div>
                     </div>
                 </div>
-            </div>
-            
-            <div class="action-buttons">
-                <button class="btn btn-primary" onclick="savePermissions()">Save Permissions</button>
             </div>
         </div>
     </div>
