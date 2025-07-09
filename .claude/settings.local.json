@@ -50,7 +50,8 @@
       "Bash(fi)",
       "Bash(done)",
       "Bash(python:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(git revert:*)"
     ],
     "deny": []
   }
