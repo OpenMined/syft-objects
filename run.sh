@@ -37,7 +37,8 @@ uv pip install \
       "syft-core>=0.2.5" \
       "requests>=2.32.4" \
       "python-multipart>=0.0.20" \
-      "pandas>=2.0.0"
+      "pandas>=2.0.0" \
+      "openpyxl>=3.1.5" \
 # Install optional performance enhancements if available (but don't fail if not)
 echo "📦 Installing optional performance enhancements..."
 # uv pip install "uvloop>=0.17.0" "httptools>=0.6.0" || echo "⚠️  Optional performance dependencies skipped"

@@ -439,7 +439,8 @@ class SyftObject(BaseModel):
     
     def get_owner_email(self) -> str:
         """Get the owner email from metadata"""
-        return self.metadata.get('owner_email', 'unknown')
+        # Check for new format first, then fall back to old format
+        return self.metadata.get('owner_email', self.metadata.get('email', 'unknown'))
     
     def delete(self) -> bool:
         """
