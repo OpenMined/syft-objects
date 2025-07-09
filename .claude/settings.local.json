@@ -29,7 +29,8 @@
       "Bash(find:*)",
       "Bash(mv:*)",
       "Bash(uv run:*)",
-      "Bash(git revert:*)"
+      "Bash(git revert:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }
