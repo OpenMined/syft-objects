@@ -242,40 +242,72 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             word-break: break-all;
         }}
         
-        .file-section {{
+        .sub-tabs {{
+            display: flex;
             background: #f8f9fa;
-            border-radius: 6px;
-            padding: 16px;
-            margin-bottom: 12px;
-            border: 1px solid #e5e7eb;
+            border-bottom: 1px solid #e5e7eb;
+            overflow-x: auto;
         }}
         
-        .file-header {{
+        .sub-tab {{
+            padding: 8px 16px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 12px;
+            color: #6b7280;
+            white-space: nowrap;
+            transition: all 0.15s;
+            position: relative;
+            font-weight: 500;
+        }}
+        
+        .sub-tab:hover {{
+            color: #374151;
+            background: #f3f4f6;
+        }}
+        
+        .sub-tab.active {{
+            color: #111827;
+            background: white;
+            border-bottom: 2px solid #3b82f6;
+        }}
+        
+        .file-tab-content {{
+            display: none;
+            position: relative;
+        }}
+        
+        .file-tab-content.active {{
+            display: block;
+        }}
+        
+        .file-toolbar {{
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 12px;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e5e7eb;
         }}
         
-        .file-title {{
-            font-size: 14px;
-            font-weight: 600;
-            color: #374151;
-        }}
-        
-        .file-info {{
-            display: flex;
-            gap: 16px;
-            margin-bottom: 12px;
-            font-size: 12px;
+        .file-path {{
+            font-size: 11px;
             color: #6b7280;
         }}
         
-        .file-iframe {{
+        .file-path code {{
+            font-family: 'SF Mono', Monaco, monospace;
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+        }}
+        
+        .file-iframe-full {{
             width: 100%;
-            height: 400px;
-            border: 1px solid #e5e7eb;
-            border-radius: 4px;
+            height: 500px;
+            border: none;
             background: white;
         }}
         
@@ -616,43 +648,37 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         <!-- Files Tab -->
         <div id="files-tab" class="tab-content">
-            <div class="file-section">
-                <div class="file-header">
-                    <h3 class="file-title">🔍 Mock {'Folder' if mock_is_folder else 'File'}</h3>
-                    <button class="btn btn-secondary" onclick="openInEditor('mock')">
-                        Open in Editor
-                    </button>
-                </div>
-                <div class="file-info">
-                    <span>Path: <code id="mock-path">{mock_path or 'Not found'}</code></span>
-                </div>
-                <iframe id="mock-iframe" class="file-iframe" src="/editor?path={mock_path}&embedded=true"></iframe>
+            <div class="sub-tabs">
+                <button class="sub-tab active" onclick="switchFileTab('mock')">🔍 Mock {'Folder' if mock_is_folder else 'File'}</button>
+                <button class="sub-tab" onclick="switchFileTab('private')">🔐 Private {'Folder' if private_is_folder else 'File'}</button>
+                <button class="sub-tab" onclick="switchFileTab('config')">📋 Config (.syftobject.yaml)</button>
             </div>
             
-            <div class="file-section">
-                <div class="file-header">
-                    <h3 class="file-title">🔐 Private {'Folder' if private_is_folder else 'File'}</h3>
-                    <button class="btn btn-secondary" onclick="openInEditor('private')">
-                        Open in Editor
-                    </button>
+            <!-- Mock File Sub-Tab -->
+            <div id="file-mock" class="file-tab-content active">
+                <div class="file-toolbar">
+                    <span class="file-path">Path: <code id="mock-path">{mock_path or 'Not found'}</code></span>
+                    <button class="btn btn-lavender" onclick="openInEditor('mock')">Open in Editor</button>
                 </div>
-                <div class="file-info">
-                    <span>Path: <code id="private-path">{private_path or 'Not found'}</code></span>
-                </div>
-                <iframe id="private-iframe" class="file-iframe" src="/editor?path={private_path}&embedded=true"></iframe>
+                <iframe id="mock-iframe" class="file-iframe-full" src="/editor?path={mock_path}&embedded=true"></iframe>
             </div>
             
-            <div class="file-section">
-                <div class="file-header">
-                    <h3 class="file-title">Config File (.syftobject.yaml)</h3>
-                    <button class="btn btn-secondary" onclick="openInEditor('syftobject')">
-                        Open in Editor
-                    </button>
+            <!-- Private File Sub-Tab -->
+            <div id="file-private" class="file-tab-content">
+                <div class="file-toolbar">
+                    <span class="file-path">Path: <code id="private-path">{private_path or 'Not found'}</code></span>
+                    <button class="btn btn-mint" onclick="openInEditor('private')">Open in Editor</button>
                 </div>
-                <div class="file-info">
-                    <span>Path: <code id="syftobject-path">{syftobject_path or 'Not found'}</code></span>
+                <iframe id="private-iframe" class="file-iframe-full" src="/editor?path={private_path}&embedded=true"></iframe>
+            </div>
+            
+            <!-- Config File Sub-Tab -->
+            <div id="file-config" class="file-tab-content">
+                <div class="file-toolbar">
+                    <span class="file-path">Path: <code id="syftobject-path">{syftobject_path or 'Not found'}</code></span>
+                    <button class="btn btn-peach" onclick="openInEditor('syftobject')">Open in Editor</button>
                 </div>
-                <iframe id="syftobject-iframe" class="file-iframe" src="/editor?path={syftobject_path}&embedded=true"></iframe>
+                <iframe id="syftobject-iframe" class="file-iframe-full" src="/editor?path={syftobject_path}&embedded=true"></iframe>
             </div>
         </div>
         
@@ -755,6 +781,20 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                 content.classList.remove('active');
             }});
             document.getElementById(tabName + '-tab').classList.add('active');
+        }}
+        
+        function switchFileTab(tabName) {{
+            // Update sub-tab buttons
+            document.querySelectorAll('.sub-tab').forEach(tab => {{
+                tab.classList.remove('active');
+            }});
+            event.target.classList.add('active');
+            
+            // Update sub-tab content
+            document.querySelectorAll('.file-tab-content').forEach(content => {{
+                content.classList.remove('active');
+            }});
+            document.getElementById('file-' + tabName).classList.add('active');
         }}
         
         async function loadObjectMetadata() {{
