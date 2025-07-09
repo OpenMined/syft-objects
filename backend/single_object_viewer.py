@@ -79,45 +79,24 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             overflow: hidden;
         }}
         
-        .widget-header {{
-            background: white;
-            padding: 8px 12px;
-            border-bottom: 1px solid #e5e7eb;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }}
-        
-        .header-buttons {{
-            display: flex;
-            gap: 6px;
-            align-items: center;
-        }}
-        
-        .widget-title {{
-            font-size: 14px;
-            font-weight: 600;
-            color: #111827;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }}
-        
-        .uid-badge {{
-            font-size: 10px;
-            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
-            background: #f3f4f6;
-            padding: 2px 6px;
-            border-radius: 3px;
-            color: #6b7280;
-            font-weight: 500;
-        }}
         
         .tabs {{
             display: flex;
             background: #f8f9fa;
             border-bottom: 1px solid #e5e7eb;
             overflow-x: auto;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        
+        .tabs-left {{
+            display: flex;
+        }}
+        
+        .tabs-right {{
+            display: flex;
+            gap: 6px;
+            padding-right: 12px;
         }}
         
         .tab {{
@@ -612,12 +591,13 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
 </head>
 <body>
     <div class="widget-container">
-        <div class="widget-header">
-            <div class="widget-title">
-                <span id="object-name">{name}</span>
-                <span class="uid-badge">{object_uid[:8]}...</span>
+        <div class="tabs">
+            <div class="tabs-left">
+                <button class="tab active" onclick="switchTab('overview')">Overview</button>
+                <button class="tab" onclick="switchTab('files')">Files</button>
+                <button class="tab" onclick="switchTab('permissions')">Permissions</button>
             </div>
-            <div class="header-buttons">
+            <div class="tabs-right">
                 <button class="btn btn-secondary" onclick="openInNewTab()">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/>
@@ -631,12 +611,6 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                     Refresh
                 </button>
             </div>
-        </div>
-        
-        <div class="tabs">
-            <button class="tab active" onclick="switchTab('overview')">Overview</button>
-            <button class="tab" onclick="switchTab('files')">Files</button>
-            <button class="tab" onclick="switchTab('permissions')">Permissions</button>
         </div>
         
         <div id="status-message" class="status-message"></div>
@@ -949,10 +923,6 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                 
                 showStatus(`${{field}} updated successfully`, 'success');
                 
-                // Update the header if name changed
-                if (field === 'name') {{
-                    document.getElementById('object-name').textContent = value;
-                }}
                 
             }} catch (error) {{
                 showStatus('Error updating field: ' + error.message, 'error');
@@ -981,8 +951,6 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                 
                 showStatus('Overview saved successfully', 'success');
                 
-                // Update the header if name changed
-                document.getElementById('object-name').textContent = nameValue;
                 
             }} catch (error) {{
                 showStatus('Error saving overview: ' + error.message, 'error');
