@@ -235,7 +235,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         .file-iframe {{
             width: 100%;
             height: 400px;
-            border: 1px solid #e5e7eb;
+            border: none;
             border-radius: 6px;
             background: white;
         }}
@@ -254,17 +254,19 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .btn-primary {{
-            background: #3b82f6;
-            color: white;
+            background-color: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            border: none;
         }}
         
         .btn-primary:hover {{
-            background: #2563eb;
+            background-color: rgba(59, 130, 246, 0.3);
         }}
         
         .btn-secondary {{
             background: #e5e7eb;
             color: #374151;
+            border: none;
         }}
         
         .btn-secondary:hover {{
@@ -272,12 +274,13 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .btn-danger {{
-            background: #ef4444;
-            color: white;
+            background: rgba(239, 68, 68, 0.2);
+            color: #dc2626;
+            border: none;
         }}
         
         .btn-danger:hover {{
-            background: #dc2626;
+            background: rgba(239, 68, 68, 0.3);
         }}
         
         .permissions-section {{
@@ -425,9 +428,9 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .status-success {{
-            background: #d1fae5;
+            background: #dcfce7;
             color: #065f46;
-            border: 1px solid #a7f3d0;
+            border: 1px solid #bbf7d0;
         }}
         
         .status-error {{
@@ -479,12 +482,12 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         <div id="overview-tab" class="tab-content active">
             <div class="form-group">
                 <label class="form-label">Name</label>
-                <input type="text" id="name-input" class="form-input" value="{name}" onblur="updateField('name', this.value)">
+                <input type="text" id="name-input" class="form-input" value="{name}">
             </div>
             
             <div class="form-group">
                 <label class="form-label">Description</label>
-                <textarea id="description-input" class="form-input" onblur="updateField('description', this.value)">{description or ''}</textarea>
+                <textarea id="description-input" class="form-input">{description or ''}</textarea>
             </div>
             
             <div class="info-grid">
@@ -516,10 +519,16 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             
             <div class="form-group">
                 <label class="form-label">Mock Note</label>
-                <textarea id="mock-note-input" class="form-input" placeholder="Describe what makes this mock data different from the real data..." onblur="updateField('mock_note', this.value)"></textarea>
+                <textarea id="mock-note-input" class="form-input" placeholder="Describe what makes this mock data different from the real data..."></textarea>
             </div>
             
             <div class="action-buttons">
+                <button class="btn btn-primary" onclick="saveOverview()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z"/>
+                    </svg>
+                    Save Changes
+                </button>
                 <button class="btn btn-danger" onclick="deleteObject()">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"/>
@@ -781,6 +790,36 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                 
             }} catch (error) {{
                 showStatus('Error updating field: ' + error.message, 'error');
+            }}
+        }}
+        
+        async function saveOverview() {{
+            try {{
+                const nameValue = document.getElementById('name-input').value;
+                const descriptionValue = document.getElementById('description-input').value;
+                const mockNoteValue = document.getElementById('mock-note-input').value;
+                
+                const updates = {{
+                    name: nameValue,
+                    description: descriptionValue,
+                    mock_note: mockNoteValue
+                }};
+                
+                const response = await fetch(`/api/object/${{objectUid}}/metadata`, {{
+                    method: 'PUT',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify(updates)
+                }});
+                
+                if (!response.ok) throw new Error('Failed to save changes');
+                
+                showStatus('Overview saved successfully', 'success');
+                
+                // Update the header if name changed
+                document.getElementById('object-name').textContent = nameValue;
+                
+            }} catch (error) {{
+                showStatus('Error saving overview: ' + error.message, 'error');
             }}
         }}
         

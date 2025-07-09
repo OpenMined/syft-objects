@@ -21,7 +21,7 @@ def create_html_display(syft_obj: 'SyftObject') -> str:
             # Server is available, return iframe to the single object viewer
             viewer_url = f"{base_url}/api/object/{syft_obj.uid}/view"
             return f'''
-            <div style="width: 100%; height: 600px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+            <div style="width: 100%; height: 800px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
                 <iframe src="{viewer_url}" style="width: 100%; height: 100%; border: none;"></iframe>
             </div>
             '''

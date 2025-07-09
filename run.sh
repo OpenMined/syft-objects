@@ -64,7 +64,7 @@ echo "🚀 Starting 100% Python FastAPI server with integrated HTML generation..
 # Check if optional performance dependencies are available
 if python -c "import uvloop" 2>/dev/null && python -c "import httptools" 2>/dev/null; then
     echo "✅ Running with performance optimizations (uvloop + httptools)"
-    uv run --no-sync uvicorn backend.fast_main:app \
+    uv run uvicorn backend.fast_main:app \
         --host 0.0.0.0 \
         --port $SYFTBOX_ASSIGNED_PORT \
         --reload \
@@ -76,7 +76,7 @@ if python -c "import uvloop" 2>/dev/null && python -c "import httptools" 2>/dev/
         --date-header
 else
     echo "⚡ Running with standard event loop"
-    uv run --no-sync uvicorn backend.fast_main:app \
+    uv run uvicorn backend.fast_main:app \
         --host 0.0.0.0 \
         --port $SYFTBOX_ASSIGNED_PORT \
         --reload \
