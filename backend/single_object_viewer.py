@@ -824,8 +824,26 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                 document.getElementById('private-path').textContent = data.paths.private || 'Not found';
                 document.getElementById('syftobject-path').textContent = data.paths.syftobject || 'Not found';
                 
-                // Update permissions
-                currentPermissions = data.permissions;
+                // Update permissions - handle both new and old format
+                if (data.permissions) {{
+                    if (data.permissions.read && Array.isArray(data.permissions.read)) {{
+                        // New format: {read: [], write: [], admin: []}
+                        currentPermissions = {{
+                            discovery_permissions: data.permissions.read || [],
+                            mock_permissions: {{
+                                read: data.permissions.read || [],
+                                write: data.permissions.write || []
+                            }},
+                            private_permissions: {{
+                                read: data.permissions.admin || [],  // Admin has private read
+                                write: data.permissions.admin || []   // Admin has private write
+                            }}
+                        }};
+                    }} else {{
+                        // Old format - use as is
+                        currentPermissions = data.permissions;
+                    }}
+                }}
                 renderPermissions();
                 
                 // Metadata rendering removed - tab was removed
