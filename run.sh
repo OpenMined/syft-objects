@@ -69,6 +69,7 @@ if python -c "import uvloop" 2>/dev/null && python -c "import httptools" 2>/dev/
         --port $SYFTBOX_ASSIGNED_PORT \
         --loop uvloop \
         --http httptools \
+        --reload \
         --access-log \
         --use-colors \
         --server-header \
@@ -78,6 +79,7 @@ else
     uv run --no-sync uvicorn backend.fast_main:app \
         --host 0.0.0.0 \
         --port $SYFTBOX_ASSIGNED_PORT \
+        --reload \
         --access-log \
         --use-colors \
         --server-header \
