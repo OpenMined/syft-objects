@@ -301,7 +301,8 @@ class ObjectsCollection:
         elif isinstance(index, str):
             # Handle string UID lookup
             for obj in self._objects:
-                if str(obj.uid) == index:
+                obj_uid = obj.get_uid() if hasattr(obj, 'get_uid') else str(obj.uid)
+                if obj_uid == index:
                     return obj
             raise KeyError(f"Object with UID '{index}' not found")
         
