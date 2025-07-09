@@ -21,7 +21,14 @@
       "Bash(rg:*)",
       "Bash(rm:*)",
       "Bash(git add:*)",
-      "Bash(uv run pytest:*)"
+      "Bash(uv run pytest:*)",
+      "Bash(rg:*)",
+      "Bash(git commit:*)",
+      "Bash(uv run:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(mv:*)",
+      "Bash(uv run:*)"
     ],
     "deny": []
   }

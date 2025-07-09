@@ -1,10 +1,13 @@
 # syft-objects - Distributed file discovery and addressing system 
 
-__version__ = "0.9.4"
+__version__ = "0.9.5"
 
 # Internal imports (hidden from public API)
 from . import models as _models
 from . import data_accessor as _data_accessor
+from . import config as _config
+from . import prompts as _prompts
+from . import mock_analyzer as _mock_analyzer
 from . import factory as _factory
 from . import collections as _collections
 from . import utils as _utils
@@ -42,6 +45,7 @@ def create_object(name=None, **kwargs):
             - private_read: List of who can read private
             - private_write: List of who can write private
             - metadata: Additional metadata dict
+            - skip_validation: Skip mock/real file validation
     
     Returns:
         SyftObject: The newly created object
@@ -98,6 +102,7 @@ import sys
 _current_module = sys.modules[__name__]
 _internal_modules = ['models', 'data_accessor', 'factory', 'collections', 'utils', 
                      'client', 'auto_install', 'permissions', 'file_ops', 'display',
+                     'config', 'prompts', 'mock_analyzer',
                      'ObjectsCollection', 'sys']  # Hide all internal modules (but keep syobj)
 for _attr_name in _internal_modules:
     if hasattr(_current_module, _attr_name):
