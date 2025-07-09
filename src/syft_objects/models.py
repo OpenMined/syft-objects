@@ -434,13 +434,45 @@ class SyftObject(BaseModel):
         """Check if a user can delete this object"""
         if not user_email:
             return False
+        
+        # Get owner email from metadata or URLs
         owner_email = self.get_owner_email()
-        return user_email == owner_email
+        
+        # If we couldn't get owner from metadata, try extracting from URLs
+        if owner_email == 'unknown':
+            owner_email = self._extract_owner_from_urls()
+        
+        # Normalize emails for comparison (lowercase and strip whitespace)
+        normalized_user = user_email.lower().strip() if user_email else None
+        normalized_owner = owner_email.lower().strip() if owner_email and owner_email != 'unknown' else None
+        
+        return normalized_user and normalized_owner and normalized_user == normalized_owner
     
     def get_owner_email(self) -> str:
         """Get the owner email from metadata"""
         # Check for new format first, then fall back to old format
-        return self.metadata.get('owner_email', self.metadata.get('email', 'unknown'))
+        owner = self.metadata.get('owner_email', self.metadata.get('email', 'unknown'))
+        
+        # If still unknown, try to extract from URLs
+        if owner == 'unknown':
+            owner = self._extract_owner_from_urls()
+            
+        return owner
+    
+    def _extract_owner_from_urls(self) -> str:
+        """Extract owner email from syft:// URLs"""
+        # Try to extract from private URL first, then mock URL
+        for url in [self.private_url, self.mock_url]:
+            if url and "://" in url:
+                # Extract the part after :// and before the first /
+                url_part = url.split("://")[1]
+                if "/" in url_part:
+                    # Get the datasite part (everything before the first /)
+                    datasite_part = url_part.split("/")[0]
+                    # If it contains @, it's likely an email
+                    if "@" in datasite_part:
+                        return datasite_part
+        return 'unknown'
     
     def delete(self) -> bool:
         """
