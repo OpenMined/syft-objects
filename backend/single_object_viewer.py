@@ -647,6 +647,12 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                     </svg>
                     Refresh
                 </button>
+                <button id="save-permissions-btn" class="btn btn-primary" style="display: none;" onclick="savePermissions()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z"/>
+                    </svg>
+                    Save Permissions
+                </button>
             </div>
         </div>
         
@@ -827,9 +833,6 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                 </div>
             </div>
             
-            <div class="action-buttons">
-                <button class="btn btn-primary" onclick="savePermissions()">Save Permissions</button>
-            </div>
         </div>
     </div>
     
@@ -855,6 +858,14 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                 content.classList.remove('active');
             }});
             document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // Show/hide Save Permissions button
+            const savePermBtn = document.getElementById('save-permissions-btn');
+            if (tabName === 'permissions') {{
+                savePermBtn.style.display = 'inline-flex';
+            }} else {{
+                savePermBtn.style.display = 'none';
+            }}
         }}
         
         function switchFileTab(tabName) {{
