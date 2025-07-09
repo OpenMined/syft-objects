@@ -234,7 +234,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .file-iframe {{
             width: 100%;
-            height: 400px;
+            height: 600px;
             border: none;
             border-radius: 6px;
             background: white;
