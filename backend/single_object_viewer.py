@@ -405,22 +405,22 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         .permissions-section {{
             background: #f8f9fa;
             border-radius: 0;
-            padding: 16px;
-            margin-bottom: 12px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
             border-top: 1px solid #e5e7eb;
             border-bottom: 1px solid #e5e7eb;
         }}
         
         .permissions-title {{
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             color: #374151;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }}
         
         .permission-group {{
-            margin-bottom: 12px;
-            padding-bottom: 12px;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
             border-bottom: 1px solid #e5e7eb;
         }}
         
@@ -431,17 +431,19 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .permission-label {{
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             color: #6b7280;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }}
         
         .email-list {{
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 8px;
+            gap: 6px;
+            margin-bottom: 6px;
+            min-height: 28px;
+            align-items: center;
         }}
         
         .email-tag {{
@@ -470,16 +472,17 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .add-email {{
             display: flex;
-            gap: 8px;
-            margin-top: 8px;
+            gap: 6px;
+            margin-top: 4px;
         }}
         
         .add-email input {{
             flex: 1;
-            padding: 6px 10px;
+            padding: 4px 8px;
             border: 1px solid #d1d5db;
             border-radius: 4px;
-            font-size: 13px;
+            font-size: 12px;
+            line-height: 1.4;
         }}
         
         .metadata-editor {{
@@ -538,8 +541,8 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         .action-buttons {{
             display: flex;
             gap: 8px;
-            margin-top: 16px;
-            padding-top: 16px;
+            margin-top: 12px;
+            padding-top: 12px;
             border-top: 1px solid #e5e7eb;
         }}
         
@@ -840,26 +843,36 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         function renderPermissions() {{
             // Render each permission list
-            renderPermissionList('syftobject-read-list', currentPermissions.syftobject?.read || []);
-            renderPermissionList('mock-read-list', currentPermissions.mock?.read || []);
-            renderPermissionList('mock-write-list', currentPermissions.mock?.write || []);
-            renderPermissionList('private-read-list', currentPermissions.private?.read || []);
-            renderPermissionList('private-write-list', currentPermissions.private?.write || []);
+            renderPermissionList('syftobject-read-list', currentPermissions.discovery_permissions || []);
+            renderPermissionList('mock-read-list', currentPermissions.mock_permissions?.read || []);
+            renderPermissionList('mock-write-list', currentPermissions.mock_permissions?.write || []);
+            renderPermissionList('private-read-list', currentPermissions.private_permissions?.read || []);
+            renderPermissionList('private-write-list', currentPermissions.private_permissions?.write || []);
         }}
         
         function renderPermissionList(elementId, emails) {{
             const container = document.getElementById(elementId);
             container.innerHTML = '';
             
-            emails.forEach(email => {{
-                const tag = document.createElement('div');
-                tag.className = 'email-tag';
-                tag.innerHTML = `
-                    ${{email}}
-                    <span class="remove" onclick="removePermission('${{elementId}}', '${{email}}')">&times;</span>
-                `;
-                container.appendChild(tag);
-            }});
+            if (!emails || emails.length === 0) {{
+                const emptyTag = document.createElement('div');
+                emptyTag.className = 'empty-state';
+                emptyTag.style.fontSize = '11px';
+                emptyTag.style.color = '#9ca3af';
+                emptyTag.style.fontStyle = 'italic';
+                emptyTag.textContent = 'No permissions set';
+                container.appendChild(emptyTag);
+            }} else {{
+                emails.forEach(email => {{
+                    const tag = document.createElement('div');
+                    tag.className = 'email-tag';
+                    tag.innerHTML = `
+                        ${{email}}
+                        <span class="remove" onclick="removePermission('${{elementId}}', '${{email}}')">&times;</span>
+                    `;
+                    container.appendChild(tag);
+                }});
+            }}
         }}
         
         // Metadata rendering function removed - tab was removed
@@ -926,16 +939,21 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             
             // Update local state
             if (fileType === 'syftobject') {{
-                if (!currentPermissions.syftobject) currentPermissions.syftobject = {{}};
-                if (!currentPermissions.syftobject.read) currentPermissions.syftobject.read = [];
-                if (!currentPermissions.syftobject.read.includes(email)) {{
-                    currentPermissions.syftobject.read.push(email);
+                if (!currentPermissions.discovery_permissions) currentPermissions.discovery_permissions = [];
+                if (!currentPermissions.discovery_permissions.includes(email)) {{
+                    currentPermissions.discovery_permissions.push(email);
                 }}
-            }} else {{
-                if (!currentPermissions[fileType]) currentPermissions[fileType] = {{}};
-                if (!currentPermissions[fileType][permType]) currentPermissions[fileType][permType] = [];
-                if (!currentPermissions[fileType][permType].includes(email)) {{
-                    currentPermissions[fileType][permType].push(email);
+            }} else if (fileType === 'mock') {{
+                if (!currentPermissions.mock_permissions) currentPermissions.mock_permissions = {{}};
+                if (!currentPermissions.mock_permissions[permType]) currentPermissions.mock_permissions[permType] = [];
+                if (!currentPermissions.mock_permissions[permType].includes(email)) {{
+                    currentPermissions.mock_permissions[permType].push(email);
+                }}
+            }} else if (fileType === 'private') {{
+                if (!currentPermissions.private_permissions) currentPermissions.private_permissions = {{}};
+                if (!currentPermissions.private_permissions[permType]) currentPermissions.private_permissions[permType] = [];
+                if (!currentPermissions.private_permissions[permType].includes(email)) {{
+                    currentPermissions.private_permissions[permType].push(email);
                 }}
             }}
             
@@ -952,14 +970,19 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             
             // Update local state
             if (fileType === 'syftobject') {{
-                const index = currentPermissions.syftobject?.read?.indexOf(email);
+                const index = currentPermissions.discovery_permissions?.indexOf(email);
                 if (index > -1) {{
-                    currentPermissions.syftobject.read.splice(index, 1);
+                    currentPermissions.discovery_permissions.splice(index, 1);
                 }}
-            }} else {{
-                const index = currentPermissions[fileType]?.[permType]?.indexOf(email);
+            }} else if (fileType === 'mock') {{
+                const index = currentPermissions.mock_permissions?.[permType]?.indexOf(email);
                 if (index > -1) {{
-                    currentPermissions[fileType][permType].splice(index, 1);
+                    currentPermissions.mock_permissions[permType].splice(index, 1);
+                }}
+            }} else if (fileType === 'private') {{
+                const index = currentPermissions.private_permissions?.[permType]?.indexOf(email);
+                if (index > -1) {{
+                    currentPermissions.private_permissions[permType].splice(index, 1);
                 }}
             }}
             
@@ -971,11 +994,11 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             try {{
                 // Convert to flat format expected by API
                 const updates = {{
-                    discovery_read: currentPermissions.syftobject?.read || [],
-                    mock_read: currentPermissions.mock?.read || [],
-                    mock_write: currentPermissions.mock?.write || [],
-                    private_read: currentPermissions.private?.read || [],
-                    private_write: currentPermissions.private?.write || []
+                    discovery_read: currentPermissions.discovery_permissions || [],
+                    mock_read: currentPermissions.mock_permissions?.read || [],
+                    mock_write: currentPermissions.mock_permissions?.write || [],
+                    private_read: currentPermissions.private_permissions?.read || [],
+                    private_write: currentPermissions.private_permissions?.write || []
                 }};
                 
                 const response = await fetch(`/api/objects/${{objectUid}}/permissions`, {{
