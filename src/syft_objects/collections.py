@@ -274,7 +274,11 @@ class ObjectsCollection:
     def list_unique_names(self):
         """Get list of unique object names"""
         self._ensure_loaded()
-        names = set(syft_obj.name for syft_obj in self._objects if syft_obj.name)
+        names = set()
+        for syft_obj in self._objects:
+            name = syft_obj.get_name() if hasattr(syft_obj, 'get_name') else (syft_obj.name if hasattr(syft_obj, 'name') else None)
+            if name:
+                names.add(name)
         return sorted(list(names))
 
     def to_list(self):
@@ -2192,14 +2196,17 @@ Example Usage:
 
         for i, syft_obj in enumerate(self._objects):
             email = self._get_object_email(syft_obj)
-            name = syft_obj.name or "Unnamed Object"
+            name = syft_obj.get_name() if hasattr(syft_obj, 'get_name') else (syft_obj.name if hasattr(syft_obj, 'name') else "Unnamed Object")
             # Compact metadata string (excluding system keys)
             system_keys = {"_file_operations"}
-            meta_items = [f"{k}={v}" for k, v in syft_obj.metadata.items() if k not in system_keys]
+            metadata = syft_obj.get_metadata() if hasattr(syft_obj, 'get_metadata') else (syft_obj.metadata if hasattr(syft_obj, 'metadata') else {})
+            meta_items = [f"{k}={v}" for k, v in metadata.items() if k not in system_keys]
             meta_str = ", ".join(meta_items) if meta_items else ""
-            created_str = syft_obj.created_at.strftime("%Y-%m-%d %H:%M UTC") if getattr(syft_obj, 'created_at', None) else ""
-            updated_str = syft_obj.updated_at.strftime("%Y-%m-%d %H:%M UTC") if getattr(syft_obj, 'updated_at', None) else ""
-            desc_str = syft_obj.description or ""
+            created_at = syft_obj.get_created_at() if hasattr(syft_obj, 'get_created_at') else (syft_obj.created_at if hasattr(syft_obj, 'created_at') else None)
+            created_str = created_at.strftime("%Y-%m-%d %H:%M UTC") if created_at else ""
+            updated_at = syft_obj.get_updated_at() if hasattr(syft_obj, 'get_updated_at') else (syft_obj.updated_at if hasattr(syft_obj, 'updated_at') else None)
+            updated_str = updated_at.strftime("%Y-%m-%d %H:%M UTC") if updated_at else ""
+            desc_str = syft_obj.get_description() if hasattr(syft_obj, 'get_description') else (syft_obj.description if hasattr(syft_obj, 'description') else "")
             html += f"""
             <tr data-email="{email.lower()}" data-name="{name.lower()}" data-index="{i}" data-meta="{meta_str.lower()}" data-desc="{desc_str.lower()}" data-created="{created_str.lower()}" data-updated="{updated_str.lower()}">
                 <td class="syft-objects-checkbox">
@@ -2208,8 +2215,8 @@ Example Usage:
                 <td class="syft-objects-index">{i}</td>
                 <td class="syft-objects-email">{email}</td>
                 <td class="syft-objects-name">{name}</td>
-                <td class="syft-objects-url">{syft_obj.private_url}</td>
-                <td class="syft-objects-url">{syft_obj.mock_url}</td>
+                <td class="syft-objects-url">{syft_obj.get_urls()['private'] if hasattr(syft_obj, 'get_urls') else (syft_obj.private_url if hasattr(syft_obj, 'private_url') else '')}</td>
+                <td class="syft-objects-url">{syft_obj.get_urls()['mock'] if hasattr(syft_obj, 'get_urls') else (syft_obj.mock_url if hasattr(syft_obj, 'mock_url') else '')}</td>
                 <td class="syft-objects-date">{created_str}</td>
                 <td class="syft-objects-date">{updated_str}</td>
                 <td class="syft-objects-desc">{desc_str}</td>

@@ -156,7 +156,7 @@ class TestObjectsCollection:
         collection._load_objects()
         
         assert len(collection._objects) == 2
-        names = [obj.name for obj in collection._objects]
+        names = [obj.get_name() for obj in collection._objects]
         assert "test_object" in names
         assert "private_object" in names
     
@@ -217,18 +217,18 @@ class TestObjectsCollection:
         """Test search method"""
         # Create test objects
         obj1 = Mock()
-        obj1.name = "Unique Object One"
-        obj1.description = "Description one"
-        obj1.created_at = datetime.now()
-        obj1.updated_at = datetime.now()
-        obj1.metadata = {"key": "value"}
+        obj1.get_name.return_value = "Unique Object One"
+        obj1.get_description.return_value = "Description one"
+        obj1.get_created_at.return_value = datetime.now()
+        obj1.get_updated_at.return_value = datetime.now()
+        obj1.get_metadata.return_value = {"key": "value"}
         
         obj2 = Mock()
-        obj2.name = "Another Object"
-        obj2.description = "Second description"
-        obj2.created_at = datetime.now()
-        obj2.updated_at = datetime.now()
-        obj2.metadata = {"type": "data"}
+        obj2.get_name.return_value = "Another Object"
+        obj2.get_description.return_value = "Second description"
+        obj2.get_created_at.return_value = datetime.now()
+        obj2.get_updated_at.return_value = datetime.now()
+        obj2.get_metadata.return_value = {"type": "data"}
         
         collection = ObjectsCollection()
         collection._objects = [obj1, obj2]
@@ -257,11 +257,11 @@ class TestObjectsCollection:
     def test_search_special_term(self):
         """Test search with special debug term"""
         obj1 = Mock()
-        obj1.name = "Test Object"
-        obj1.description = ""
-        obj1.created_at = None
-        obj1.updated_at = None
-        obj1.metadata = {}
+        obj1.get_name.return_value = "Test Object"
+        obj1.get_description.return_value = ""
+        obj1.get_created_at.return_value = None
+        obj1.get_updated_at.return_value = None
+        obj1.get_metadata.return_value = {}
         
         collection = ObjectsCollection()
         collection._objects = [obj1]
@@ -323,13 +323,13 @@ class TestObjectsCollection:
     def test_list_unique_names(self):
         """Test list_unique_names method"""
         obj1 = Mock()
-        obj1.name = "Object One"
+        obj1.get_name.return_value = "Object One"
         obj2 = Mock()
-        obj2.name = "Object Two"
+        obj2.get_name.return_value = "Object Two"
         obj3 = Mock()
-        obj3.name = "Object One"  # Duplicate
+        obj3.get_name.return_value = "Object One"  # Duplicate
         obj4 = Mock()
-        obj4.name = None  # No name
+        obj4.get_name.return_value = None  # No name
         
         collection = ObjectsCollection()
         collection._objects = [obj1, obj2, obj3, obj4]
@@ -404,8 +404,12 @@ class TestObjectsCollection:
         uid1 = str(uuid4())
         uid2 = str(uuid4())
         
-        obj1 = Mock(uid=uid1)
-        obj2 = Mock(uid=uid2)
+        obj1 = Mock()
+        obj1.uid = uid1
+        obj1.get_uid.return_value = uid1
+        obj2 = Mock()
+        obj2.uid = uid2
+        obj2.get_uid.return_value = uid2
         
         collection = ObjectsCollection()
         collection._objects = [obj1, obj2]
@@ -445,9 +449,11 @@ class TestObjectsCollection:
     def test_str_with_tabulate(self):
         """Test __str__ with tabulate available"""
         obj1 = Mock()
-        obj1.name = "Object One"
-        obj1.private_url = "syft://test@example.com/private/obj1.txt"
-        obj1.mock_url = "syft://test@example.com/public/obj1.txt"
+        obj1.get_name.return_value = "Object One"
+        obj1.get_urls.return_value = {
+            "private": "syft://test@example.com/private/obj1.txt",
+            "mock": "syft://test@example.com/public/obj1.txt"
+        }
         
         collection = ObjectsCollection([obj1])
         
@@ -462,7 +468,7 @@ class TestObjectsCollection:
     def test_str_without_tabulate(self):
         """Test __str__ without tabulate"""
         obj1 = Mock()
-        obj1.name = "Object One"
+        obj1.get_name.return_value = "Object One"
         
         collection = ObjectsCollection([obj1])
         
@@ -561,13 +567,15 @@ class TestObjectsCollection:
     def test_generate_interactive_table_html(self):
         """Test _generate_interactive_table_html method"""
         obj1 = Mock()
-        obj1.name = "Test Object"
-        obj1.description = "Test description"
-        obj1.private_url = "syft://test@example.com/private/test.txt"
-        obj1.mock_url = "syft://test@example.com/public/test.txt"
-        obj1.created_at = datetime.now()
-        obj1.updated_at = datetime.now()
-        obj1.metadata = {"key": "value"}
+        obj1.get_name.return_value = "Test Object"
+        obj1.get_description.return_value = "Test description"
+        obj1.get_urls.return_value = {
+            "private": "syft://test@example.com/private/test.txt",
+            "mock": "syft://test@example.com/public/test.txt"
+        }
+        obj1.get_created_at.return_value = datetime.now()
+        obj1.get_updated_at.return_value = datetime.now()
+        obj1.get_metadata.return_value = {"key": "value"}
         
         collection = ObjectsCollection([obj1])
         

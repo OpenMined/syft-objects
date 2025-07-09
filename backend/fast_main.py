@@ -636,7 +636,7 @@ async def get_object_details(object_uid: str) -> Dict[str, Any]:
                 if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'get_url'):
                     private_url = target_obj.private.get_url()
                 else:
-                    raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+                    raw_obj = target_obj._CleanSyftObject__obj if hasattr(target_obj, '_CleanSyftObject__obj') else target_obj
                     private_url = raw_obj.private_url
                 
                 if private_url.startswith("syft://"):
@@ -832,7 +832,7 @@ async def save_file_content(
             raise HTTPException(status_code=404, detail="Object not found")
         
         # Get the raw object if this is a CleanSyftObject
-        raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+        raw_obj = target_obj._CleanSyftObject__obj if hasattr(target_obj, '_CleanSyftObject__obj') else target_obj
         
         # Check write permissions for the file type
         try:
@@ -872,13 +872,13 @@ async def save_file_content(
             if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'get_path'):
                 file_path = target_obj.private.get_path()
             else:
-                raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+                raw_obj = target_obj._CleanSyftObject__obj if hasattr(target_obj, '_CleanSyftObject__obj') else target_obj
                 file_path = raw_obj.private_path
         else:  # mock
             if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'get_path'):
                 file_path = target_obj.mock.get_path()
             else:
-                raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+                raw_obj = target_obj._CleanSyftObject__obj if hasattr(target_obj, '_CleanSyftObject__obj') else target_obj
                 file_path = raw_obj.mock_path
         
         if not file_path:
@@ -962,7 +962,7 @@ async def update_object_permissions(
             raise HTTPException(status_code=404, detail="Object not found")
         
         # Get the raw object if this is a CleanSyftObject
-        raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+        raw_obj = target_obj._CleanSyftObject__obj if hasattr(target_obj, '_CleanSyftObject__obj') else target_obj
         
         # Check if user has permission to update permissions (must be owner)
         try:
@@ -994,31 +994,31 @@ async def update_object_permissions(
         updated_fields = []
         if 'private_read' in permissions:
             if hasattr(target_obj, '_obj'):
-                target_obj._obj.private_permissions = permissions['private_read']
+                target_obj._CleanSyftObject__obj.private_permissions = permissions['private_read']
             else:
                 target_obj.private_permissions = permissions['private_read']
             updated_fields.append('private_read')
         if 'private_write' in permissions:
             if hasattr(target_obj, '_obj'):
-                target_obj._obj.private_write_permissions = permissions['private_write']
+                target_obj._CleanSyftObject__obj.private_write_permissions = permissions['private_write']
             else:
                 target_obj.private_write_permissions = permissions['private_write']
             updated_fields.append('private_write')
         if 'mock_read' in permissions:
             if hasattr(target_obj, '_obj'):
-                target_obj._obj.mock_permissions = permissions['mock_read']
+                target_obj._CleanSyftObject__obj.mock_permissions = permissions['mock_read']
             else:
                 target_obj.mock_permissions = permissions['mock_read']
             updated_fields.append('mock_read')
         if 'mock_write' in permissions:
             if hasattr(target_obj, '_obj'):
-                target_obj._obj.mock_write_permissions = permissions['mock_write']
+                target_obj._CleanSyftObject__obj.mock_write_permissions = permissions['mock_write']
             else:
                 target_obj.mock_write_permissions = permissions['mock_write']
             updated_fields.append('mock_write')
         if 'syftobject' in permissions:
             if hasattr(target_obj, '_obj'):
-                target_obj._obj.syftobject_permissions = permissions['syftobject']
+                target_obj._CleanSyftObject__obj.syftobject_permissions = permissions['syftobject']
             else:
                 target_obj.syftobject_permissions = permissions['syftobject']
             updated_fields.append('syftobject')
@@ -1028,7 +1028,7 @@ async def update_object_permissions(
         
         # Update the updated_at timestamp
         if hasattr(target_obj, '_obj'):
-            target_obj._obj.updated_at = datetime.now()
+            target_obj._CleanSyftObject__obj.updated_at = datetime.now()
         else:
             target_obj.updated_at = datetime.now()
         
@@ -1040,7 +1040,7 @@ async def update_object_permissions(
                 logger.info(f"Object saved using .private.save() method")
             else:
                 # Raw SyftObject
-                raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+                raw_obj = target_obj._CleanSyftObject__obj if hasattr(target_obj, '_CleanSyftObject__obj') else target_obj
                 if hasattr(raw_obj, 'save_yaml'):
                     if hasattr(raw_obj, 'syftobject_path') and raw_obj.syftobject_path:
                         raw_obj.save_yaml(raw_obj.syftobject_path, create_syftbox_permissions=True)
@@ -1090,7 +1090,7 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
             raise HTTPException(status_code=404, detail="Object not found")
         
         # Get the raw object if this is a CleanSyftObject
-        raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+        raw_obj = target_obj._CleanSyftObject__obj if hasattr(target_obj, '_CleanSyftObject__obj') else target_obj
         
         # Check permissions using the object's can_delete method
         if hasattr(raw_obj, 'can_delete'):
@@ -1114,11 +1114,29 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
             else:
                 logger.info(f"User {user_email} authorized to delete object {object_uid}")
         
+        # Try to use the object's own delete method first
+        if hasattr(target_obj, 'delete_obj'):
+            try:
+                result = target_obj.delete_obj(user_email)
+                if result:
+                    # Refresh the objects collection to reflect the deletion
+                    objects.refresh()
+                    return {
+                        "message": f"Syft object {object_uid} deleted successfully",
+                        "deleted_files": ["object deleted via delete_obj method"],
+                        "object_type": "unknown",
+                        "timestamp": datetime.now()
+                    }
+                else:
+                    raise HTTPException(status_code=403, detail="Object deletion failed")
+            except Exception as e:
+                logger.warning(f"Object delete_obj method failed: {e}, falling back to manual deletion")
+        
         # Generic deletion logic for both file and folder objects
         deleted_files = []
         
         # Check if this is a folder-type object
-        raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+        raw_obj = target_obj._CleanSyftObject__obj if hasattr(target_obj, '_CleanSyftObject__obj') else target_obj
         is_folder = getattr(raw_obj, '_is_folder', False) or getattr(raw_obj, 'object_type', '') == 'folder'
         
         if is_folder:
@@ -1475,13 +1493,13 @@ async def update_object_metadata(
                 target_obj.mock.set_note(updates["mock_note"])
             else:
                 # Get raw object and update metadata
-                raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+                raw_obj = target_obj._CleanSyftObject__obj if hasattr(target_obj, '_CleanSyftObject__obj') else target_obj
                 raw_obj.metadata["mock_note"] = updates["mock_note"]
             updated_fields.append("mock_note")
         
         # Update timestamp
         from syft_objects.models import utcnow
-        raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+        raw_obj = target_obj._CleanSyftObject__obj if hasattr(target_obj, '_CleanSyftObject__obj') else target_obj
         raw_obj.updated_at = utcnow()
         
         # Refresh objects collection

@@ -328,6 +328,8 @@ class TestDataAccessor:
     def test_repr_html_with_dataframe(self):
         """Test _repr_html_ with pandas DataFrame"""
         mock_obj = Mock()
+        mock_obj._get_local_file_path.return_value = "/path/test.csv"
+        mock_obj.is_folder = False  # Ensure it's not treated as a folder
         accessor = DataAccessor("syft://test@example.com/test.csv", mock_obj)
         
         df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
@@ -341,6 +343,8 @@ class TestDataAccessor:
     def test_repr_html_with_string(self):
         """Test _repr_html_ with string content"""
         mock_obj = Mock()
+        mock_obj._get_local_file_path.return_value = "/path/test.txt"
+        mock_obj.is_folder = False
         accessor = DataAccessor("syft://test@example.com/test.txt", mock_obj)
         
         accessor._cached_obj = "Hello World"
@@ -351,6 +355,8 @@ class TestDataAccessor:
     def test_repr_html_with_long_string(self):
         """Test _repr_html_ with long string (truncation)"""
         mock_obj = Mock()
+        mock_obj._get_local_file_path.return_value = "/path/test.txt"
+        mock_obj.is_folder = False
         accessor = DataAccessor("syft://test@example.com/test.txt", mock_obj)
         
         accessor._cached_obj = "x" * 2000
@@ -363,6 +369,8 @@ class TestDataAccessor:
     def test_repr_html_with_dict(self):
         """Test _repr_html_ with dictionary"""
         mock_obj = Mock()
+        mock_obj._get_local_file_path.return_value = "/path/test.json"
+        mock_obj.is_folder = False
         accessor = DataAccessor("syft://test@example.com/test.json", mock_obj)
         
         accessor._cached_obj = {"key": "value", "number": 42}
@@ -376,6 +384,8 @@ class TestDataAccessor:
         """Test _repr_html_ with SQLite connection"""
         mock_obj = Mock()
         test_file = temp_dir / "test.db"
+        mock_obj._get_local_file_path.return_value = str(test_file)
+        mock_obj.is_folder = False
         
         # Create a database with tables
         conn = sqlite3.connect(str(test_file))
@@ -395,6 +405,8 @@ class TestDataAccessor:
     def test_repr_html_with_custom_repr(self):
         """Test _repr_html_ with object that has custom _repr_html_"""
         mock_obj = Mock()
+        mock_obj._get_local_file_path.return_value = "/path/test.txt"
+        mock_obj.is_folder = False
         accessor = DataAccessor("syft://test@example.com/test.txt", mock_obj)
         
         custom_obj = Mock()
@@ -408,6 +420,7 @@ class TestDataAccessor:
         """Test _repr_html_ error handling"""
         mock_obj = Mock()
         mock_obj._get_local_file_path.return_value = ""
+        mock_obj.is_folder = False
         accessor = DataAccessor("syft://test@example.com/test.txt", mock_obj)
         
         # Create a custom object that raises an error when converting to string
@@ -559,6 +572,7 @@ class TestDataAccessor:
         """Test _repr_html_ with dictionary object (lines 205-206)"""
         mock_obj = Mock()
         mock_obj._get_local_file_path.return_value = ""
+        mock_obj.is_folder = False
         
         accessor = DataAccessor("syft://test@example.com/test.json", mock_obj)
         accessor._cached_obj = {"key1": "value1", "key2": "value2", "key3": [1, 2, 3]}
@@ -573,6 +587,7 @@ class TestDataAccessor:
         """Test _repr_html_ with long string truncation (lines 210-211)"""
         mock_obj = Mock()
         mock_obj._get_local_file_path.return_value = ""
+        mock_obj.is_folder = False
         
         accessor = DataAccessor("syft://test@example.com/test.txt", mock_obj)
         # Create a string longer than 500 characters
@@ -707,6 +722,8 @@ class TestDataAccessor:
     def test_repr_html_dataframe_with_to_html(self):
         """Test _repr_html_ with object that has to_html method (line 182)"""
         mock_obj = Mock()
+        mock_obj._get_local_file_path.return_value = "/path/test.csv"
+        mock_obj.is_folder = False
         accessor = DataAccessor("syft://test@example.com/test.csv", mock_obj)
         
         # Create a mock object with to_html method but no _repr_html_
@@ -751,6 +768,8 @@ class TestDataAccessor:
     def test_repr_html_other_object_short(self):
         """Test _repr_html_ with other object (lines 210-211)"""
         mock_obj = Mock()
+        mock_obj._get_local_file_path.return_value = "/path/test.txt"
+        mock_obj.is_folder = False
         accessor = DataAccessor("syft://test@example.com/test.txt", mock_obj)
         
         # Create a custom object with short string representation
@@ -766,6 +785,8 @@ class TestDataAccessor:
     def test_repr_html_other_object_long(self):
         """Test _repr_html_ with other object that has long string repr (lines 210-211)"""
         mock_obj = Mock()
+        mock_obj._get_local_file_path.return_value = "/path/test.txt"
+        mock_obj.is_folder = False
         accessor = DataAccessor("syft://test@example.com/test.txt", mock_obj)
         
         # Create a custom object with long string representation
