@@ -341,7 +341,8 @@ def generate_editor_html(initial_path: str = None) -> str:
             background: white;
             border-bottom: 1px solid #e5e7eb;
             font-size: 11px;
-            min-height: 32px;
+            max-height: 60px;
+            overflow-y: auto;
         }}
 
         .breadcrumb-item {{
