@@ -153,9 +153,17 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             animation: fadeIn 0.3s ease-in-out;
         }}
         
-        /* Files tab should have no padding for full-width display */
+        /* Files, Permissions, and Metadata tabs should have no left/right padding */
         #files-tab {{
             padding: 0;
+        }}
+        
+        #permissions-tab {{
+            padding: 16px 0;
+        }}
+        
+        #metadata-tab {{
+            padding: 16px 0;
         }}
         
         .tab-content.active {{
@@ -396,10 +404,11 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .permissions-section {{
             background: #f8f9fa;
-            border-radius: 6px;
+            border-radius: 0;
             padding: 16px;
             margin-bottom: 12px;
-            border: 1px solid #e5e7eb;
+            border-top: 1px solid #e5e7eb;
+            border-bottom: 1px solid #e5e7eb;
         }}
         
         .permissions-title {{
@@ -474,9 +483,11 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .metadata-editor {{
-            background: #f9fafb;
-            border-radius: 8px;
-            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 0;
+            padding: 16px;
+            border-top: 1px solid #e5e7eb;
+            border-bottom: 1px solid #e5e7eb;
         }}
         
         .metadata-item {{
