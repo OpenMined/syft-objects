@@ -1,6 +1,8 @@
 # syft-objects display - HTML rendering and rich display functionality
 
 from typing import TYPE_CHECKING
+import html
+from pathlib import Path
 
 if TYPE_CHECKING:
     from .models import SyftObject
@@ -29,417 +31,589 @@ def create_html_display(syft_obj: 'SyftObject') -> str:
         # Server not available, fall back to static display
         pass
     
-    # Get file operations info from metadata if available
-    file_ops = syft_obj.metadata.get("_file_operations", {})
-    files_moved = file_ops.get("files_moved_to_syftbox", [])
-    created_files = file_ops.get("created_files", [])
-    syftbox_available = file_ops.get("syftbox_available", False)
-    syftobject_yaml_path = file_ops.get("syftobject_yaml_path")
-    
-    # Check if files exist locally
-    mock_file_exists = syft_obj._check_file_exists(syft_obj.mock_url)
-    private_file_exists = syft_obj._check_file_exists(syft_obj.private_url)
-    
-    # Permission badge colors
-    def permission_badge(users, perm_type="read"):
-        if not users:
-            return '<span class="syft-badge syft-badge-none">None</span>'
-        elif "public" in users or "*" in users:
-            return '<span class="syft-badge syft-badge-public">Public</span>'
-        elif len(users) == 1:
-            return f'<span class="syft-badge syft-badge-user">{users[0]}</span>'
-        else:
-            return f'<span class="syft-badge syft-badge-multiple">{len(users)} users</span>'
-    
-    # File status badges
-    def file_badge(exists, url, file_type="file"):
-        if exists:
-            return '<span class="syft-badge syft-badge-available">✓ Available</span>'
-        else:
-            return '<span class="syft-badge syft-badge-unavailable">⚠ Not accessible</span>'
-    
-    # Generate metadata rows
-    updated_row = ""
-    if syft_obj.updated_at:
-        updated_row = f'<div class="syft-meta-row"><span class="syft-meta-key">Updated</span><span class="syft-meta-value">{syft_obj.updated_at.strftime("%Y-%m-%d %H:%M UTC")}</span></div>'
-    
-    description_row = ""
-    if syft_obj.description:
-        description_row = f'<div class="syft-meta-row"><span class="syft-meta-key">Description</span><span class="syft-meta-value">{str(syft_obj.description)}</span></div>'
-    
-    # Show basic file information without buttons
-    mock_info = ""
-    if mock_file_exists:
-        # Handle both CleanSyftObject (where .mock is accessor) and raw SyftObject
-        if hasattr(syft_obj.mock, 'get_path'):
-            mock_path = syft_obj.mock.get_path()
-        else:
-            mock_path = syft_obj._get_local_file_path(syft_obj.mock_url)
-        if mock_path:
-            mock_info = f'<div class="syft-file-info">Path: {mock_path}</div>'
-    
-    private_info = ""
-    if private_file_exists:
-        # Handle both CleanSyftObject (where .private is accessor) and raw SyftObject
-        if hasattr(syft_obj, 'private') and hasattr(syft_obj.private, 'get_path'):
-            private_path = syft_obj.private.get_path()
-        else:
-            private_path = syft_obj._get_local_file_path(syft_obj.private_url)
-        if private_path:
-            private_info = f'<div class="syft-file-info">Path: {private_path}</div>'
-    
-    # Create the complete HTML
-    html = create_html_template(
-        syft_obj=syft_obj,
-        mock_file_exists=mock_file_exists,
-        private_file_exists=private_file_exists,
-        mock_info=mock_info,
-        private_info=private_info,
-        syftobject_yaml_path=syftobject_yaml_path,
-        permission_badge=permission_badge,
-        file_badge=file_badge,
-        updated_row=updated_row,
-        description_row=description_row,
-        files_moved=files_moved,
-        created_files=created_files,
-        syftbox_available=syftbox_available
-    )
-    
-    return html
+    # Generate the static display that matches the localhost version
+    return create_static_display(syft_obj)
 
 
-def create_html_template(syft_obj, mock_file_exists, private_file_exists, mock_info, private_info, 
-                        syftobject_yaml_path, permission_badge, file_badge, updated_row, 
-                        description_row, files_moved, created_files, syftbox_available) -> str:
-    """Create the HTML template with all the styling"""
+def create_static_display(syft_obj: 'SyftObject') -> str:
+    """Create a static HTML display that matches the localhost viewer's appearance"""
+    
+    # Get basic object info
+    name = syft_obj.name or 'Syft Object'
+    uid = str(syft_obj.uid)
+    description = syft_obj.description or ''
+    created_at = syft_obj.created_at.strftime('%Y-%m-%d %H:%M UTC') if syft_obj.created_at else 'Unknown'
+    updated_at = syft_obj.updated_at.strftime('%Y-%m-%d %H:%M UTC') if syft_obj.updated_at else 'Unknown'
+    
+    # Get file type and owner
+    file_type = syft_obj.file_type or 'Unknown'
+    object_type = 'Folder' if syft_obj.is_folder else 'File'
+    
+    # Extract owner email
+    owner_email = 'Unknown'
+    if syft_obj.metadata.get('owner_email'):
+        owner_email = syft_obj.metadata['owner_email']
+    elif syft_obj.metadata.get('email'):
+        owner_email = syft_obj.metadata['email']
+    else:
+        # Try to extract from URL
+        try:
+            parts = syft_obj.private_url.split('/')
+            if len(parts) > 2 and '@' in parts[2]:
+                owner_email = parts[2]
+        except:
+            pass
+    
+    # Get mock note
+    mock_note = syft_obj.metadata.get('mock_note', '')
+    
+    # Get file paths
+    mock_path = syft_obj.mock_path or 'Not found'
+    private_path = syft_obj.private_path or 'Not found'
+    syftobject_path = syft_obj.syftobject_path or 'Not found'
+    
+    # Check file existence
+    mock_exists = syft_obj._check_file_exists(syft_obj.mock_url)
+    private_exists = syft_obj._check_file_exists(syft_obj.private_url)
+    
+    # Get file previews (first 500 chars)
+    mock_preview = ''
+    private_preview = ''
+    if mock_exists and mock_path != 'Not found':
+        try:
+            with open(mock_path, 'r', encoding='utf-8') as f:
+                content = f.read(500)
+                mock_preview = html.escape(content)
+                if len(content) == 500:
+                    mock_preview += '...'
+        except:
+            mock_preview = 'Unable to read file content'
+    
+    if private_exists and private_path != 'Not found':
+        try:
+            with open(private_path, 'r', encoding='utf-8') as f:
+                content = f.read(500)
+                private_preview = html.escape(content)
+                if len(content) == 500:
+                    private_preview += '...'
+        except:
+            private_preview = 'Unable to read file content'
+    
+    # Generate HTML
     return f'''
     <style>
-    .syft-object {{
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        border: 2px solid #e0e7ff;
-        border-radius: 12px;
-        padding: 20px;
-        margin: 10px 0;
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    }}
-    .syft-header {{
-        display: flex;
-        align-items: center;
-        margin-bottom: 20px;
-        padding-bottom: 15px;
-        border-bottom: 2px solid #e2e8f0;
-    }}
-    .syft-title {{
-        font-size: 24px;
-        font-weight: 700;
-        color: #1e293b;
-        margin: 0;
-        flex-grow: 1;
-    }}
-    .syft-uid {{
-        font-family: 'Monaco', 'Menlo', monospace;
-        font-size: 12px;
-        color: #64748b;
-        background: #f1f5f9;
-        padding: 4px 8px;
-        border-radius: 6px;
-    }}
-    .syft-section {{
-        margin-bottom: 20px;
-    }}
-    .syft-section-title {{
-        font-size: 16px;
-        font-weight: 600;
-        color: #374151;
-        margin-bottom: 12px;
-        display: flex;
-        align-items: center;
-    }}
-    .syft-section-title::before {{
-        content: '';
-        width: 4px;
-        height: 20px;
-        background: #3b82f6;
-        margin-right: 10px;
-        border-radius: 2px;
-    }}
-    .syft-grid {{
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-    }}
-    .syft-files {{
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 15px;
-    }}
-    .syft-file-card {{
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 15px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-    }}
-    .syft-file-header {{
-        display: flex;
-        justify-content: between;
-        align-items: center;
-        margin-bottom: 10px;
-    }}
-    .syft-file-type {{
-        font-weight: 600;
-        color: #374151;
-    }}
-    .syft-file-url {{
-        font-family: 'Monaco', 'Menlo', monospace;
-        font-size: 11px;
-        color: #6b7280;
-        word-break: break-all;
-        margin: 8px 0;
-        background: #f9fafb;
-        padding: 6px 8px;
-        border-radius: 4px;
-    }}
-    .syft-permissions {{
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 10px;
-        margin-top: 10px;
-    }}
-    .syft-perm-row {{
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 8px 12px;
-        background: white;
-        border-radius: 6px;
-        border: 1px solid #e5e7eb;
-    }}
-    .syft-perm-label {{
-        font-weight: 500;
-        font-size: 13px;
-        color: #374151;
-    }}
-    .syft-badge {{
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 11px;
-        font-weight: 500;
-        text-transform: uppercase;
-    }}
-    .syft-badge-public {{
-        background: #dcfce7;
-        color: #166534;
-    }}
-    .syft-badge-user {{
-        background: #dbeafe;
-        color: #1d4ed8;
-    }}
-    .syft-badge-multiple {{
-        background: #fef3c7;
-        color: #92400e;
-    }}
-    .syft-badge-none {{
-        background: #fee2e2;
-        color: #dc2626;
-    }}
-    .syft-badge-available {{
-        background: #dcfce7;
-        color: #166534;
-    }}
-    .syft-badge-unavailable {{
-        background: #fef3c7;
-        color: #92400e;
-    }}
-    .syft-file-info {{
-        font-family: 'Monaco', 'Menlo', monospace;
-        font-size: 11px;
-        color: #6b7280;
-        margin-top: 8px;
-        padding: 6px 8px;
-        background: #f9fafb;
-        border-radius: 4px;
-        word-break: break-all;
-    }}
-    .syft-metadata-file {{
-        border-left: 3px solid #8b5cf6;
-    }}
-    .syft-metadata-file .syft-file-type {{
-        color: #8b5cf6;
-    }}
-    .syft-metadata {{
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 15px;
-    }}
-    .syft-meta-row {{
-        display: flex;
-        justify-content: space-between;
-        padding: 6px 0;
-        border-bottom: 1px solid #f3f4f6;
-    }}
-    .syft-meta-row:last-child {{
-        border-bottom: none;
-    }}
-    .syft-meta-key {{
-        font-weight: 500;
-        color: #374151;
-    }}
-    .syft-meta-value {{
-        color: #6b7280;
-        font-family: 'Monaco', 'Menlo', monospace;
-        font-size: 12px;
-    }}
-    .syft-file-ops {{
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        padding: 12px;
-        margin-top: 10px;
-    }}
-    .syft-file-ops-title {{
-        font-weight: 600;
-        color: #374151;
-        font-size: 13px;
-        margin-bottom: 8px;
-    }}
-    .syft-file-ops-list {{
-        font-size: 11px;
-        color: #6b7280;
-        font-family: 'Monaco', 'Menlo', monospace;
-    }}
+        .syft-static-viewer {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f9fafb;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+        }}
+        
+        .syft-widget-header {{
+            background: #f3f4f6;
+            padding: 16px 20px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }}
+        
+        .syft-widget-title {{
+            font-size: 18px;
+            font-weight: 600;
+            color: #111827;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        .syft-uid-badge {{
+            font-size: 11px;
+            font-family: monospace;
+            background: #e5e7eb;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #6b7280;
+        }}
+        
+        .syft-view-only {{
+            font-size: 11px;
+            color: #6b7280;
+            padding: 4px 8px;
+            background: #f3f4f6;
+            border-radius: 4px;
+        }}
+        
+        .syft-tabs {{
+            display: flex;
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+            overflow-x: auto;
+        }}
+        
+        .syft-tab {{
+            padding: 12px 24px;
+            font-size: 14px;
+            color: #111827;
+            font-weight: 500;
+            white-space: nowrap;
+            position: relative;
+            background: none;
+            border: none;
+            cursor: default;
+        }}
+        
+        .syft-tab::after {{
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #3b82f6;
+        }}
+        
+        .syft-content {{
+            background: white;
+        }}
+        
+        .syft-tab-content {{
+            padding: 24px;
+            border-bottom: 1px solid #e5e7eb;
+        }}
+        
+        .syft-tab-content:last-child {{
+            border-bottom: none;
+        }}
+        
+        .syft-section-title {{
+            font-size: 16px;
+            font-weight: 500;
+            color: #111827;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e5e7eb;
+        }}
+        
+        .syft-form-group {{
+            margin-bottom: 20px;
+        }}
+        
+        .syft-form-label {{
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }}
+        
+        .syft-form-input {{
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #f9fafb;
+            color: #374151;
+            font-family: inherit;
+        }}
+        
+        .syft-info-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }}
+        
+        .syft-info-item {{
+            background: #f9fafb;
+            padding: 12px 16px;
+            border-radius: 6px;
+        }}
+        
+        .syft-info-label {{
+            font-size: 11px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }}
+        
+        .syft-info-value {{
+            font-size: 14px;
+            color: #111827;
+            font-family: monospace;
+        }}
+        
+        .syft-file-section {{
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }}
+        
+        .syft-file-header {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }}
+        
+        .syft-file-title {{
+            font-size: 16px;
+            font-weight: 500;
+            color: #111827;
+        }}
+        
+        .syft-file-status {{
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }}
+        
+        .syft-file-status.available {{
+            background: #dcfce7;
+            color: #065f46;
+        }}
+        
+        .syft-file-status.not-found {{
+            background: #fee2e2;
+            color: #991b1b;
+        }}
+        
+        .syft-file-info {{
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 12px;
+            font-family: monospace;
+        }}
+        
+        .syft-file-preview {{
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #374151;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }}
+        
+        .syft-permissions-section {{
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }}
+        
+        .syft-permissions-title {{
+            font-size: 16px;
+            font-weight: 500;
+            color: #111827;
+            margin-bottom: 16px;
+        }}
+        
+        .syft-permission-group {{
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }}
+        
+        .syft-permission-group:last-child {{
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }}
+        
+        .syft-permission-label {{
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 8px;
+        }}
+        
+        .syft-email-list {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }}
+        
+        .syft-email-tag {{
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            background: #dbeafe;
+            color: #1e40af;
+            border-radius: 4px;
+            font-size: 13px;
+        }}
+        
+        .syft-email-tag.public {{
+            background: #dcfce7;
+            color: #065f46;
+        }}
+        
+        .syft-metadata-item {{
+            display: flex;
+            padding: 8px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }}
+        
+        .syft-metadata-item:last-child {{
+            border-bottom: none;
+        }}
+        
+        .syft-metadata-key {{
+            flex: 0 0 200px;
+            font-weight: 500;
+            color: #374151;
+            font-size: 14px;
+        }}
+        
+        .syft-metadata-value {{
+            flex: 1;
+            color: #6b7280;
+            font-family: monospace;
+            font-size: 13px;
+            word-break: break-all;
+        }}
     </style>
     
-    <div class="syft-object">
-        <div class="syft-header">
-            <h3 class="syft-title">🔐 {syft_obj.name or 'Syft Object'}</h3>
-            <span class="syft-uid">{str(syft_obj.uid)[:8]}...</span>
+    <div class="syft-static-viewer">
+        <div class="syft-widget-header">
+            <div class="syft-widget-title">
+                <span>{html.escape(name)}</span>
+                <span class="syft-uid-badge">{uid[:8]}...</span>
+            </div>
+            <span class="syft-view-only">📄 View-only mode</span>
         </div>
         
-        <div class="syft-grid">
-            <div class="syft-section">
-                <div class="syft-section-title">📁 Files</div>
-                <div class="syft-files">
-                    <div class="syft-file-card">
-                        <div class="syft-file-header">
-                            <span class="syft-file-type">🔍 Mock (Demo)</span>
-                            {file_badge(mock_file_exists, syft_obj.mock_url)}
-                        </div>
-                        <div class="syft-file-url">{syft_obj.mock_url}</div>
-                        {mock_info}
+        <div class="syft-tabs">
+            <div class="syft-tab">Overview</div>
+            <div class="syft-tab">Files</div>
+            <div class="syft-tab">Permissions</div>
+            <div class="syft-tab">Metadata</div>
+        </div>
+        
+        <div class="syft-content">
+            <!-- Overview Tab Content -->
+            <div class="syft-tab-content">
+                <h3 class="syft-section-title">Overview</h3>
+                
+                <div class="syft-form-group">
+                    <label class="syft-form-label">Name</label>
+                    <input type="text" class="syft-form-input" value="{html.escape(name)}" readonly>
+                </div>
+                
+                <div class="syft-form-group">
+                    <label class="syft-form-label">Description</label>
+                    <textarea class="syft-form-input" readonly>{html.escape(description)}</textarea>
+                </div>
+                
+                <div class="syft-info-grid">
+                    <div class="syft-info-item">
+                        <div class="syft-info-label">UID</div>
+                        <div class="syft-info-value">{uid}</div>
                     </div>
-                    
-                    <div class="syft-file-card">
-                        <div class="syft-file-header">
-                            <span class="syft-file-type">🔐 Private (Real)</span>
-                            {file_badge(private_file_exists, syft_obj.private_url)}
-                        </div>
-                        <div class="syft-file-url">{syft_obj.private_url}</div>
-                        {private_info}
+                    <div class="syft-info-item">
+                        <div class="syft-info-label">Created</div>
+                        <div class="syft-info-value">{created_at}</div>
                     </div>
-                    
-                    <div class="syft-file-card syft-metadata-file">
-                        <div class="syft-file-header">
-                            <span class="syft-file-type">📋 Metadata (.syftobject.yaml)</span>
-                            <span class="syft-badge syft-badge-available">✓ Saved</span>
+                    <div class="syft-info-item">
+                        <div class="syft-info-label">Updated</div>
+                        <div class="syft-info-value">{updated_at}</div>
+                    </div>
+                    <div class="syft-info-item">
+                        <div class="syft-info-label">File Type</div>
+                        <div class="syft-info-value">{file_type}</div>
+                    </div>
+                    <div class="syft-info-item">
+                        <div class="syft-info-label">Owner</div>
+                        <div class="syft-info-value">{html.escape(owner_email)}</div>
+                    </div>
+                    <div class="syft-info-item">
+                        <div class="syft-info-label">Object Type</div>
+                        <div class="syft-info-value">{object_type}</div>
+                    </div>
+                </div>
+                
+                {f'''
+                <div class="syft-form-group">
+                    <label class="syft-form-label">Mock Note</label>
+                    <textarea class="syft-form-input" readonly>{html.escape(mock_note)}</textarea>
+                </div>
+                ''' if mock_note else ''}
+            </div>
+            
+            <!-- Files Tab Content -->
+            <div class="syft-tab-content">
+                <h3 class="syft-section-title">Files</h3>
+                
+                <div class="syft-file-section">
+                    <div class="syft-file-header">
+                        <h4 class="syft-file-title">🔍 Mock File</h4>
+                        <span class="syft-file-status {"available" if mock_exists else "not-found"}">
+                            {"✓ Available" if mock_exists else "✗ Not Found"}
+                        </span>
+                    </div>
+                    <div class="syft-file-info">Path: {html.escape(str(mock_path))}</div>
+                    {f'<div class="syft-file-preview">{mock_preview}</div>' if mock_preview else ''}
+                </div>
+                
+                <div class="syft-file-section">
+                    <div class="syft-file-header">
+                        <h4 class="syft-file-title">🔐 Private File</h4>
+                        <span class="syft-file-status {"available" if private_exists else "not-found"}">
+                            {"✓ Available" if private_exists else "✗ Not Found"}
+                        </span>
+                    </div>
+                    <div class="syft-file-info">Path: {html.escape(str(private_path))}</div>
+                    {f'<div class="syft-file-preview">{private_preview}</div>' if private_preview else ''}
+                </div>
+                
+                <div class="syft-file-section">
+                    <div class="syft-file-header">
+                        <h4 class="syft-file-title">📋 Config File (.syftobject.yaml)</h4>
+                        <span class="syft-file-status available">✓ Available</span>
+                    </div>
+                    <div class="syft-file-info">Path: {html.escape(str(syftobject_path))}</div>
+                </div>
+            </div>
+            
+            <!-- Permissions Tab Content -->
+            <div class="syft-tab-content">
+                <h3 class="syft-section-title">Permissions</h3>
+                
+                {render_permissions_section("Discovery Permissions", "Who can discover this object exists", 
+                                          syft_obj.syftobject_permissions)}
+                
+                <div class="syft-permissions-section">
+                    <h4 class="syft-permissions-title">Mock File Permissions</h4>
+                    <div class="syft-permission-group">
+                        <div class="syft-permission-label">Read Access</div>
+                        <div class="syft-email-list">
+                            {render_permission_tags(syft_obj.mock_permissions)}
                         </div>
-                        <div class="syft-file-url">Object metadata and permissions</div>
-                        {f'<div class="syft-file-info">Path: {syftobject_yaml_path}</div>' if syftobject_yaml_path else ''}
+                    </div>
+                    <div class="syft-permission-group">
+                        <div class="syft-permission-label">Write Access</div>
+                        <div class="syft-email-list">
+                            {render_permission_tags(syft_obj.mock_write_permissions)}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="syft-permissions-section">
+                    <h4 class="syft-permissions-title">Private File Permissions</h4>
+                    <div class="syft-permission-group">
+                        <div class="syft-permission-label">Read Access</div>
+                        <div class="syft-email-list">
+                            {render_permission_tags(syft_obj.private_permissions)}
+                        </div>
+                    </div>
+                    <div class="syft-permission-group">
+                        <div class="syft-permission-label">Write Access</div>
+                        <div class="syft-email-list">
+                            {render_permission_tags(syft_obj.private_write_permissions)}
+                        </div>
                     </div>
                 </div>
             </div>
             
-            <div class="syft-section">
-                <div class="syft-section-title">🎯 Permissions</div>
-                <div class="syft-permissions">
-                    <div class="syft-perm-row">
-                        <span class="syft-perm-label">Discovery</span>
-                        {permission_badge(syft_obj.syftobject_permissions)}
+            <!-- Metadata Tab Content -->
+            <div class="syft-tab-content">
+                <h3 class="syft-section-title">Metadata</h3>
+                
+                <div class="syft-permissions-section">
+                    <h4 class="syft-permissions-title">System Metadata</h4>
+                    <div class="syft-metadata-item">
+                        <div class="syft-metadata-key">Object Type</div>
+                        <div class="syft-metadata-value">{syft_obj.object_type}</div>
                     </div>
-                    <div class="syft-perm-row">
-                        <span class="syft-perm-label">Mock Read</span>
-                        {permission_badge(syft_obj.mock_permissions)}
+                    <div class="syft-metadata-item">
+                        <div class="syft-metadata-key">Owner Email</div>
+                        <div class="syft-metadata-value">{html.escape(owner_email)}</div>
                     </div>
-                    <div class="syft-perm-row">
-                        <span class="syft-perm-label">Mock Write</span>
-                        {permission_badge(syft_obj.mock_write_permissions)}
+                    {f'''
+                    <div class="syft-metadata-item">
+                        <div class="syft-metadata-key">Mock Note</div>
+                        <div class="syft-metadata-value">{html.escape(mock_note)}</div>
                     </div>
-                    <div class="syft-perm-row">
-                        <span class="syft-perm-label">Private Read</span>
-                        {permission_badge(syft_obj.private_permissions)}
-                    </div>
-                    <div class="syft-perm-row">
-                        <span class="syft-perm-label">Private Write</span>
-                        {permission_badge(syft_obj.private_write_permissions)}
-                    </div>
+                    ''' if mock_note else ''}
                 </div>
-            </div>
-        </div>
-        
-        <div class="syft-section">
-            <div class="syft-section-title">📋 Metadata</div>
-            <div class="syft-metadata">
-                <div class="syft-meta-row">
-                    <span class="syft-meta-key">Created</span>
-                    <span class="syft-meta-value">{syft_obj.created_at.strftime('%Y-%m-%d %H:%M UTC') if syft_obj.created_at else 'Unknown'}</span>
-                </div>
-                {updated_row}
-                {description_row}
+                
                 {render_custom_metadata(syft_obj)}
             </div>
-            
-            {render_file_operations(files_moved, created_files, syftbox_available)}
         </div>
     </div>
     '''
 
 
+def render_permissions_section(title: str, description: str, permissions: list) -> str:
+    """Render a permissions section"""
+    return f'''
+    <div class="syft-permissions-section">
+        <h4 class="syft-permissions-title">{title}</h4>
+        <div class="syft-permission-group">
+            <div class="syft-permission-label">{description}</div>
+            <div class="syft-email-list">
+                {render_permission_tags(permissions)}
+            </div>
+        </div>
+    </div>
+    '''
+
+
+def render_permission_tags(permissions: list) -> str:
+    """Render permission email tags"""
+    if not permissions:
+        return '<span class="syft-email-tag">None</span>'
+    
+    tags = []
+    for perm in permissions:
+        if perm in ['public', '*']:
+            tags.append('<span class="syft-email-tag public">Public</span>')
+        else:
+            tags.append(f'<span class="syft-email-tag">{html.escape(perm)}</span>')
+    
+    return ' '.join(tags)
+
+
 def render_custom_metadata(syft_obj: 'SyftObject') -> str:
-    """Render custom metadata fields (excluding system fields)"""
-    system_fields = {"_file_operations"}
+    """Render custom metadata section"""
+    # Filter out system fields
+    system_fields = {'_file_operations', '_folder_paths', 'owner_email', 'email', 'mock_note', 'admin_permissions'}
     custom_metadata = {k: v for k, v in syft_obj.metadata.items() if k not in system_fields}
     
     if not custom_metadata:
-        return ""
+        return ''
     
-    html = ""
+    items = []
     for key, value in custom_metadata.items():
-        html += f'''
-        <div class="syft-meta-row">
-            <span class="syft-meta-key">{key}</span>
-            <span class="syft-meta-value">{str(value)}</span>
+        # Convert value to string representation
+        if isinstance(value, (dict, list)):
+            import json
+            value_str = json.dumps(value, indent=2)
+        else:
+            value_str = str(value)
+        
+        items.append(f'''
+        <div class="syft-metadata-item">
+            <div class="syft-metadata-key">{html.escape(key)}</div>
+            <div class="syft-metadata-value">{html.escape(value_str)}</div>
         </div>
-        '''
-    return html
-
-
-def render_file_operations(files_moved, created_files, syftbox_available) -> str:
-    """Render file operations section"""
-    if not files_moved and not created_files:
-        return ""
+        ''')
     
-    status_icon = "✅" if syftbox_available else "⚠️"
-    status_text = "SyftBox Integration Active" if syftbox_available else "SyftBox Not Available"
-    
-    ops_html = f'''
-    <div class="syft-file-ops">
-        <div class="syft-file-ops-title">{status_icon} File Operations - {status_text}</div>
-        <div class="syft-file-ops-list">
+    return f'''
+    <div class="syft-permissions-section">
+        <h4 class="syft-permissions-title">Custom Metadata</h4>
+        {''.join(items)}
+    </div>
     '''
-    
-    if files_moved:
-        ops_html += "Moved to SyftBox locations:<br>"
-        for move_info in files_moved:
-            ops_html += f"  • {move_info}<br>"
-    
-    if created_files and not files_moved:
-        ops_html += "Created in tmp/ directory:<br>"
-        for file_path in created_files:
-            ops_html += f"  • {file_path}<br>"
-        if not syftbox_available:
-            ops_html += "  (Install syft-core for SyftBox integration)<br>"
-    
-    ops_html += "</div></div>"
-    return ops_html 
