@@ -74,8 +74,8 @@ class SyftObjectsConfig:
     
     @property
     def mock_note_sensitivity(self) -> str:
-        """Sensitivity level for mock note suggestions: always|ask|never"""
-        return self.get("mock_note_sensitivity", "ask")
+        """Sensitivity level for mock note suggestions: always|suggest|never"""
+        return self.get("mock_note_sensitivity", "suggest")
     
     @mock_note_sensitivity.setter
     def mock_note_sensitivity(self, value: str) -> None:

@@ -401,7 +401,7 @@ def syobj(
                 # Auto-accept suggestions
                 mock_note = suggestion
                 print(f"✓ Auto-added mock note: {mock_note}")
-            elif config.mock_note_sensitivity == "ask":
+            elif config.mock_note_sensitivity == "suggest":
                 # Just show the suggestion with code to add it
                 print(f"\n💡 Mock note suggestion: '{suggestion}'")
                 print(f"   To add this note, run: obj._obj.metadata['mock_note'] = '{suggestion}'")
