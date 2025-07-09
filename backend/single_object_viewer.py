@@ -212,31 +212,34 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .info-grid {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 12px;
-            margin-bottom: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }}
         
         .info-item {{
             background: #f8f9fa;
-            padding: 10px 12px;
+            padding: 6px 10px;
             border-radius: 4px;
             border: 1px solid #e5e7eb;
         }}
         
         .info-label {{
-            font-size: 11px;
+            font-size: 10px;
             color: #6b7280;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
+            line-height: 1.2;
         }}
         
         .info-value {{
-            font-size: 13px;
+            font-size: 12px;
             color: #111827;
             font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
             font-weight: 500;
+            line-height: 1.3;
+            word-break: break-all;
         }}
         
         .file-section {{
