@@ -790,6 +790,17 @@ class SyftObjectConfigAccessor:
     
     def get_path(self) -> str:
         """Get the local file path for the syftobject configuration"""
+        from .client import get_syftbox_client, extract_local_path_from_syft_url
+        
+        # First try to get the actual local path from the syft:// URL
+        syft_url = self._CleanSyftObject__obj.syftobject
+        if syft_url:
+            client = get_syftbox_client()
+            local_path = extract_local_path_from_syft_url(syft_url)
+            if local_path and Path(local_path).exists():
+                return str(local_path)
+        
+        # Fallback to syftobject_path if URL conversion fails
         return self._CleanSyftObject__obj.syftobject_path
     
     def get_url(self) -> str:
