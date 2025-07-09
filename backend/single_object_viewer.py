@@ -893,9 +893,10 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                 
                 const item = document.createElement('div');
                 item.className = 'metadata-item';
+                const displayValue = typeof value === 'string' ? value : JSON.stringify(value);
                 item.innerHTML = `
                     <input type="text" class="metadata-key" value="${{key}}" readonly>
-                    <input type="text" class="metadata-value" value="${{JSON.stringify(value)}}" onblur="updateMetadataValue('${{key}}', this.value)">
+                    <input type="text" class="metadata-value" value="${{displayValue}}" onblur="updateMetadataValue('${{key}}', this.value)">
                     <button class="metadata-remove" onclick="removeMetadata('${{key}}')">Remove</button>
                 `;
                 container.appendChild(item);
