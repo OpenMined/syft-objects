@@ -301,6 +301,55 @@ class MockAccessor:
         self._CleanSyftObject__obj.metadata["mock_note"] = note
         from .models import utcnow
         self._CleanSyftObject__obj.updated_at = utcnow()
+    
+    def move_path(self, new_path: str) -> bool:
+        """Move the mock file to a new location
+        
+        Args:
+            new_path: New syft:// URL or local path for the mock file
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        from .file_ops import move_object_to_syftbox_location
+        from .client import get_syftbox_client, extract_local_path_from_syft_url
+        
+        try:
+            client = get_syftbox_client()
+            
+            # Get current local path
+            current_local = extract_local_path_from_syft_url(
+                self._CleanSyftObject__obj.mock_url,
+                client.datasites if client else None
+            )
+            
+            if not current_local or not current_local.exists():
+                return False
+            
+            # Determine target URL
+            if new_path.startswith("syft://"):
+                target_url = new_path
+            else:
+                # Convert local path to syft URL
+                # Extract email from current URL
+                parts = self._CleanSyftObject__obj.mock_url.split("/")
+                email = parts[2] if len(parts) > 2 else "unknown"
+                # Determine if public or private based on current permissions
+                is_public = "public" in self._CleanSyftObject__obj.mock_permissions
+                prefix = "public" if is_public else "private"
+                target_url = f"syft://{email}/{prefix}/objects/{Path(new_path).name}"
+            
+            # Move the file
+            if move_object_to_syftbox_location(current_local, target_url, client):
+                # Update the URL in the model
+                self._CleanSyftObject__obj.mock_url = target_url
+                from .models import utcnow
+                self._CleanSyftObject__obj.updated_at = utcnow()
+                return True
+            
+            return False
+        except Exception:
+            return False
 
 
 class PrivateAccessor:
@@ -347,6 +396,53 @@ class PrivateAccessor:
         self._CleanSyftObject__obj.metadata["admin_permissions"] = admin.copy()
         from .models import utcnow
         self._CleanSyftObject__obj.updated_at = utcnow()
+    
+    def move_path(self, new_path: str) -> bool:
+        """Move the private file to a new location
+        
+        Args:
+            new_path: New syft:// URL or local path for the private file
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        from .file_ops import move_object_to_syftbox_location
+        from .client import get_syftbox_client, extract_local_path_from_syft_url
+        
+        try:
+            client = get_syftbox_client()
+            
+            # Get current local path
+            current_local = extract_local_path_from_syft_url(
+                self._CleanSyftObject__obj.private_url,
+                client.datasites if client else None
+            )
+            
+            if not current_local or not current_local.exists():
+                return False
+            
+            # Determine target URL
+            if new_path.startswith("syft://"):
+                target_url = new_path
+            else:
+                # Convert local path to syft URL
+                # Extract email from current URL
+                parts = self._CleanSyftObject__obj.private_url.split("/")
+                email = parts[2] if len(parts) > 2 else "unknown"
+                # Private files are always in private directory
+                target_url = f"syft://{email}/private/objects/{Path(new_path).name}"
+            
+            # Move the file
+            if move_object_to_syftbox_location(current_local, target_url, client):
+                # Update the URL in the model
+                self._CleanSyftObject__obj.private_url = target_url
+                from .models import utcnow
+                self._CleanSyftObject__obj.updated_at = utcnow()
+                return True
+            
+            return False
+        except Exception:
+            return False
     
 
 
@@ -396,6 +492,68 @@ class SyftObjectConfigAccessor:
         self._CleanSyftObject__obj.metadata["admin_permissions"] = admin.copy()
         from .models import utcnow
         self._CleanSyftObject__obj.updated_at = utcnow()
+    
+    def move_path(self, new_path: str) -> bool:
+        """Move the syftobject config file to a new location
+        
+        Args:
+            new_path: New syft:// URL or local path for the .syftobject.yaml file
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        from .file_ops import move_object_to_syftbox_location
+        from .client import get_syftbox_client, extract_local_path_from_syft_url
+        
+        try:
+            client = get_syftbox_client()
+            
+            # Get current local path
+            current_local = extract_local_path_from_syft_url(
+                self._CleanSyftObject__obj.syftobject,
+                client.datasites if client else None
+            )
+            
+            if not current_local or not current_local.exists():
+                return False
+            
+            # Determine target URL
+            if new_path.startswith("syft://"):
+                target_url = new_path
+            else:
+                # Convert local path to syft URL
+                # Extract email from current URL
+                parts = self._CleanSyftObject__obj.syftobject.split("/")
+                email = parts[2] if len(parts) > 2 else "unknown"
+                # SyftObject configs are typically public
+                is_public = "public" in self._CleanSyftObject__obj.syftobject_permissions
+                prefix = "public" if is_public else "private"
+                
+                # Ensure .syftobject.yaml extension
+                path_obj = Path(new_path)
+                if not path_obj.name.endswith('.syftobject.yaml'):
+                    # Replace extension or add it
+                    new_name = path_obj.stem + '.syftobject.yaml'
+                    target_url = f"syft://{email}/{prefix}/objects/{new_name}"
+                else:
+                    target_url = f"syft://{email}/{prefix}/objects/{path_obj.name}"
+            
+            # Move the file
+            if move_object_to_syftbox_location(current_local, target_url, client):
+                # Update the URL in the model
+                self._CleanSyftObject__obj.syftobject = target_url
+                # Update the yaml path if it exists
+                if hasattr(self._CleanSyftObject__obj, '_yaml_path') and self._CleanSyftObject__obj._yaml_path:
+                    new_local = extract_local_path_from_syft_url(target_url, client.datasites if client else None)
+                    if new_local:
+                        self._CleanSyftObject__obj._yaml_path = new_local
+                from .models import utcnow
+                self._CleanSyftObject__obj.updated_at = utcnow()
+                return True
+            
+            return False
+        except Exception:
+            return False
 
 
 def wrap_syft_object(obj) -> CleanSyftObject:
