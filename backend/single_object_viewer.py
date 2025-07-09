@@ -597,7 +597,6 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             <button class="tab active" onclick="switchTab('overview')">Overview</button>
             <button class="tab" onclick="switchTab('files')">Files</button>
             <button class="tab" onclick="switchTab('permissions')">Permissions</button>
-            <button class="tab" onclick="switchTab('metadata')">Metadata</button>
         </div>
         
         <div id="status-message" class="status-message"></div>
@@ -756,23 +755,6 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                 <button class="btn btn-primary" onclick="savePermissions()">Save Permissions</button>
             </div>
         </div>
-        
-        <!-- Metadata Tab -->
-        <div id="metadata-tab" class="tab-content">
-            <div class="metadata-editor">
-                <h3 class="permissions-title">Custom Metadata</h3>
-                <div id="metadata-list"></div>
-                <div class="add-metadata">
-                    <input type="text" id="new-metadata-key" class="metadata-key" placeholder="Key">
-                    <input type="text" id="new-metadata-value" class="metadata-value" placeholder="Value">
-                    <button class="btn btn-primary" onclick="addMetadata()">Add</button>
-                </div>
-            </div>
-            
-            <div class="action-buttons">
-                <button class="btn btn-primary" onclick="saveMetadata()">Save Metadata</button>
-            </div>
-        </div>
     </div>
     
     <script>
@@ -843,8 +825,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                 currentPermissions = data.permissions;
                 renderPermissions();
                 
-                // Update metadata
-                renderMetadata(data.metadata);
+                // Metadata rendering removed - tab was removed
                 
             }} catch (error) {{
                 showStatus('Error loading object metadata: ' + error.message, 'error');
@@ -881,27 +862,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             }});
         }}
         
-        function renderMetadata(metadata) {{
-            const container = document.getElementById('metadata-list');
-            container.innerHTML = '';
-            
-            // Filter out system keys
-            const systemKeys = ['owner_email', 'mock_note', '_file_operations', '_folder_paths'];
-            
-            Object.entries(metadata).forEach(([key, value]) => {{
-                if (systemKeys.includes(key)) return;
-                
-                const item = document.createElement('div');
-                item.className = 'metadata-item';
-                const displayValue = typeof value === 'string' ? value : JSON.stringify(value);
-                item.innerHTML = `
-                    <input type="text" class="metadata-key" value="${{key}}" readonly>
-                    <input type="text" class="metadata-value" value="${{displayValue}}" onblur="updateMetadataValue('${{key}}', this.value)">
-                    <button class="metadata-remove" onclick="removeMetadata('${{key}}')">Remove</button>
-                `;
-                container.appendChild(item);
-            }});
-        }}
+        // Metadata rendering function removed - tab was removed
         
         async function updateField(field, value) {{
             try {{
@@ -1032,57 +993,13 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             }}
         }}
         
-        function addMetadata() {{
-            const keyInput = document.getElementById('new-metadata-key');
-            const valueInput = document.getElementById('new-metadata-value');
-            
-            const key = keyInput.value.trim();
-            const value = valueInput.value.trim();
-            
-            if (!key || !value) return;
-            
-            // Update local metadata
-            currentMetadata.metadata[key] = value;
-            
-            // Re-render
-            renderMetadata(currentMetadata.metadata);
-            
-            // Clear inputs
-            keyInput.value = '';
-            valueInput.value = '';
-        }}
+        // addMetadata function removed - tab was removed
         
-        function updateMetadataValue(key, value) {{
-            try {{
-                // Try to parse as JSON
-                currentMetadata.metadata[key] = JSON.parse(value);
-            }} catch {{
-                // If not valid JSON, store as string
-                currentMetadata.metadata[key] = value;
-            }}
-        }}
+        // updateMetadataValue function removed - tab was removed
         
-        function removeMetadata(key) {{
-            delete currentMetadata.metadata[key];
-            renderMetadata(currentMetadata.metadata);
-        }}
+        // removeMetadata function removed - tab was removed
         
-        async function saveMetadata() {{
-            try {{
-                const response = await fetch(`/api/object/${{objectUid}}/metadata`, {{
-                    method: 'PUT',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{metadata: currentMetadata.metadata}})
-                }});
-                
-                if (!response.ok) throw new Error('Failed to save metadata');
-                
-                showStatus('Metadata saved successfully', 'success');
-                
-            }} catch (error) {{
-                showStatus('Error saving metadata: ' + error.message, 'error');
-            }}
-        }}
+        // saveMetadata function removed - tab was removed
         
         async function deleteObject() {{
             if (!confirm('Are you sure you want to delete this object? This action cannot be undone.')) {{
