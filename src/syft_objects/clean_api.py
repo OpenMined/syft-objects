@@ -903,7 +903,17 @@ class SyftObjectConfigAccessor:
     def _repr_html_(self) -> str:
         """HTML representation for Jupyter display"""
         path = self.get_path()
-        if path:
+        if not path:
+            return '''
+            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
+                <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">📋 SyftObject Config</h3>
+                <div style="color: #dc3545; font-size: 14px;">Path not found</div>
+            </div>
+            '''
+        
+        # Check if localhost editor is available
+        if _is_localhost_available():
+            # Online mode - show iframe
             return f'''
             <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
                 <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">📋 SyftObject Config (.syftobject.yaml)</h3>
@@ -916,17 +926,8 @@ class SyftObjectConfigAccessor:
             </div>
             '''
         else:
-            return f'''
-            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
-                <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">📋 SyftObject Config</h3>
-                <div style="margin-bottom: 8px; font-size: 12px; color: #666;">
-                    <strong>Path:</strong> <code>Not found</code>
-                </div>
-                <div style="font-size: 12px; color: #666;">
-                    Config file not found or not accessible.
-                </div>
-            </div>
-            '''
+            # Offline mode - show custom viewer
+            return _create_offline_file_viewer(path, "SyftObject Config (.syftobject.yaml)", "📋")
 
 
 def wrap_syft_object(obj) -> CleanSyftObject:
