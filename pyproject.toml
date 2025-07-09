@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "syft-objects"
-version = "0.9.12"
+version = "0.9.13"
 description = "Share files with explicit mock vs private control"
 readme = "README.md"
 authors = [

@@ -398,7 +398,7 @@ def syobj(
             elif config.mock_note_sensitivity in ("suggest", "ask"):
                 # Just show the suggestion with code to add it (support both "suggest" and legacy "ask")
                 print(f"\n💡 Mock note suggestion: '{suggestion}'")
-                print(f"   To add this note, run: so.objects['{str(uid)}'].set_note('{suggestion}')")
+                print(f"   To add this note, run: so.objects['{str(uid)}'].mock.set_note('{suggestion}')")
                 print(f"   Or set config.mock_note_sensitivity = 'always' to auto-add suggestions\n")
             elif config.mock_note_sensitivity == "never":
                 # Don't add or suggest
