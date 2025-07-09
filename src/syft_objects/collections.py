@@ -456,7 +456,6 @@ Example Usage:
                 urls = obj.get_urls()
                 private_url = urls.get('private', '')
                 mock_url = urls.get('mock', '')
-                object_type = getattr(obj, 'type', 'file')  # Get object type from CleanSyftObject
             else:
                 # Regular SyftObject instance - use direct attribute access
                 name = getattr(obj, 'name', None) or "Unnamed"
@@ -466,7 +465,6 @@ Example Usage:
                 metadata = getattr(obj, 'metadata', {})
                 private_url = getattr(obj, 'private_url', '')
                 mock_url = getattr(obj, 'mock_url', '')
-                object_type = getattr(obj, 'object_type', 'file')  # Get object type from SyftObject
             
             obj_data = {
                 'display_index': display_index,  # Store the correct index to display
@@ -478,8 +476,7 @@ Example Usage:
                 'private_data': None,
                 'private_url': private_url,
                 'mock_url': mock_url,
-                'metadata': metadata,
-                'object_type': object_type
+                'metadata': metadata
             }
             
             # Try to read mock data if available
@@ -1860,55 +1857,31 @@ Example Usage:
                 const name = row.querySelector('.name-cell').textContent || 'Unnamed';
                 const uid = row.querySelector('.uid-cell').getAttribute('title') || 'Unknown';
                 
-                // Get the object data to check if it's a folder
+                modalTitle.textContent = `${{type.charAt(0).toUpperCase() + type.slice(1)}} Data - ${{name}}`;
+                
+                // Try to get the data from the object
                 const objects = {self._objects_data_json()};
                 const obj = objects[index];
                 
-                // Check if this is a folder object
-                if (obj && obj.object_type === 'folder') {{
-                    // For folder objects, show Python code to copy
-                    const pythonCode = `so.objects["${{uid}}"].${{type}}`;
-                    
-                    modalTitle.textContent = `${{type.charAt(0).toUpperCase() + type.slice(1)}} Folder Access - ${{name}}`;
+                if (obj && obj[type + '_data']) {{
+                    // Create text node to safely display content
+                    const dataDiv = document.createElement('div');
+                    dataDiv.className = 'modal-data';
+                    dataDiv.textContent = obj[type + '_data'];
+                    modalBody.innerHTML = '';
+                    modalBody.appendChild(dataDiv);
+                }} else {{
                     modalBody.innerHTML = `
-                        <div style="margin-bottom: 10px;">
-                            <p><strong>For folder objects, use this Python code to access the file editor:</strong></p>
-                            <button onclick="copyToClipboard_{container_id}('${{pythonCode}}')" 
-                                    style="padding: 5px 10px; background: #dbeafe; color: #1e40af; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 10px;">
-                                Copy to Clipboard
-                            </button>
-                        </div>
-                        <pre style="background: #f3f4f6; padding: 1rem; border-radius: 4px; overflow-x: auto; font-family: monospace;">
-<code>${{pythonCode}}</code>
-                        </pre>
-                        <div style="margin-top: 10px; padding: 10px; background: #f0f9ff; border-radius: 4px; font-size: 0.9em;">
-                            <strong>💡 Tip:</strong> This will open the file editor for the ${{type}} folder, allowing you to browse and edit files within it.
+                        <div class="modal-error">
+                            <strong>Data not available</strong><br><br>
+                            The ${{type}} data for this object is not cached locally. 
+                            To access this data, please ensure the syft-objects server is running.<br><br>
+                            <strong>Object Details:</strong><br>
+                            Name: ${{name}}<br>
+                            UID: ${{uid}}<br>
+                            Type: ${{type}}
                         </div>
                     `;
-                }} else {{
-                    // For file objects, show the data as before
-                    modalTitle.textContent = `${{type.charAt(0).toUpperCase() + type.slice(1)}} Data - ${{name}}`;
-                    
-                    if (obj && obj[type + '_data']) {{
-                        // Create text node to safely display content
-                        const dataDiv = document.createElement('div');
-                        dataDiv.className = 'modal-data';
-                        dataDiv.textContent = obj[type + '_data'];
-                        modalBody.innerHTML = '';
-                        modalBody.appendChild(dataDiv);
-                    }} else {{
-                        modalBody.innerHTML = `
-                            <div class="modal-error">
-                                <strong>Data not available</strong><br><br>
-                                The ${{type}} data for this object is not cached locally. 
-                                To access this data, please ensure the syft-objects server is running.<br><br>
-                                <strong>Object Details:</strong><br>
-                                Name: ${{name}}<br>
-                                UID: ${{uid}}<br>
-                                Type: ${{type}}
-                            </div>
-                        `;
-                    }}
                 }}
                 
                 modal.style.display = 'block';
@@ -1918,31 +1891,6 @@ Example Usage:
         function closeModal_{container_id}() {{
             const modal = document.getElementById('{container_id}-modal');
             modal.style.display = 'none';
-        }}
-        
-        function copyToClipboard_{container_id}(text) {{
-            if (navigator.clipboard) {{
-                navigator.clipboard.writeText(text).then(() => {{
-                    // Show temporary success message
-                    const button = event.target;
-                    const originalText = button.textContent;
-                    button.textContent = 'Copied!';
-                    button.style.background = '#10b981';
-                    button.style.color = 'white';
-                    setTimeout(() => {{
-                        button.textContent = originalText;
-                        button.style.background = '#dbeafe';
-                        button.style.color = '#1e40af';
-                    }}, 2000);
-                }}).catch(err => {{
-                    console.error('Failed to copy text: ', err);
-                    // Fallback to prompt
-                    prompt('Copy this code:', text);
-                }});
-            }} else {{
-                // Fallback for browsers that don't support clipboard API
-                prompt('Copy this code:', text);
-            }}
         }}
         
         // Close modal when clicking outside of it
