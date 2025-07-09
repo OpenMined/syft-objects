@@ -415,8 +415,12 @@ def syobj(
         # Save the YAML file directly
         save_path.parent.mkdir(parents=True, exist_ok=True)
         import yaml
+        # Convert data to JSON-serializable format (handle UUID, datetime)
+        from .models import SyftObject
+        temp_obj = SyftObject(**syft_obj_data)
+        json_data = temp_obj.model_dump(mode='json')
         with open(save_path, 'w') as f:
-            yaml.dump(syft_obj_data, f, default_flow_style=False, sort_keys=True, indent=2)
+            yaml.dump(json_data, f, default_flow_style=False, sort_keys=True, indent=2)
         
         # === CREATE FILE-BACKED SYFT OBJECT ===
         syft_obj = SyftObject.from_yaml(save_path)

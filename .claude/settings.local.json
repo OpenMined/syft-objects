@@ -5,7 +5,15 @@
       "Bash(find:*)",
       "Bash(ls:*)",
       "Bash(rg:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(ls:*)",
+      "Bash(git commit:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(touch:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(uv run:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }

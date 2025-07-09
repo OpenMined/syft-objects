@@ -293,7 +293,9 @@ class ObjectsCollection:
             # Handle string UID lookup
             for obj in self._objects:
                 if str(obj.uid) == index:
-                    return obj
+                    # Wrap in clean API
+                    from .clean_api import wrap_syft_object
+                    return wrap_syft_object(obj)
             raise KeyError(f"Object with UID '{index}' not found")
         
         # Warn about negative indices due to race conditions
