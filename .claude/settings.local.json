@@ -30,7 +30,8 @@
       "Bash(mv:*)",
       "Bash(uv run:*)",
       "Bash(git revert:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git ls-tree:*)"
     ],
     "deny": []
   }
