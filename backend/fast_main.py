@@ -1428,20 +1428,20 @@ async def get_object_metadata(object_uid: str) -> Dict[str, Any]:
             ))(),
             "file_type": target_obj.get_file_type() if hasattr(target_obj, 'get_file_type') else getattr(target_obj, 'file_type', None),
             "is_folder": (target_obj.type == "folder" if hasattr(target_obj, 'type') else getattr(target_obj, 'is_folder', False)),
-            "metadata": target_obj.get_metadata() if hasattr(target_obj, 'get_metadata') else target_obj.metadata,
+            "metadata": target_obj.get_metadata() if hasattr(target_obj, 'get_metadata') else getattr(target_obj, 'metadata', {}),
             "permissions": {
                 "read": target_obj.get_read_permissions(),
                 "write": target_obj.get_write_permissions(),
                 "admin": target_obj.get_admin_permissions()
             } if hasattr(target_obj, 'get_read_permissions') else {
-                "syftobject": {"read": target_obj.syftobject_permissions},
-                "mock": {"read": target_obj.mock_permissions, "write": target_obj.mock_write_permissions},
-                "private": {"read": target_obj.private_permissions, "write": target_obj.private_write_permissions}
+                "syftobject": {"read": getattr(target_obj, 'syftobject_permissions', [])},
+                "mock": {"read": getattr(target_obj, 'mock_permissions', []), "write": getattr(target_obj, 'mock_write_permissions', [])},
+                "private": {"read": getattr(target_obj, 'private_permissions', []), "write": getattr(target_obj, 'private_write_permissions', [])}
             },
             "urls": target_obj.get_urls() if hasattr(target_obj, 'get_urls') else {
-                "private": target_obj.private_url,
-                "mock": target_obj.mock_url,
-                "syftobject": target_obj.syftobject
+                "private": getattr(target_obj, 'private_url', None),
+                "mock": getattr(target_obj, 'mock_url', None),
+                "syftobject": getattr(target_obj, 'syftobject', None)
             },
             "paths": {
                 "private": target_obj.private.get_path() if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'get_path') else getattr(target_obj, 'private_path', None),
@@ -1451,7 +1451,7 @@ async def get_object_metadata(object_uid: str) -> Dict[str, Any]:
             "owner_email": (
                 target_obj.get_owner() if hasattr(target_obj, 'get_owner') else 
                 target_obj.get_info()["metadata"].get("owner_email", target_obj.get_info()["metadata"].get("email", "unknown")) if hasattr(target_obj, 'get_info') else 
-                target_obj.metadata.get("owner_email", target_obj.metadata.get("email", "unknown"))
+                getattr(target_obj, 'metadata', {}).get("owner_email", getattr(target_obj, 'metadata', {}).get("email", "unknown"))
             )
         }
         

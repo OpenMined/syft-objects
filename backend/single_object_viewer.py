@@ -831,12 +831,12 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                         currentPermissions = {{
                             discovery_permissions: data.permissions.read || [],
                             mock_permissions: {{
-                                read: data.permissions.read || [],
-                                write: data.permissions.write || []
+                                "read": data.permissions.read || [],
+                                "write": data.permissions.write || []
                             }},
                             private_permissions: {{
-                                read: data.permissions.admin || [],  // Admin has private read
-                                write: data.permissions.admin || []   // Admin has private write
+                                "read": data.permissions.admin || [],  // Admin has private read
+                                "write": data.permissions.admin || []   // Admin has private write
                             }}
                         }};
                     }} else {{
