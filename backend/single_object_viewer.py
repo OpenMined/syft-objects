@@ -827,7 +827,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                 // Update permissions - handle both new and old format
                 if (data.permissions) {{
                     if (data.permissions.read && Array.isArray(data.permissions.read)) {{
-                        // New format: {read: [], write: [], admin: []}
+                        // New format: {{read: [], write: [], admin: []}}
                         currentPermissions = {{
                             discovery_permissions: data.permissions.read || [],
                             mock_permissions: {{
