@@ -153,6 +153,11 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             animation: fadeIn 0.3s ease-in-out;
         }}
         
+        /* Files tab should have no padding for full-width display */
+        #files-tab {{
+            padding: 0;
+        }}
+        
         .tab-content.active {{
             display: block;
         }}
