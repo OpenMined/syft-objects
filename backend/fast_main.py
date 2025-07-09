@@ -1102,8 +1102,14 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
         # Get owner email using CleanSyftObject's get_owner method
         owner_email = target_obj.get_owner() if hasattr(target_obj, 'get_owner') else 'unknown'
         
-        # For CleanSyftObject, we need to check the raw object's can_delete method
+        # For permission checking, normalize emails to handle case differences
+        normalized_user_email = user_email.lower().strip() if user_email else None
+        normalized_owner_email = owner_email.lower().strip() if owner_email else None
+        
+        # Check if user can delete - either through can_delete method or direct ownership check
         can_delete = False
+        
+        # First, try the object's can_delete method
         if hasattr(target_obj, '_CleanSyftObject__obj'):
             # This is a CleanSyftObject
             raw_obj = target_obj._CleanSyftObject__obj
@@ -1115,8 +1121,20 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
             # Also try to get owner email from raw object if we don't have it
             if owner_email == 'unknown' and hasattr(target_obj, 'get_owner_email'):
                 owner_email = target_obj.get_owner_email()
+                normalized_owner_email = owner_email.lower().strip() if owner_email else None
+        
+        # If can_delete returned False but emails match, override it
+        if not can_delete and normalized_user_email and normalized_owner_email and normalized_user_email == normalized_owner_email:
+            logger.info(f"Overriding can_delete=False because user email matches owner email: {user_email} == {owner_email}")
+            can_delete = True
         
         if not can_delete:
+            # Debug logging to understand why deletion is denied
+            if hasattr(target_obj, '_CleanSyftObject__obj'):
+                raw_obj = target_obj._CleanSyftObject__obj
+                raw_owner = raw_obj.get_owner_email() if hasattr(raw_obj, 'get_owner_email') else 'unknown'
+                logger.warning(f"Delete denied: user={user_email}, owner_from_clean={owner_email}, owner_from_raw={raw_owner}, metadata={raw_obj.metadata if hasattr(raw_obj, 'metadata') else 'N/A'}")
+            
             logger.warning(f"User {user_email or 'unknown'} attempted to delete object {object_uid} owned by {owner_email} - DENIED")
             raise HTTPException(
                 status_code=403, 
