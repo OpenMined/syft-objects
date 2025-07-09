@@ -673,6 +673,34 @@ class SyftObjectConfigAccessor:
             return False
         except Exception:
             return False
+    
+    def _repr_html_(self) -> str:
+        """HTML representation for Jupyter display"""
+        path = self.get_path()
+        if path:
+            return f'''
+            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
+                <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">📋 SyftObject Config (.syftobject.yaml)</h3>
+                <div style="margin-bottom: 8px; font-size: 12px; color: #666;">
+                    <strong>Path:</strong> <code>{path}</code>
+                </div>
+                <iframe src="http://localhost:8004/editor?path={path}" 
+                        style="width: 100%; height: 600px; border: 1px solid #ccc; border-radius: 4px;">
+                </iframe>
+            </div>
+            '''
+        else:
+            return f'''
+            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
+                <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">📋 SyftObject Config</h3>
+                <div style="margin-bottom: 8px; font-size: 12px; color: #666;">
+                    <strong>Path:</strong> <code>Not found</code>
+                </div>
+                <div style="font-size: 12px; color: #666;">
+                    Config file not found or not accessible.
+                </div>
+            </div>
+            '''
 
 
 def wrap_syft_object(obj) -> CleanSyftObject:
