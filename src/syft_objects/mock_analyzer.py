@@ -125,12 +125,21 @@ class MockAnalyzer:
             mock_size = mock_path.stat().st_size
             private_size = private_path.stat().st_size
             
-            if private_size > 0:
+            if private_size > 0 and mock_size > 0:
                 ratio = mock_size / private_size
-                if ratio < 0.01:
-                    suggestions.append((8, f"{ratio*100:.1f}% sample by size"))
-                elif ratio < 0.1:
-                    suggestions.append((7, f"{ratio*100:.0f}% sample"))
+                percentage = ratio * 100
+                
+                # Show enough decimal places to avoid showing 0.0% for non-zero data
+                if percentage < 0.01:
+                    suggestions.append((8, f"{percentage:.3f}% sample by size"))
+                elif percentage < 0.1:
+                    suggestions.append((8, f"{percentage:.2f}% sample by size"))
+                elif percentage < 1:
+                    suggestions.append((8, f"{percentage:.1f}% sample by size"))
+                elif percentage < 10:
+                    suggestions.append((7, f"{percentage:.0f}% sample"))
+                else:
+                    suggestions.append((6, f"{percentage:.0f}% of size"))
         
         # Row comparison for CSV files
         if mock_path and private_path:
