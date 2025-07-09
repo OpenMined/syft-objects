@@ -1207,8 +1207,16 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
                                     break
                 
                 # Fallback to private_path if it's a directory
-                if not folder_path and target_obj.private_path:
-                    private_path = PathLib(target_obj.private_path)
+                private_path_str = None
+                if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'get_path'):
+                    private_path_str = target_obj.private.get_path()
+                elif hasattr(target_obj, '_CleanSyftObject__obj'):
+                    private_path_str = target_obj._CleanSyftObject__obj.private_path
+                elif hasattr(target_obj, 'private_path'):
+                    private_path_str = target_obj.private_path
+                    
+                if not folder_path and private_path_str:
+                    private_path = PathLib(private_path_str)
                     if private_path.exists() and private_path.is_dir():
                         folder_path = private_path
                         logger.info(f"Found folder path via private_path: {folder_path}")
@@ -1221,8 +1229,15 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
                 else:
                     # If we can't find the folder path, fall back to individual file deletion
                     logger.warning(f"Could not determine folder path for {object_uid}, falling back to individual file deletion")
-                    logger.warning(f"   private_path: {target_obj.private_path}")
-                    logger.warning(f"   syftobject_path: {target_obj.syftobject_path}")
+                    logger.warning(f"   private_path: {private_path_str if 'private_path_str' in locals() else 'N/A'}")
+                    syftobject_path_str = None
+                    if hasattr(target_obj, 'syftobject_config') and hasattr(target_obj.syftobject_config, 'get_path'):
+                        syftobject_path_str = target_obj.syftobject_config.get_path()
+                    elif hasattr(target_obj, '_CleanSyftObject__obj') and hasattr(target_obj._CleanSyftObject__obj, 'syftobject_path'):
+                        syftobject_path_str = target_obj._CleanSyftObject__obj.syftobject_path
+                    elif hasattr(target_obj, 'syftobject_path'):
+                        syftobject_path_str = target_obj.syftobject_path
+                    logger.warning(f"   syftobject_path: {syftobject_path_str}")
                     logger.warning(f"   metadata: {getattr(target_obj, 'metadata', {})}")
                     if folder_path:
                         logger.warning(f"   folder_path found but invalid: {folder_path}")
@@ -1237,9 +1252,17 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
         # Delete individual files (for non-folder objects or fallback)
         if not is_folder:
             # Delete private file if it exists
-            if target_obj.private_path and PathLib(target_obj.private_path).exists():
+            private_path_str = None
+            if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'get_path'):
+                private_path_str = target_obj.private.get_path()
+            elif hasattr(target_obj, '_CleanSyftObject__obj'):
+                private_path_str = target_obj._CleanSyftObject__obj.private_path
+            elif hasattr(target_obj, 'private_path'):
+                private_path_str = target_obj.private_path
+                
+            if private_path_str and PathLib(private_path_str).exists():
                 try:
-                    private_path = PathLib(target_obj.private_path)
+                    private_path = PathLib(private_path_str)
                     if private_path.is_file():
                         private_path.unlink()
                         deleted_files.append("private")
@@ -1251,9 +1274,17 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
                     logger.warning(f"Failed to delete private file/directory: {e}")
             
             # Delete mock file if it exists
-            if target_obj.mock_path and PathLib(target_obj.mock_path).exists():
+            mock_path_str = None
+            if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'get_path'):
+                mock_path_str = target_obj.mock.get_path()
+            elif hasattr(target_obj, '_CleanSyftObject__obj'):
+                mock_path_str = target_obj._CleanSyftObject__obj.mock_path
+            elif hasattr(target_obj, 'mock_path'):
+                mock_path_str = target_obj.mock_path
+                
+            if mock_path_str and PathLib(mock_path_str).exists():
                 try:
-                    mock_path = PathLib(target_obj.mock_path)
+                    mock_path = PathLib(mock_path_str)
                     if mock_path.is_file():
                         mock_path.unlink()
                         deleted_files.append("mock")
