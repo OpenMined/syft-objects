@@ -3,6 +3,204 @@
 from typing import Any, Optional
 from datetime import datetime
 from pathlib import Path
+import html
+import socket
+
+
+def _is_localhost_available(port: int = 8004) -> bool:
+    """Check if localhost:port is available for editor iframe."""
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(0.5)  # 500ms timeout
+        result = sock.connect_ex(('127.0.0.1', port))
+        sock.close()
+        return result == 0
+    except:
+        return False
+
+
+def _create_offline_file_viewer(file_path: str, title: str, icon: str) -> str:
+    """Create an offline file viewer that looks like the online editor."""
+    try:
+        if not Path(file_path).exists():
+            content = "File not found"
+            file_size = "0 bytes"
+            file_type = "Unknown"
+        else:
+            path_obj = Path(file_path)
+            file_size = f"{path_obj.stat().st_size:,} bytes"
+            file_type = path_obj.suffix.upper()[1:] if path_obj.suffix else "No extension"
+            
+            # Try to read file content
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+            except UnicodeDecodeError:
+                # Binary file
+                content = f"[Binary file - {file_type}]\\nFile size: {file_size}\\nUse a specialized viewer to open this file."
+            except Exception as e:
+                content = f"Error reading file: {str(e)}"
+                
+        # Escape HTML content
+        escaped_content = html.escape(content)
+        
+        return f'''
+        <div style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <!-- Header -->
+            <div style="background: #f8f9fa; padding: 12px 16px; border-bottom: 1px solid #dee2e6; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 16px;">{icon}</span>
+                    <h3 style="margin: 0; color: #333; font-size: 16px; font-weight: 500;">{title}</h3>
+                </div>
+                <div style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-size: 11px; color: #6c757d; font-weight: 500;">
+                    OFFLINE MODE
+                </div>
+            </div>
+            
+            <!-- File Info Bar -->
+            <div style="background: #f8f9fa; padding: 8px 16px; border-bottom: 1px solid #dee2e6; font-size: 12px; color: #6c757d; display: flex; gap: 16px;">
+                <span><strong>Path:</strong> {html.escape(file_path)}</span>
+                <span><strong>Size:</strong> {file_size}</span>
+                <span><strong>Type:</strong> {file_type}</span>
+            </div>
+            
+            <!-- Content Area -->
+            <div style="position: relative; height: 500px; overflow: hidden;">
+                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: auto; padding: 16px; background: #fff;">
+                    <pre style="margin: 0; font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace; font-size: 13px; line-height: 1.5; color: #333; white-space: pre-wrap; word-wrap: break-word;">{escaped_content}</pre>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div style="background: #f8f9fa; padding: 8px 16px; border-top: 1px solid #dee2e6; font-size: 11px; color: #6c757d; text-align: center;">
+                Editor server not available. Showing read-only view. Start the server for full editing capabilities.
+            </div>
+        </div>
+        '''
+    except Exception as e:
+        return f'''
+        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
+            <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">{icon} {title}</h3>
+            <div style="color: #dc3545; font-size: 14px;">
+                Error creating offline viewer: {html.escape(str(e))}
+            </div>
+        </div>
+        '''
+
+
+def _create_offline_folder_viewer(folder_path: str, title: str, icon: str) -> str:
+    """Create an offline folder viewer that looks like the online editor."""
+    try:
+        if not Path(folder_path).exists():
+            items = []
+            folder_size = "0 items"
+        else:
+            path_obj = Path(folder_path)
+            items = []
+            total_size = 0
+            file_count = 0
+            folder_count = 0
+            
+            try:
+                for item in sorted(path_obj.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower())):
+                    if item.is_dir():
+                        folder_count += 1
+                        items.append({
+                            'name': item.name,
+                            'type': 'folder',
+                            'size': '—',
+                            'icon': '📁'
+                        })
+                    else:
+                        file_count += 1
+                        size = item.stat().st_size
+                        total_size += size
+                        if size < 1024:
+                            size_str = f"{size} B"
+                        elif size < 1024**2:
+                            size_str = f"{size/1024:.1f} KB"
+                        elif size < 1024**3:
+                            size_str = f"{size/(1024**2):.1f} MB"
+                        else:
+                            size_str = f"{size/(1024**3):.1f} GB"
+                            
+                        items.append({
+                            'name': item.name,
+                            'type': 'file',
+                            'size': size_str,
+                            'icon': '📄'
+                        })
+                        
+                folder_size = f"{folder_count} folders, {file_count} files"
+            except Exception as e:
+                items = [{'name': f"Error reading folder: {str(e)}", 'type': 'error', 'size': '—', 'icon': '❌'}]
+                folder_size = "Error"
+        
+        # Generate file listing HTML
+        file_rows = ""
+        for item in items[:50]:  # Limit to first 50 items
+            file_rows += f'''
+            <div style="display: flex; align-items: center; padding: 8px 16px; border-bottom: 1px solid #f1f3f4; hover: background: #f8f9fa;">
+                <span style="margin-right: 12px; font-size: 14px;">{item['icon']}</span>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: 14px; color: #333; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        {html.escape(item['name'])}
+                    </div>
+                </div>
+                <div style="font-size: 12px; color: #6c757d; margin-left: 12px; min-width: 60px; text-align: right;">
+                    {item['size']}
+                </div>
+            </div>
+            '''
+        
+        if len(items) > 50:
+            file_rows += f'''
+            <div style="padding: 12px 16px; text-align: center; color: #6c757d; font-size: 12px; background: #f8f9fa;">
+                ... and {len(items) - 50} more items
+            </div>
+            '''
+        
+        return f'''
+        <div style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <!-- Header -->
+            <div style="background: #f8f9fa; padding: 12px 16px; border-bottom: 1px solid #dee2e6; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 16px;">{icon}</span>
+                    <h3 style="margin: 0; color: #333; font-size: 16px; font-weight: 500;">{title}</h3>
+                </div>
+                <div style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-size: 11px; color: #6c757d; font-weight: 500;">
+                    OFFLINE MODE
+                </div>
+            </div>
+            
+            <!-- Folder Info Bar -->
+            <div style="background: #f8f9fa; padding: 8px 16px; border-bottom: 1px solid #dee2e6; font-size: 12px; color: #6c757d; display: flex; gap: 16px;">
+                <span><strong>Path:</strong> {html.escape(folder_path)}</span>
+                <span><strong>Contents:</strong> {folder_size}</span>
+            </div>
+            
+            <!-- File Listing -->
+            <div style="position: relative; height: 500px; overflow: hidden;">
+                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: auto; background: #fff;">
+                    {file_rows}
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div style="background: #f8f9fa; padding: 8px 16px; border-top: 1px solid #dee2e6; font-size: 11px; color: #6c757d; text-align: center;">
+                Editor server not available. Showing read-only view. Start the server for full editing capabilities.
+            </div>
+        </div>
+        '''
+    except Exception as e:
+        return f'''
+        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
+            <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">{icon} {title}</h3>
+            <div style="color: #dc3545; font-size: 14px;">
+                Error creating offline folder viewer: {html.escape(str(e))}
+            </div>
+        </div>
+        '''
 
 
 class CleanSyftObject:
@@ -319,9 +517,19 @@ class MockAccessor:
     
     def _repr_html_(self) -> str:
         """HTML representation for Jupyter display"""
-        if self.is_folder():
-            path = self.get_path()
-            if path:
+        path = self.get_path()
+        if not path:
+            return '''
+            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
+                <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">🔍 Mock File</h3>
+                <div style="color: #dc3545; font-size: 14px;">Path not found</div>
+            </div>
+            '''
+        
+        # Check if localhost editor is available
+        if _is_localhost_available():
+            # Online mode - show iframe
+            if self.is_folder():
                 return f'''
                 <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
                     <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">📁 Mock Folder</h3>
@@ -333,20 +541,24 @@ class MockAccessor:
                     </iframe>
                 </div>
                 '''
+            else:
+                return f'''
+                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
+                    <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">🔍 Mock File</h3>
+                    <div style="margin-bottom: 8px; font-size: 12px; color: #666;">
+                        <strong>Path:</strong> <code>{path}</code>
+                    </div>
+                    <iframe src="http://localhost:8004/editor?path={path}" 
+                            style="width: 100%; height: 600px; border: 1px solid #ccc; border-radius: 4px;">
+                    </iframe>
+                </div>
+                '''
         else:
-            # For files, show basic info
-            path = self.get_path()
-            return f'''
-            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
-                <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">🔍 Mock File</h3>
-                <div style="margin-bottom: 8px; font-size: 12px; color: #666;">
-                    <strong>Path:</strong> <code>{path or 'Not found'}</code>
-                </div>
-                <div style="font-size: 12px; color: #666;">
-                    Use <code>.get_path()</code> to get the file path, or access via the main object viewer.
-                </div>
-            </div>
-            '''
+            # Offline mode - show custom viewer
+            if self.is_folder():
+                return _create_offline_folder_viewer(path, "Mock Folder", "📁")
+            else:
+                return _create_offline_file_viewer(path, "Mock File", "🔍")
     
     def move_path(self, new_path: str, user_email: str = None) -> bool:
         """Move the mock file to a new location (requires admin permissions)
@@ -469,9 +681,19 @@ class PrivateAccessor:
     
     def _repr_html_(self) -> str:
         """HTML representation for Jupyter display"""
-        if self.is_folder():
-            path = self.get_path()
-            if path:
+        path = self.get_path()
+        if not path:
+            return '''
+            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
+                <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">🔐 Private File</h3>
+                <div style="color: #dc3545; font-size: 14px;">Path not found</div>
+            </div>
+            '''
+        
+        # Check if localhost editor is available
+        if _is_localhost_available():
+            # Online mode - show iframe
+            if self.is_folder():
                 return f'''
                 <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
                     <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">🔐 Private Folder</h3>
@@ -483,20 +705,24 @@ class PrivateAccessor:
                     </iframe>
                 </div>
                 '''
+            else:
+                return f'''
+                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
+                    <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">🔐 Private File</h3>
+                    <div style="margin-bottom: 8px; font-size: 12px; color: #666;">
+                        <strong>Path:</strong> <code>{path}</code>
+                    </div>
+                    <iframe src="http://localhost:8004/editor?path={path}" 
+                            style="width: 100%; height: 600px; border: 1px solid #ccc; border-radius: 4px;">
+                    </iframe>
+                </div>
+                '''
         else:
-            # For files, show basic info
-            path = self.get_path()
-            return f'''
-            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
-                <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">🔐 Private File</h3>
-                <div style="margin-bottom: 8px; font-size: 12px; color: #666;">
-                    <strong>Path:</strong> <code>{path or 'Not found'}</code>
-                </div>
-                <div style="font-size: 12px; color: #666;">
-                    Use <code>.get_path()</code> to get the file path, or access via the main object viewer.
-                </div>
-            </div>
-            '''
+            # Offline mode - show custom viewer
+            if self.is_folder():
+                return _create_offline_folder_viewer(path, "Private Folder", "🔐")
+            else:
+                return _create_offline_file_viewer(path, "Private File", "🔐")
     
     def move_path(self, new_path: str, user_email: str = None) -> bool:
         """Move the private file to a new location (requires admin permissions)

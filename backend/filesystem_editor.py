@@ -295,7 +295,7 @@ def generate_editor_html(initial_path: str = None) -> str:
         .container {{
             max-width: 1400px;
             margin: 0 auto;
-            padding: 16px;
+            padding: 0;
         }}
 
         .main-content {{
@@ -306,19 +306,19 @@ def generate_editor_html(initial_path: str = None) -> str:
         }}
 
         .panel {{
-            background: hsl(var(--card));
-            border: 1px solid hsl(var(--border));
-            border-radius: var(--radius);
+            background: white;
+            border: none;
+            border-radius: 0;
             overflow: hidden;
-            box-shadow: 0 2px 10px rgb(0 0 0 / 0.04);
+            box-shadow: none;
             display: flex;
             flex-direction: column;
         }}
 
         .panel-header {{
-            background: hsl(var(--muted));
+            background: white;
             padding: 12px 16px;
-            border-bottom: 1px solid hsl(var(--border));
+            border-bottom: none;
             font-weight: 500;
             color: hsl(var(--foreground));
             font-size: 0.95rem;
@@ -327,7 +327,7 @@ def generate_editor_html(initial_path: str = None) -> str:
         .panel-content {{
             flex: 1;
             overflow: auto;
-            background: hsl(var(--card));
+            background: white;
         }}
 
         .breadcrumb {{
@@ -336,8 +336,8 @@ def generate_editor_html(initial_path: str = None) -> str:
             align-items: center;
             gap: 8px;
             padding: 12px 16px;
-            background: hsl(var(--muted));
-            border-bottom: 1px solid hsl(var(--border));
+            background: white;
+            border-bottom: none;
             font-size: 0.9rem;
             max-height: 100px;
             overflow-y: auto;
@@ -452,8 +452,8 @@ def generate_editor_html(initial_path: str = None) -> str:
             justify-content: space-between;
             gap: 12px;
             padding: 12px 16px;
-            background: hsl(var(--muted));
-            border-bottom: 1px solid hsl(var(--border));
+            background: white;
+            border-bottom: none;
         }}
 
         .editor-title {{
@@ -473,8 +473,8 @@ def generate_editor_html(initial_path: str = None) -> str:
 
         .btn {{
             padding: 8px 16px;
-            border: 1px solid hsl(var(--border));
-            border-radius: calc(var(--radius) - 2px);
+            border: none;
+            border-radius: 0;
             font-size: 0.9rem;
             font-weight: 500;
             cursor: pointer;
@@ -482,7 +482,7 @@ def generate_editor_html(initial_path: str = None) -> str:
             display: flex;
             align-items: center;
             gap: 6px;
-            background: hsl(var(--card));
+            background: white;
             color: hsl(var(--foreground));
         }}
 
@@ -527,7 +527,7 @@ def generate_editor_html(initial_path: str = None) -> str:
         }}
 
         .editor-textarea:focus {{
-            box-shadow: 0 0 0 2px hsl(var(--ring) / 0.1);
+            box-shadow: none;
         }}
 
         .status-bar {{
@@ -535,8 +535,8 @@ def generate_editor_html(initial_path: str = None) -> str:
             align-items: center;
             justify-content: space-between;
             padding: 8px 16px;
-            background: hsl(var(--muted));
-            border-top: 1px solid hsl(var(--border));
+            background: white;
+            border-top: none;
             font-size: 0.85rem;
             color: hsl(var(--muted-foreground));
         }}
@@ -563,18 +563,18 @@ def generate_editor_html(initial_path: str = None) -> str:
             background: hsl(var(--destructive) / 0.1);
             color: hsl(var(--destructive));
             padding: 12px;
-            border-radius: calc(var(--radius) - 2px);
+            border-radius: 0;
             margin: 12px;
-            border: 1px solid hsl(var(--destructive) / 0.2);
+            border: none;
         }}
 
         .success {{
             background: hsl(142.1 76.2% 36.3% / 0.1);
             color: hsl(142.1 76.2% 36.3%);
             padding: 12px;
-            border-radius: calc(var(--radius) - 2px);
+            border-radius: 0;
             margin: 12px;
-            border: 1px solid hsl(142.1 76.2% 36.3% / 0.2);
+            border: none;
         }}
 
         .empty-state {{
@@ -665,7 +665,7 @@ def generate_editor_html(initial_path: str = None) -> str:
         }}
         
         .file-only-mode .editor-panel {{
-            border-radius: var(--radius);
+            border-radius: 0;
         }}
         
         .toggle-explorer-btn {{
