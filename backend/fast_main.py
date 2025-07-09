@@ -1339,10 +1339,16 @@ async def get_object_metadata(object_uid: str) -> Dict[str, Any]:
             "uid": target_obj.get_uid() if hasattr(target_obj, 'get_uid') else str(target_obj.uid),
             "name": target_obj.get_name() if hasattr(target_obj, 'get_name') else target_obj.name,
             "description": target_obj.get_description() if hasattr(target_obj, 'get_description') else target_obj.description,
-            "created_at": (target_obj.get_created_at() if hasattr(target_obj, 'get_created_at') else target_obj.created_at).isoformat() if target_obj.created_at else None,
-            "updated_at": (target_obj.get_updated_at() if hasattr(target_obj, 'get_updated_at') else target_obj.updated_at).isoformat() if target_obj.updated_at else None,
-            "file_type": target_obj.get_file_type() if hasattr(target_obj, 'get_file_type') else target_obj.file_type,
-            "is_folder": target_obj.type == "folder" if hasattr(target_obj, 'type') else target_obj.is_folder,
+            "created_at": (lambda: (
+                target_obj.get_created_at().isoformat() if hasattr(target_obj, 'get_created_at') and target_obj.get_created_at() else
+                target_obj.created_at.isoformat() if hasattr(target_obj, 'created_at') and target_obj.created_at else None
+            ))(),
+            "updated_at": (lambda: (
+                target_obj.get_updated_at().isoformat() if hasattr(target_obj, 'get_updated_at') and target_obj.get_updated_at() else
+                target_obj.updated_at.isoformat() if hasattr(target_obj, 'updated_at') and target_obj.updated_at else None
+            ))(),
+            "file_type": target_obj.get_file_type() if hasattr(target_obj, 'get_file_type') else getattr(target_obj, 'file_type', None),
+            "is_folder": (target_obj.type == "folder" if hasattr(target_obj, 'type') else getattr(target_obj, 'is_folder', False)),
             "metadata": target_obj.get_metadata() if hasattr(target_obj, 'get_metadata') else target_obj.metadata,
             "permissions": target_obj.get_permissions() if hasattr(target_obj, 'get_permissions') else {
                 "syftobject": {"read": target_obj.syftobject_permissions},
@@ -1355,9 +1361,9 @@ async def get_object_metadata(object_uid: str) -> Dict[str, Any]:
                 "syftobject": target_obj.syftobject
             },
             "paths": {
-                "private": target_obj.private.path if hasattr(target_obj, 'private') else getattr(target_obj, 'private_path', None),
-                "mock": target_obj.mock.path if hasattr(target_obj, 'mock') else getattr(target_obj, 'mock_path', None),
-                "syftobject": target_obj.syftobject_config.path if hasattr(target_obj, 'syftobject_config') else getattr(target_obj, 'syftobject_path', None)
+                "private": target_obj.private.get_path() if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'get_path') else getattr(target_obj, 'private_path', None),
+                "mock": target_obj.mock.get_path() if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'get_path') else getattr(target_obj, 'mock_path', None),
+                "syftobject": target_obj.syftobject_config.get_path() if hasattr(target_obj, 'syftobject_config') and hasattr(target_obj.syftobject_config, 'get_path') else getattr(target_obj, 'syftobject_path', None)
             },
             "owner_email": (
                 target_obj.get_owner() if hasattr(target_obj, 'get_owner') else 
