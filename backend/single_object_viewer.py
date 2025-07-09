@@ -65,8 +65,10 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             padding: 0;
             margin: 0;
             color: #374151;
-            font-size: 13px;
-            line-height: 1.5;
+            font-size: 12px;
+            line-height: 1.4;
+            height: 100vh;
+            overflow: hidden;
         }}
         
         .widget-container {{
@@ -76,7 +78,10 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             width: 100%;
             max-width: none;
             margin: 0;
+            height: 100vh;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }}
         
         
@@ -100,11 +105,11 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .tab {{
-            padding: 10px 20px;
+            padding: 6px 16px;
             cursor: pointer;
             border: none;
             background: none;
-            font-size: 13px;
+            font-size: 12px;
             color: #6b7280;
             white-space: nowrap;
             transition: all 0.2s;
@@ -134,8 +139,10 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .tab-content {{
             display: none;
-            padding: 16px;
+            padding: 12px;
             animation: fadeIn 0.3s ease-in-out;
+            flex: 1;
+            overflow-y: auto;
         }}
         
         /* Files, Permissions, and Metadata tabs should have no left/right padding */
@@ -144,11 +151,11 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         #permissions-tab {{
-            padding: 16px 0;
+            padding: 12px 0;
         }}
         
         #metadata-tab {{
-            padding: 16px 0;
+            padding: 12px 0;
         }}
         
         .tab-content.active {{
@@ -167,25 +174,25 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .form-group {{
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }}
         
         .form-label {{
             display: block;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 600;
             color: #6b7280;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }}
         
         .form-input {{
             width: 100%;
-            padding: 6px 10px;
+            padding: 4px 8px;
             border: 1px solid #e5e7eb;
             border-radius: 4px;
-            font-size: 13px;
+            font-size: 12px;
             transition: all 0.2s;
             font-family: inherit;
             background: white;
@@ -205,19 +212,19 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         textarea.form-input {{
             resize: vertical;
-            min-height: 40px;
+            min-height: 32px;
         }}
         
         .info-grid {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 6px;
+            margin-bottom: 8px;
         }}
         
         .info-item {{
             background: #f8f9fa;
-            padding: 6px 10px;
+            padding: 4px 8px;
             border-radius: 4px;
             border: 1px solid #e5e7eb;
         }}
@@ -248,11 +255,11 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .sub-tab {{
-            padding: 8px 16px;
+            padding: 6px 12px;
             cursor: pointer;
             border: none;
             background: none;
-            font-size: 12px;
+            font-size: 11px;
             color: #6b7280;
             white-space: nowrap;
             transition: all 0.15s;
@@ -284,7 +291,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 8px 12px;
+            padding: 6px 10px;
             background: #f8f9fa;
             border-bottom: 1px solid #e5e7eb;
         }}
@@ -304,7 +311,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .file-iframe-full {{
             width: 100%;
-            height: 600px;
+            height: 320px;
             border: none;
             background: white;
         }}
@@ -314,11 +321,11 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 600px;
+            height: 320px;
             background: #f9fafb;
             border-radius: 8px;
             text-align: center;
-            padding: 40px;
+            padding: 20px;
         }}
         
         .file-not-found svg {{
@@ -327,14 +334,14 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .file-not-found h3 {{
             color: #374151;
-            font-size: 18px;
-            margin: 0 0 8px 0;
+            font-size: 16px;
+            margin: 0 0 6px 0;
             font-weight: 600;
         }}
         
         .file-not-found p {{
             color: #6b7280;
-            font-size: 14px;
+            font-size: 12px;
             margin: 0;
             max-width: 400px;
         }}
@@ -440,10 +447,10 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .permissions-title {{
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             color: #374151;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }}
         
         .permission-group {{
@@ -500,17 +507,17 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .add-email {{
             display: flex;
-            gap: 6px;
-            margin-top: 4px;
+            gap: 4px;
+            margin-top: 2px;
         }}
         
         .add-email input {{
             flex: 1;
-            padding: 4px 8px;
+            padding: 3px 6px;
             border: 1px solid #d1d5db;
-            border-radius: 4px;
-            font-size: 12px;
-            line-height: 1.4;
+            border-radius: 3px;
+            font-size: 11px;
+            line-height: 1.3;
         }}
         
         .metadata-editor {{
