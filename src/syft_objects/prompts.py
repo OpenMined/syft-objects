@@ -68,106 +68,136 @@ def prompt_with_timeout(
 def _jupyter_prompt(message: str, timeout: float, accept_value: str) -> Optional[str]:
     """Jupyter-specific prompt using ipywidgets"""
     try:
-        from IPython.display import display, clear_output, HTML
+        from IPython.display import display, clear_output
         import ipywidgets as widgets
+        import threading
+        import time
         
-        # Create widgets
-        container = widgets.VBox()
-        label = widgets.HTML(f"<b>📊 {message}</b>")
+        # Create output widget for clean display
+        output = widgets.Output()
         
-        # Create buttons
-        button_box = widgets.HBox()
-        accept_btn = widgets.Button(
-            description="✓ Accept", 
-            button_style='success',
-            layout=widgets.Layout(width='100px')
-        )
-        skip_btn = widgets.Button(
-            description="⏭ Skip", 
-            button_style='warning',
-            layout=widgets.Layout(width='100px')
-        )
-        button_box.children = [accept_btn, skip_btn]
+        with output:
+            # Create widgets
+            label = widgets.HTML(f"<h4>📊 {message}</h4>")
+            
+            # Create buttons with better styling
+            accept_btn = widgets.Button(
+                description="✓ Accept", 
+                button_style='success',
+                layout=widgets.Layout(width='120px', height='35px'),
+                style={'font_weight': 'bold'}
+            )
+            skip_btn = widgets.Button(
+                description="⏭ Skip", 
+                button_style='warning',
+                layout=widgets.Layout(width='120px', height='35px'),
+                style={'font_weight': 'bold'}
+            )
+            
+            # Progress bar
+            progress = widgets.IntProgress(
+                value=0,
+                min=0,
+                max=100,
+                description='Time:',
+                bar_style='info',
+                orientation='horizontal',
+                layout=widgets.Layout(width='300px')
+            )
+            
+            # Status label
+            status_label = widgets.Label(
+                value=f'Waiting {timeout}s...',
+                layout=widgets.Layout(width='300px')
+            )
+            
+            # Layout
+            button_box = widgets.HBox([accept_btn, skip_btn], 
+                                     layout=widgets.Layout(gap='10px'))
+            main_box = widgets.VBox([
+                label,
+                button_box,
+                widgets.HBox([progress]),
+                status_label
+            ], layout=widgets.Layout(gap='10px', padding='10px'))
+            
+            display(main_box)
         
-        # Progress bar
-        progress = widgets.IntProgress(
-            value=0,
-            min=0,
-            max=int(timeout * 10),  # 10 updates per second
-            description='Time:',
-            bar_style='info'
-        )
-        
-        # Status label
-        status = widgets.HTML(f"<i>Waiting... ({timeout}s timeout)</i>")
-        
-        # Assemble container
-        container.children = [label, button_box, progress, status]
-        
-        # Display it
-        display(container)
-        
-        # Track state
-        result = {"done": False, "accepted": False}
+        # Shared state using threading Event
+        accept_event = threading.Event()
+        skip_event = threading.Event()
+        done_event = threading.Event()
         
         def on_accept(b):
-            if not result["done"]:
-                result["done"] = True
-                result["accepted"] = True
+            accept_event.set()
+            done_event.set()
+            with output:
                 accept_btn.disabled = True
                 skip_btn.disabled = True
-                status.value = "<b style='color: green'>✓ Accepted!</b>"
+                status_label.value = "✓ Accepted!"
         
         def on_skip(b):
-            if not result["done"]:
-                result["done"] = True
-                result["accepted"] = False
+            skip_event.set()
+            done_event.set()
+            with output:
                 accept_btn.disabled = True
                 skip_btn.disabled = True
-                status.value = "<b style='color: orange'>⏭ Skipped!</b>"
+                status_label.value = "⏭ Skipped!"
         
+        # Register callbacks
         accept_btn.on_click(on_accept)
         skip_btn.on_click(on_skip)
         
-        # Use IPython's event loop processing
-        import time
-        from IPython import get_ipython
-        
-        start = time.time()
-        ipython = get_ipython()
-        
-        while time.time() - start < timeout and not result["done"]:
-            elapsed = time.time() - start
-            remaining = max(0, timeout - elapsed)
+        # Background thread for progress updates
+        def update_progress():
+            start_time = time.time()
+            while not done_event.is_set():
+                elapsed = time.time() - start_time
+                if elapsed >= timeout:
+                    done_event.set()
+                    break
+                
+                # Update progress in main thread
+                remaining = timeout - elapsed
+                progress_value = int((elapsed / timeout) * 100)
+                
+                with output:
+                    progress.value = progress_value
+                    status_label.value = f'Waiting {remaining:.1f}s...'
+                
+                time.sleep(0.1)
             
-            # Update progress
-            progress.value = int(elapsed * 10)
-            status.value = f"<i>Waiting... ({remaining:.1f}s remaining)</i>"
-            
-            # Process events to allow button clicks
-            if ipython and hasattr(ipython, 'kernel'):
-                ipython.kernel.do_one_iteration()
-            else:
-                # Fallback for non-kernel environments
-                time.sleep(0.01)
+            # Final update
+            if not accept_event.is_set() and not skip_event.is_set():
+                with output:
+                    progress.value = 100
+                    status_label.value = "⏱ Timed out!"
+                    accept_btn.disabled = True
+                    skip_btn.disabled = True
         
-        # Timeout handling
-        if not result["done"]:
-            result["done"] = True
-            accept_btn.disabled = True
-            skip_btn.disabled = True
-            status.value = "<b style='color: gray'>⏱ Timed out!</b>"
-            time.sleep(0.5)  # Brief pause to show timeout
+        # Start progress thread
+        progress_thread = threading.Thread(target=update_progress, daemon=True)
+        progress_thread.start()
         
-        # Clear display
-        clear_output()
+        # Wait for completion
+        done_event.wait(timeout=timeout + 0.5)
+        progress_thread.join(timeout=0.5)
+        
+        # Brief pause to show final status
+        time.sleep(0.5)
+        
+        # Clear the output
+        output.clear_output()
         
         # Return result
-        if result["accepted"]:
+        if accept_event.is_set():
             print(f"✓ Mock note added: {accept_value}")
             return accept_value
+        elif skip_event.is_set():
+            print("⏭️  Skipped - no mock note added")
+            return None
         else:
-            print("⏱️  No mock note added")
+            print("⏱️  Timeout - no mock note added")
             return None
             
     except Exception as e:
