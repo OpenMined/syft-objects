@@ -188,7 +188,7 @@ def syobj(
         
         # Create folder SyftObject data
         folder_obj_data = {
-            "uid": uid,
+            "uid": str(uid),
             "private_url": private_url,
             "mock_url": mock_url,
             "syftobject": final_syftobject_path,
@@ -210,8 +210,11 @@ def syobj(
             save_path = tmp_dir / syftobj_filename
             save_path.parent.mkdir(parents=True, exist_ok=True)
             import yaml
+            # Convert data to JSON-serializable format (handle UUID, datetime)
+            temp_obj = SyftObject(**folder_obj_data)
+            json_data = temp_obj.model_dump(mode='json')
             with open(save_path, 'w') as f:
-                yaml.dump(folder_obj_data, f, default_flow_style=False, sort_keys=True, indent=2)
+                yaml.dump(json_data, f, default_flow_style=False, sort_keys=True, indent=2)
             
             # Create file-backed object
             folder_obj = SyftObject.from_yaml(save_path)
