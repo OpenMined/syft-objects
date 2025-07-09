@@ -81,7 +81,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .widget-header {{
             background: white;
-            padding: 12px 16px;
+            padding: 8px 12px;
             border-bottom: 1px solid #e5e7eb;
             display: flex;
             align-items: center;
@@ -89,20 +89,20 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .widget-title {{
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 600;
             color: #111827;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }}
         
         .uid-badge {{
-            font-size: 11px;
+            font-size: 10px;
             font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
             background: #f3f4f6;
-            padding: 2px 8px;
-            border-radius: 4px;
+            padding: 2px 6px;
+            border-radius: 3px;
             color: #6b7280;
             font-weight: 500;
         }}
@@ -207,7 +207,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         textarea.form-input {{
             resize: vertical;
-            min-height: 60px;
+            min-height: 40px;
         }}
         
         .info-grid {{
@@ -280,50 +280,81 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .btn {{
-            padding: 5px 12px;
+            padding: 4px 10px;
             border-radius: 4px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 500;
-            border: 1px solid transparent;
+            border: none;
             cursor: pointer;
             transition: all 0.15s;
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            line-height: 1.5;
+            gap: 3px;
+            line-height: 1.4;
         }}
         
         .btn-primary {{
-            background-color: #3b82f6;
-            color: white;
-            border-color: #3b82f6;
+            background-color: #bfdbfe;
+            color: #1e3a8a;
         }}
         
         .btn-primary:hover {{
-            background-color: #2563eb;
-            border-color: #2563eb;
+            background-color: #93c5fd;
         }}
         
         .btn-secondary {{
-            background: white;
-            color: #374151;
-            border: 1px solid #d1d5db;
+            background: #e9d5ff;
+            color: #581c87;
         }}
         
         .btn-secondary:hover {{
-            background: #f9fafb;
-            border-color: #9ca3af;
+            background: #d8b4fe;
         }}
         
         .btn-danger {{
-            background: #ef4444;
-            color: white;
-            border-color: #ef4444;
+            background: #fecaca;
+            color: #7f1d1d;
         }}
         
         .btn-danger:hover {{
-            background: #dc2626;
-            border-color: #dc2626;
+            background: #fca5a5;
+        }}
+        
+        /* Additional pastel rainbow button colors */
+        .btn-mint {{
+            background: #d1fae5;
+            color: #065f46;
+        }}
+        
+        .btn-mint:hover {{
+            background: #a7f3d0;
+        }}
+        
+        .btn-peach {{
+            background: #fed7aa;
+            color: #7c2d12;
+        }}
+        
+        .btn-peach:hover {{
+            background: #fdba74;
+        }}
+        
+        .btn-lavender {{
+            background: #e9d5ff;
+            color: #581c87;
+        }}
+        
+        .btn-lavender:hover {{
+            background: #d8b4fe;
+        }}
+        
+        .btn-lemon {{
+            background: #fef3c7;
+            color: #78350f;
+        }}
+        
+        .btn-lemon:hover {{
+            background: #fde68a;
         }}
         
         .permissions-section {{
@@ -437,17 +468,17 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .metadata-remove {{
-            padding: 6px 12px;
-            background: #fee2e2;
-            color: #dc2626;
+            padding: 4px 10px;
+            background: #fecaca;
+            color: #7f1d1d;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 11px;
         }}
         
         .metadata-remove:hover {{
-            background: #fecaca;
+            background: #fca5a5;
         }}
         
         .add-metadata {{
