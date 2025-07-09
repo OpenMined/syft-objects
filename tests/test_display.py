@@ -14,8 +14,12 @@ from syft_objects.display import (
 class TestDisplayModule:
     """Test display module functions"""
     
-    def test_create_html_display_minimal(self):
+    @patch('requests.get')
+    def test_create_html_display_minimal(self, mock_get):
         """Test create_html_display with minimal SyftObject"""
+        # Mock server not available to get static HTML
+        mock_get.side_effect = Exception("Connection error")
+        
         mock_obj = Mock()
         mock_obj.name = "Test Object"
         mock_obj.uid = uuid4()
@@ -41,8 +45,12 @@ class TestDisplayModule:
         assert "syft://test@example.com/private.txt" in html
         assert "✓ Available" in html
     
-    def test_create_html_display_with_metadata(self):
+    @patch('requests.get')
+    def test_create_html_display_with_metadata(self, mock_get):
         """Test create_html_display with full metadata"""
+        # Mock server not available to get static HTML
+        mock_get.side_effect = Exception("Connection error")
+        
         mock_obj = Mock()
         mock_obj.name = "Test Object"
         mock_obj.uid = uuid4()
@@ -78,8 +86,12 @@ class TestDisplayModule:
         assert "custom_value" in html
         assert "2 users" in html  # Multiple private_permissions
     
-    def test_permission_badge_rendering(self):
+    @patch('requests.get')
+    def test_permission_badge_rendering(self, mock_get):
         """Test different permission badge scenarios"""
+        # Mock server not available to get static HTML
+        mock_get.side_effect = Exception("Connection error")
+        
         mock_obj = Mock()
         mock_obj.name = "Test"
         mock_obj.uid = uuid4()
@@ -223,8 +235,12 @@ class TestDisplayModule:
         assert "Mock info" in html
         assert "/path/to/yaml" in html
         
-    def test_file_exists_checks(self):
+    @patch('requests.get')
+    def test_file_exists_checks(self, mock_get):
         """Test file existence checking in display"""
+        # Mock server not available to get static HTML
+        mock_get.side_effect = Exception("Connection error")
+        
         mock_obj = Mock()
         mock_obj.name = "Test"
         mock_obj.uid = uuid4()

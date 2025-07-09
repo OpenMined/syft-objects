@@ -497,18 +497,21 @@ class TestObjectsCollection:
             
             assert "Syft Objects Collection Help" in help_text
             assert "import syft_objects as syo" in help_text
-            assert "so.objects.search" in help_text
-            assert "so.objects.refresh()" in help_text
+            assert "syo.objects.search" in help_text
+            assert "syo.objects.refresh()" in help_text
     
-    @patch('syft_objects.auto_install._check_health_endpoint')
-    @patch.object(ObjectsCollection, '_ensure_server_ready')
     @patch.object(ObjectsCollection, 'widget')
-    def test_repr_html(self, mock_widget, mock_ensure, mock_health_check):
+    @patch.object(ObjectsCollection, '_ensure_server_ready')
+    @patch('syft_objects.auto_install._check_health_endpoint')
+    def test_repr_html(self, mock_health_check, mock_ensure, mock_widget):
         """Test _repr_html_ method with server available"""
         mock_widget.return_value = "<iframe>test</iframe>"
         mock_health_check.return_value = True  # Server is healthy
         
         collection = ObjectsCollection()
+        # Set _cached to True to avoid trying to load objects
+        collection._cached = True
+        collection._load_error = None
         result = collection._repr_html_()
         
         mock_ensure.assert_called_once()
@@ -635,7 +638,7 @@ class TestObjectsCollection:
             with patch('syft_objects.collections.get_syftbox_client', return_value=mock_client):
                 with patch('syft_objects.collections.SYFTBOX_AVAILABLE', True):
                     # Mock SyftObject.load_yaml to raise an exception - this should hit lines 80 and 90
-                    with patch('syft_objects.models.SyftObject.load_yaml', side_effect=Exception("YAML load failed")):
+                    with patch('syft_objects.models.SyftObject._load_yaml', side_effect=Exception("YAML load failed")):
                         collection = ObjectsCollection()
                         collection._load_objects()  # Should continue despite YAML load errors
                         # Objects list should be empty due to exceptions - both exceptions get caught

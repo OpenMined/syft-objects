@@ -31,7 +31,12 @@
       "Bash(uv run:*)",
       "Bash(git revert:*)",
       "Bash(git add:*)",
-      "Bash(git ls-tree:*)"
+      "Bash(git ls-tree:*)",
+      "Bash(git push:*)",
+      "Bash(grep:*)",
+      "Bash(cp:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

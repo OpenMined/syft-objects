@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 import sys
 sys.path.append(str(PathLib(__file__).parent))
 from filesystem_editor import FileSystemManager, generate_editor_html
+from single_object_viewer import generate_single_object_viewer_html
 
 try:
     from syft_objects import objects
@@ -1271,6 +1272,168 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
     except Exception as e:
         logger.error(f"Error deleting object {object_uid}: {e}")
         raise HTTPException(status_code=500, detail=f"Error deleting object: {str(e)}")
+
+# Single Object Viewer endpoints
+@app.get("/api/object/{object_uid}/view", response_class=HTMLResponse)
+async def view_single_object(object_uid: str) -> HTMLResponse:
+    """Serve the single object viewer HTML widget."""
+    if objects is None:
+        return HTMLResponse(content="<div>Syft objects not available</div>", status_code=503)
+    
+    try:
+        # Find the object by UID
+        target_obj = None
+        for obj in objects:
+            obj_uid = obj.get_uid() if hasattr(obj, 'get_uid') else str(obj.uid)
+            if obj_uid == object_uid:
+                target_obj = obj
+                break
+        
+        if not target_obj:
+            return HTMLResponse(content=f"<div>Object {object_uid} not found</div>", status_code=404)
+        
+        # Generate the HTML for the single object viewer
+        html_content = generate_single_object_viewer_html(target_obj, object_uid)
+        return HTMLResponse(content=html_content)
+    
+    except Exception as e:
+        logger.error(f"Error generating viewer for object {object_uid}: {e}")
+        return HTMLResponse(content=f"<div>Error: {str(e)}</div>", status_code=500)
+
+@app.get("/api/object/{object_uid}/metadata")
+async def get_object_metadata(object_uid: str) -> Dict[str, Any]:
+    """Get all metadata for a single object."""
+    if objects is None:
+        raise HTTPException(status_code=503, detail="Syft objects not available")
+    
+    try:
+        # Find the object
+        target_obj = None
+        for obj in objects:
+            obj_uid = obj.get_uid() if hasattr(obj, 'get_uid') else str(obj.uid)
+            if obj_uid == object_uid:
+                target_obj = obj
+                break
+        
+        if not target_obj:
+            raise HTTPException(status_code=404, detail="Object not found")
+        
+        # Extract all metadata using CleanSyftObject getters
+        metadata = {
+            "uid": target_obj.get_uid() if hasattr(target_obj, 'get_uid') else str(target_obj.uid),
+            "name": target_obj.get_name() if hasattr(target_obj, 'get_name') else target_obj.name,
+            "description": target_obj.get_description() if hasattr(target_obj, 'get_description') else target_obj.description,
+            "created_at": (target_obj.get_created_at() if hasattr(target_obj, 'get_created_at') else target_obj.created_at).isoformat() if target_obj.created_at else None,
+            "updated_at": (target_obj.get_updated_at() if hasattr(target_obj, 'get_updated_at') else target_obj.updated_at).isoformat() if target_obj.updated_at else None,
+            "file_type": target_obj.get_file_type() if hasattr(target_obj, 'get_file_type') else target_obj.file_type,
+            "is_folder": target_obj.type == "folder" if hasattr(target_obj, 'type') else target_obj.is_folder,
+            "metadata": target_obj.get_metadata() if hasattr(target_obj, 'get_metadata') else target_obj.metadata,
+            "permissions": target_obj.get_permissions() if hasattr(target_obj, 'get_permissions') else {
+                "syftobject": {"read": target_obj.syftobject_permissions},
+                "mock": {"read": target_obj.mock_permissions, "write": target_obj.mock_write_permissions},
+                "private": {"read": target_obj.private_permissions, "write": target_obj.private_write_permissions}
+            },
+            "urls": target_obj.get_urls() if hasattr(target_obj, 'get_urls') else {
+                "private": target_obj.private_url,
+                "mock": target_obj.mock_url,
+                "syftobject": target_obj.syftobject
+            },
+            "paths": {
+                "private": target_obj.private.get_path() if hasattr(target_obj, 'private') else target_obj.private_path,
+                "mock": target_obj.mock.get_path() if hasattr(target_obj, 'mock') else target_obj.mock_path,
+                "syftobject": target_obj.syftobject_config.get_path() if hasattr(target_obj, 'syftobject_config') else target_obj.syftobject_path
+            },
+            "owner_email": target_obj.get_info()["metadata"].get("owner_email", "unknown") if hasattr(target_obj, 'get_info') else target_obj.metadata.get("owner_email", "unknown")
+        }
+        
+        # Add mock note if available
+        if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'get_note'):
+            metadata["mock_note"] = target_obj.mock.get_note()
+        elif "mock_note" in metadata["metadata"]:
+            metadata["mock_note"] = metadata["metadata"]["mock_note"]
+        
+        return metadata
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting metadata for object {object_uid}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error getting metadata: {str(e)}")
+
+@app.put("/api/object/{object_uid}/metadata")
+async def update_object_metadata(
+    object_uid: str,
+    updates: Dict[str, Any] = Body(...)
+) -> Dict[str, Any]:
+    """Update metadata for a single object."""
+    if objects is None:
+        raise HTTPException(status_code=503, detail="Syft objects not available")
+    
+    try:
+        # Find the object
+        target_obj = None
+        for obj in objects:
+            obj_uid = obj.get_uid() if hasattr(obj, 'get_uid') else str(obj.uid)
+            if obj_uid == object_uid:
+                target_obj = obj
+                break
+        
+        if not target_obj:
+            raise HTTPException(status_code=404, detail="Object not found")
+        
+        # Update fields based on what's provided
+        updated_fields = []
+        
+        if "name" in updates:
+            if hasattr(target_obj, 'set_name'):
+                target_obj.set_name(updates["name"])
+            else:
+                target_obj.name = updates["name"]
+            updated_fields.append("name")
+        
+        if "description" in updates:
+            if hasattr(target_obj, 'set_description'):
+                target_obj.set_description(updates["description"])
+            else:
+                target_obj.description = updates["description"]
+            updated_fields.append("description")
+        
+        if "metadata" in updates:
+            if hasattr(target_obj, 'update_metadata'):
+                target_obj.update_metadata(updates["metadata"])
+            else:
+                target_obj.metadata.update(updates["metadata"])
+            updated_fields.append("metadata")
+        
+        if "mock_note" in updates:
+            if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'set_note'):
+                target_obj.mock.set_note(updates["mock_note"])
+            else:
+                # Get raw object and update metadata
+                raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+                raw_obj.metadata["mock_note"] = updates["mock_note"]
+            updated_fields.append("mock_note")
+        
+        # Update timestamp
+        from syft_objects.models import utcnow
+        raw_obj = target_obj._obj if hasattr(target_obj, '_obj') else target_obj
+        raw_obj.updated_at = utcnow()
+        
+        # Refresh objects collection
+        objects.refresh()
+        
+        return {
+            "message": "Metadata updated successfully",
+            "object_uid": object_uid,
+            "updated_fields": updated_fields,
+            "timestamp": datetime.now()
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating metadata for object {object_uid}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error updating metadata: {str(e)}")
 
 # Filesystem Editor endpoints
 filesystem_manager = FileSystemManager()

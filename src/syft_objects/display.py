@@ -8,6 +8,27 @@ if TYPE_CHECKING:
 
 def create_html_display(syft_obj: 'SyftObject') -> str:
     """Create a beautiful HTML display for the SyftObject"""
+    # Try to use the new single object viewer if server is available
+    try:
+        import requests
+        from .client import get_syft_objects_url
+        
+        # Check if server is available
+        base_url = get_syft_objects_url()
+        health_response = requests.get(f"{base_url}/health", timeout=0.5)
+        
+        if health_response.status_code == 200:
+            # Server is available, return iframe to the single object viewer
+            viewer_url = f"{base_url}/api/object/{syft_obj.uid}/view"
+            return f'''
+            <div style="width: 100%; height: 600px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                <iframe src="{viewer_url}" style="width: 100%; height: 100%; border: none;"></iframe>
+            </div>
+            '''
+    except:
+        # Server not available, fall back to static display
+        pass
+    
     # Get file operations info from metadata if available
     file_ops = syft_obj.metadata.get("_file_operations", {})
     files_moved = file_ops.get("files_moved_to_syftbox", [])
