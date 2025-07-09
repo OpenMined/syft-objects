@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 from syft_objects import create_object
-from syft_objects.validation import MockRealValidationError
+from syft_objects._validation import MockRealValidationError
 
 
 class TestFactoryValidation:

@@ -25,7 +25,7 @@ try:
     from syft_objects.collections import ObjectsCollection
     from syft_objects.models import SyftObject
     from syft_objects.client import get_syftbox_client, SYFTBOX_AVAILABLE
-    from syft_objects.validation import validate_mock_real_compatibility, MockRealValidationError
+    from syft_objects._validation import validate_mock_real_compatibility, MockRealValidationError
 except ImportError:
     logger.error("syft-objects not available")
     objects = None

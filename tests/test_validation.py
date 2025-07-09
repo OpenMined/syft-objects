@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from syft_objects.validation import (
+from syft_objects._validation import (
     MockRealValidationError,
     check_csv_compatibility,
     check_json_compatibility,
