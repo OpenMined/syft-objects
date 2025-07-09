@@ -29,12 +29,13 @@ class TestNewAPI:
         assert info["name"] == "Test Object"
         assert info["description"] == "Test Description"
         
-        # Test get_permissions returns dict
-        perms = obj.get_permissions()
-        assert isinstance(perms, dict)
-        assert "mock" in perms
-        assert "private" in perms
-        assert "syftobject" in perms
+        # Test explicit permission getters
+        read_perms = obj.get_read_permissions()
+        write_perms = obj.get_write_permissions()
+        admin_perms = obj.get_admin_permissions()
+        assert isinstance(read_perms, list)
+        assert isinstance(write_perms, list)
+        assert isinstance(admin_perms, list)
         
         # Test get_urls returns dict
         urls = obj.get_urls()
@@ -94,8 +95,8 @@ class TestNewAPI:
         assert config_url.startswith("syft://")
         assert ".syftobject.yaml" in config_url
     
-    def test_both_apis_work(self):
-        """Test that both old property access and new getter methods work"""
+    def test_new_api_consistency(self):
+        """Test that the new API getter/setter methods work consistently"""
         obj = create_object(
             name="Test Object",
             metadata={"description": "Test Description"},
@@ -103,22 +104,20 @@ class TestNewAPI:
             mock_contents="Mock data"
         )
         
-        # Test that both APIs return the same values
-        assert obj.name == obj.get_name()
-        assert obj.description == obj.get_description()
-        assert str(obj.uid) == obj.get_uid()
+        # Test initial values
+        assert obj.get_name() == "Test Object"
+        assert obj.get_description() == "Test Description"
+        assert isinstance(obj.get_uid(), str)
         
-        # Test setters update the properties
+        # Test setters update the values
         obj.set_name("New Name")
-        assert obj.name == "New Name"
         assert obj.get_name() == "New Name"
         
         obj.set_description("New Description")
-        assert obj.description == "New Description"
         assert obj.get_description() == "New Description"
     
-    def test_dir_shows_both_apis(self):
-        """Test that dir() shows both old and new API"""
+    def test_dir_shows_new_api(self):
+        """Test that dir() shows the new API methods"""
         obj = create_object(
             name="Test Object",
             private_contents="Private data",
@@ -136,8 +135,10 @@ class TestNewAPI:
         assert "syftobject_config" in attrs
         assert "delete_obj" in attrs
         
-        # Check old API properties are also visible
-        assert "name" in attrs
-        assert "uid" in attrs
-        assert "private_url" in attrs
-        assert "mock_url" in attrs
+        # Check new permission methods are visible
+        assert "get_read_permissions" in attrs
+        assert "get_write_permissions" in attrs
+        assert "get_admin_permissions" in attrs
+        assert "set_read_permissions" in attrs
+        assert "set_write_permissions" in attrs
+        assert "set_admin_permissions" in attrs

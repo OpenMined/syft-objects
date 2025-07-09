@@ -20,7 +20,7 @@ from .file_ops import (
     generate_syftbox_urls,
     generate_syftobject_url
 )
-from .validation import validate_mock_real_compatibility, MockRealValidationError
+from ._validation import validate_mock_real_compatibility, MockRealValidationError
 from .config import config
 from .mock_analyzer import suggest_mock_note
 

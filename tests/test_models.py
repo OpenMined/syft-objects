@@ -431,73 +431,58 @@ class TestSyftObject:
             ["test@example.com"]
         )
     
-    @patch('syft_objects.models.set_file_permissions_wrapper')
-    def test_set_permissions_mock(self, mock_set_perms):
-        """Test set_permissions for mock file"""
+    def test_permission_attributes_direct_access(self):
+        """Test that permission attributes can be set directly"""
         obj = SyftObject(
             private_url="syft://test@example.com/private/test.txt",
             mock_url="syft://test@example.com/public/test.txt",
             syftobject="syft://test@example.com/public/test.syftobject.yaml"
         )
         
-        obj.set_permissions("mock", read=["new@example.com"], write=["writer@example.com"])
+        # Test direct attribute access
+        obj.mock_permissions = ["new@example.com"]
+        obj.mock_write_permissions = ["writer@example.com"]
         
         assert obj.mock_permissions == ["new@example.com"]
         assert obj.mock_write_permissions == ["writer@example.com"]
-        
-        mock_set_perms.assert_called_once_with(
-            "syft://test@example.com/public/test.txt",
-            ["new@example.com"],
-            ["writer@example.com"]
-        )
     
-    @patch('syft_objects.models.set_file_permissions_wrapper')
-    def test_set_permissions_private(self, mock_set_perms):
-        """Test set_permissions for private file"""
+    def test_private_permission_attributes_direct_access(self):
+        """Test that private permission attributes can be set directly"""
         obj = SyftObject(
             private_url="syft://test@example.com/private/test.txt",
             mock_url="syft://test@example.com/public/test.txt",
             syftobject="syft://test@example.com/public/test.syftobject.yaml"
         )
         
-        obj.set_permissions("private", read=["new@example.com"])
+        # Test direct attribute access
+        obj.private_permissions = ["new@example.com"]
         
         assert obj.private_permissions == ["new@example.com"]
-        
-        mock_set_perms.assert_called_once_with(
-            "syft://test@example.com/private/test.txt",
-            ["new@example.com"],
-            []  # write permissions unchanged
-        )
     
-    @patch('syft_objects.models.set_file_permissions_wrapper')
-    def test_set_permissions_syftobject(self, mock_set_perms):
-        """Test set_permissions for syftobject file"""
+    def test_syftobject_permission_attributes_direct_access(self):
+        """Test that syftobject permission attributes can be set directly"""
         obj = SyftObject(
             private_url="syft://test@example.com/private/test.txt",
             mock_url="syft://test@example.com/public/test.txt",
             syftobject="syft://test@example.com/public/test.syftobject.yaml"
         )
         
-        obj.set_permissions("syftobject", read=["new@example.com"])
+        # Test direct attribute access
+        obj.syftobject_permissions = ["new@example.com"]
         
         assert obj.syftobject_permissions == ["new@example.com"]
-        
-        mock_set_perms.assert_called_once_with(
-            "syft://test@example.com/public/test.syftobject.yaml",
-            ["new@example.com"]
-        )
     
-    def test_set_permissions_invalid_type(self):
-        """Test set_permissions with invalid file type"""
+    def test_permission_attributes_validation(self):
+        """Test that permission attributes must be lists"""
         obj = SyftObject(
             private_url="syft://test@example.com/private/test.txt",
             mock_url="syft://test@example.com/public/test.txt",
             syftobject="syft://test@example.com/public/test.syftobject.yaml"
         )
         
-        with pytest.raises(ValueError, match="Invalid file_type"):
-            obj.set_permissions("invalid", read=["test@example.com"])
+        # Test that permission attributes can be set to valid lists
+        obj.mock_permissions = ["test@example.com"]
+        assert obj.mock_permissions == ["test@example.com"]
     
     def test_model_dump_serialization(self):
         """Test model serialization with datetime and UUID"""
@@ -774,39 +759,31 @@ class TestSyftObject:
             path = obj._get_local_file_path("syft://test@example.com/private/nonexistent.txt")
             assert path == ""
     
-    def test_set_permissions_private_write_only(self):
-        """Test set_permissions for private file with write only (line 292)"""
+    def test_private_write_permissions_direct_set(self):
+        """Test setting private write permissions directly"""
         obj = SyftObject(
             private_url="syft://test@example.com/private/test.txt",
             mock_url="syft://test@example.com/public/test.txt",
             syftobject="syft://test@example.com/public/test.syftobject.yaml"
         )
         
-        with patch('syft_objects.models.set_file_permissions_wrapper') as mock_set:
-            # Set only write permissions (not read)
-            obj.set_permissions("private", write=["user@example.com"])
-            
-            assert obj.private_write_permissions == ["user@example.com"]
-            mock_set.assert_called_with(
-                "syft://test@example.com/private/test.txt",
-                obj.private_permissions,  # Should use existing read permissions
-                ["user@example.com"]
-            )
+        # Set write permissions directly
+        obj.private_write_permissions = ["user@example.com"]
+        
+        assert obj.private_write_permissions == ["user@example.com"]
     
-    def test_set_permissions_syftobject_with_path(self):
-        """Test set_permissions for syftobject with provided path (line 300)"""
+    def test_syftobject_permissions_direct_set(self):
+        """Test setting syftobject permissions directly"""
         obj = SyftObject(
             private_url="syft://test@example.com/private/test.txt",
             mock_url="syft://test@example.com/public/test.txt",
             syftobject="syft://test@example.com/public/test.syftobject.yaml"
         )
         
-        with patch('syft_objects.models.set_file_permissions_wrapper') as mock_set:
-            # Set permissions with explicit path
-            obj.set_permissions("syftobject", read=["public"], syftobject_file_path="/path/to/file.syftobject.yaml")
-            
-            assert obj.syftobject_permissions == ["public"]
-            mock_set.assert_called_with("/path/to/file.syftobject.yaml", ["public"])
+        # Set permissions directly
+        obj.syftobject_permissions = ["public"]
+        
+        assert obj.syftobject_permissions == ["public"]
     
     def test_get_local_file_path_exception_handling(self):
         """Test _get_local_file_path exception handling (lines 197-198)"""

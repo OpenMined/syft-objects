@@ -13,7 +13,7 @@ from .client import get_syftbox_client, extract_local_path_from_syft_url
 from .permissions import set_file_permissions_wrapper
 from .display import create_html_display
 from .data_accessor import DataAccessor
-from .validation import MockRealValidationError
+from ._validation import MockRealValidationError
 
 
 def utcnow():

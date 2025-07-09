@@ -574,7 +574,11 @@ async def get_object_details(object_uid: str) -> Dict[str, Any]:
         if hasattr(target_obj, 'get_urls'):
             # This is a CleanSyftObject
             urls = target_obj.get_urls()
-            perms = target_obj.get_permissions()
+            perms = {
+                "syftobject": {"read": target_obj.get_read_permissions()},
+                "mock": {"read": target_obj.mock.get_read_permissions(), "write": target_obj.mock.get_write_permissions()},
+                "private": {"read": target_obj.private.get_read_permissions(), "write": target_obj.private.get_write_permissions()}
+            }
             
             # Get file previews (skip for CleanSyftObject)
             private_preview = ""
@@ -1424,7 +1428,11 @@ async def get_object_metadata(object_uid: str) -> Dict[str, Any]:
             "file_type": target_obj.get_file_type() if hasattr(target_obj, 'get_file_type') else getattr(target_obj, 'file_type', None),
             "is_folder": (target_obj.type == "folder" if hasattr(target_obj, 'type') else getattr(target_obj, 'is_folder', False)),
             "metadata": target_obj.get_metadata() if hasattr(target_obj, 'get_metadata') else target_obj.metadata,
-            "permissions": target_obj.get_permissions() if hasattr(target_obj, 'get_permissions') else {
+            "permissions": {
+                "read": target_obj.get_read_permissions(),
+                "write": target_obj.get_write_permissions(),
+                "admin": target_obj.get_admin_permissions()
+            } if hasattr(target_obj, 'get_read_permissions') else {
                 "syftobject": {"read": target_obj.syftobject_permissions},
                 "mock": {"read": target_obj.mock_permissions, "write": target_obj.mock_write_permissions},
                 "private": {"read": target_obj.private_permissions, "write": target_obj.private_write_permissions}
