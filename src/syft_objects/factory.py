@@ -389,14 +389,8 @@ def syobj(
             sensitivity=config.mock_note_sensitivity
         )
         
-        # If we have a suggestion and it involves comparison
-        if suggestion and (private_file or private_contents):
-            # Check if this is a sensitive suggestion
-            is_sensitive = any(
-                indicator in suggestion.lower() 
-                for indicator in ["sample", "%", "rows", "first", "last", "subset"]
-            )
-            
+        # If we have a suggestion
+        if suggestion:
             if config.mock_note_sensitivity == "always":
                 # Auto-accept suggestions
                 mock_note = suggestion
@@ -406,10 +400,9 @@ def syobj(
                 print(f"\n💡 Mock note suggestion: '{suggestion}'")
                 print(f"   To add this note, run: obj._obj.metadata['mock_note'] = '{suggestion}'")
                 print(f"   Or set config.mock_note_sensitivity = 'always' to auto-add suggestions\n")
-        elif suggestion:
-            # Safe suggestions (mock-only analysis)
-            mock_note = suggestion
-            print(f"✓ Added mock note: {mock_note}")
+            elif config.mock_note_sensitivity == "never":
+                # Don't add or suggest
+                pass
     
     # Add mock note to metadata if provided
     if mock_note:
