@@ -236,6 +236,20 @@ def generate_editor_html(initial_path: str = None) -> str:
     """Generate the HTML for the filesystem code editor."""
     initial_path = initial_path or str(Path.home())
     
+    # Check if initial_path is a file or directory
+    is_initial_file = False
+    initial_file_content = ""
+    try:
+        path_obj = Path(initial_path)
+        if path_obj.exists() and path_obj.is_file():
+            is_initial_file = True
+            # For files, we'll pass the parent directory as the current path
+            initial_dir = str(path_obj.parent)
+        else:
+            initial_dir = initial_path
+    except:
+        initial_dir = initial_path
+    
     html_content = f"""
 <!DOCTYPE html>
 <html lang="en">
@@ -640,6 +654,23 @@ def generate_editor_html(initial_path: str = None) -> str:
                 font-size: 13px;
             }}
         }}
+        
+        /* File-only mode styles */
+        .file-only-mode .panel:first-child {{
+            display: none;
+        }}
+        
+        .file-only-mode .main-content {{
+            grid-template-columns: 1fr;
+        }}
+        
+        .file-only-mode .editor-panel {{
+            border-radius: var(--radius);
+        }}
+        
+        .toggle-explorer-btn {{
+            margin-right: 8px;
+        }}
     </style>
 </head>
 <body>
@@ -664,6 +695,9 @@ def generate_editor_html(initial_path: str = None) -> str:
                     <div class="editor-header">
                         <div class="editor-title" id="editorTitle">No file selected</div>
                         <div class="editor-actions">
+                            <button class="btn btn-secondary toggle-explorer-btn" id="toggleExplorerBtn" title="Toggle File Explorer">
+                                📂
+                            </button>
                             <button class="btn btn-primary" id="saveBtn" disabled>
                                 💾 Save
                             </button>
@@ -732,12 +766,23 @@ def generate_editor_html(initial_path: str = None) -> str:
     <script>
         class FileSystemEditor {{
             constructor() {{
-                this.currentPath = '{initial_path}';
+                this.currentPath = '{initial_dir}';
+                this.initialFilePath = {'`' + initial_path + '`' if is_initial_file else 'null'};
+                this.isInitialFile = {str(is_initial_file).lower()};
                 this.currentFile = null;
                 this.isModified = false;
+                this.fileOnlyMode = this.isInitialFile;
                 this.initializeElements();
                 this.setupEventListeners();
-                this.loadDirectory(this.currentPath);
+                
+                if (this.isInitialFile) {{
+                    // If initial path is a file, load it directly
+                    this.loadFile(this.initialFilePath);
+                    this.toggleFileOnlyMode(true);
+                }} else {{
+                    // Otherwise load the directory
+                    this.loadDirectory(this.currentPath);
+                }}
             }}
             
             initializeElements() {{
@@ -752,12 +797,14 @@ def generate_editor_html(initial_path: str = None) -> str:
                 this.fileInfo = document.getElementById('fileInfo');
                 this.cursorPosition = document.getElementById('cursorPosition');
                 this.fileSize = document.getElementById('fileSize');
+                this.toggleExplorerBtn = document.getElementById('toggleExplorerBtn');
             }}
             
             setupEventListeners() {{
                 this.saveBtn.addEventListener('click', () => this.saveFile());
                 this.newFileBtn.addEventListener('click', () => this.createNewFile());
                 this.newFolderBtn.addEventListener('click', () => this.createNewFolder());
+                this.toggleExplorerBtn.addEventListener('click', () => this.toggleFileOnlyMode());
                 
                 this.editor.addEventListener('input', () => {{
                     this.isModified = true;
@@ -1059,6 +1106,30 @@ def generate_editor_html(initial_path: str = None) -> str:
                 .catch(error => {{
                     this.showError('Failed to create folder: ' + error.message);
                 }});
+            }}
+            
+            toggleFileOnlyMode(forceState = null) {{
+                if (forceState !== null) {{
+                    this.fileOnlyMode = forceState;
+                }} else {{
+                    this.fileOnlyMode = !this.fileOnlyMode;
+                }}
+                
+                if (this.fileOnlyMode) {{
+                    document.body.classList.add('file-only-mode');
+                    this.toggleExplorerBtn.innerHTML = '📂 Show Explorer';
+                }} else {{
+                    document.body.classList.remove('file-only-mode');
+                    this.toggleExplorerBtn.innerHTML = '📂';
+                }}
+            }}
+            
+            showError(message) {{
+                alert('Error: ' + message);
+            }}
+            
+            showSuccess(message) {{
+                console.log('Success: ' + message);
             }}
         }}
         
