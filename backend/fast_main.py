@@ -1296,9 +1296,17 @@ async def delete_object(object_uid: str, user_email: str = None) -> Dict[str, An
                     logger.warning(f"Failed to delete mock file/directory: {e}")
             
             # Delete syftobject file if it exists
-            if target_obj.syftobject_path and PathLib(target_obj.syftobject_path).exists():
+            syftobject_path_str = None
+            if hasattr(target_obj, 'syftobject_config') and hasattr(target_obj.syftobject_config, 'get_path'):
+                syftobject_path_str = target_obj.syftobject_config.get_path()
+            elif hasattr(target_obj, '_CleanSyftObject__obj') and hasattr(target_obj._CleanSyftObject__obj, 'syftobject_path'):
+                syftobject_path_str = target_obj._CleanSyftObject__obj.syftobject_path
+            elif hasattr(target_obj, 'syftobject_path'):
+                syftobject_path_str = target_obj.syftobject_path
+                
+            if syftobject_path_str and PathLib(syftobject_path_str).exists():
                 try:
-                    PathLib(target_obj.syftobject_path).unlink()
+                    PathLib(syftobject_path_str).unlink()
                     deleted_files.append("syftobject")
                 except Exception as e:
                     logger.warning(f"Failed to delete syftobject file: {e}")
