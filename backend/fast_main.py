@@ -1584,6 +1584,60 @@ async def list_directory(path: str = Query(...)):
     """List directory contents."""
     return filesystem_manager.list_directory(path)
 
+@app.get("/api/filesystem/check-permissions")
+async def check_file_permissions(path: str = Query(...)):
+    """Check file permissions for the current user."""
+    # Get user email from SyftBox client
+    user_email = None
+    try:
+        import sys
+        sys.path.insert(0, '../src')
+        from syft_objects.client import get_syftbox_client
+        syftbox_client = get_syftbox_client()
+        if syftbox_client and hasattr(syftbox_client, 'email'):
+            user_email = syftbox_client.email
+    except:
+        pass
+    
+    # This endpoint should check permissions from the SOURCE of truth
+    # For now, return basic info
+    from pathlib import Path
+    file_path = Path(path).resolve()
+    
+    # Extract datasite owner from path if it's a SyftBox file
+    syftbox_path = Path.home() / "SyftBox"
+    is_syftbox_file = str(file_path).startswith(str(syftbox_path))
+    datasite_owner = None
+    
+    if is_syftbox_file:
+        try:
+            path_parts = str(file_path).split('/')
+            if 'datasites' in path_parts:
+                ds_idx = path_parts.index('datasites')
+                if len(path_parts) > ds_idx + 1:
+                    datasite_owner = path_parts[ds_idx + 1]
+        except:
+            pass
+    
+    # For now, assume write access only if user owns the datasite
+    # This is a simplified check - in reality we'd need to check the actual permissions
+    can_write = False
+    write_users = []
+    
+    if user_email and datasite_owner:
+        if user_email == datasite_owner:
+            can_write = True
+            write_users = [datasite_owner]
+    
+    return {
+        "path": str(file_path),
+        "can_write": can_write,
+        "write_users": write_users,
+        "is_syftbox_file": is_syftbox_file,
+        "datasite_owner": datasite_owner,
+        "current_user": user_email
+    }
+
 @app.get("/api/filesystem/read")
 async def read_file(path: str = Query(...)):
     """Read file contents."""

@@ -57,7 +57,10 @@
       "Bash(git merge:*)",
       "Bash(rm:*)",
       "Bash(uv pip show:*)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "Bash(export SYFTBOX_EMAIL=\"liamtrask@gmail.com\")",
+      "Bash(git restore:*)",
+      "Bash(curl:*)"
     ],
     "deny": []
   }

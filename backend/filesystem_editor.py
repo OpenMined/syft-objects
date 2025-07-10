@@ -137,29 +137,44 @@ class FileSystemManager:
         if not self._is_text_file(file_path):
             raise HTTPException(status_code=415, detail="File type not supported for editing")
         
-        # Check write permissions using syft-perm
-        can_write = True  # Default to true if syft-perm not available
+        # Check write permissions
+        # IMPORTANT: Non-admins don't have access to syft.pub.yaml files, so we can't
+        # reliably check write permissions for files in other people's datasites.
+        # The best we can do is:
+        # 1. If it's in the user's own datasite, they can write
+        # 2. If it's in someone else's datasite, assume read-only
+        # 3. For non-SyftBox files, allow writes
+        
+        can_write = True  # Default to true for non-SyftBox files
         write_users = []
-        try:
-            import syft_perm as sp
-            perms = sp.get_file_permissions(str(file_path))
-            if perms and 'write' in perms:
-                write_users = perms.get('write', [])
-                if user_email:
-                    can_write = user_email in write_users
-                else:
-                    can_write = False  # No user email = read-only
-            elif file_path.exists() and user_email:
-                # File exists but no permissions - check if within SyftBox
-                syftbox_path = os.path.expanduser("~/SyftBox")
-                if str(file_path).startswith(syftbox_path):
-                    can_write = False  # Deny by default in SyftBox without permissions
-        except ImportError:
-            # syft-perm not available, allow writes
-            pass
-        except Exception:
-            # Other syft-perm errors, allow writes
-            pass
+        
+        # Check if file is within SyftBox
+        syftbox_path = os.path.expanduser("~/SyftBox")
+        if str(file_path).startswith(syftbox_path):
+            # For SyftBox files, check if user owns the datasite
+            try:
+                # Extract the datasite from the path
+                # Format: ~/SyftBox/datasites/<email>/...
+                path_parts = str(file_path).split('/')
+                if 'datasites' in path_parts:
+                    ds_idx = path_parts.index('datasites')
+                    if len(path_parts) > ds_idx + 1:
+                        datasite_owner = path_parts[ds_idx + 1]
+                        
+                        # Simple check: user can write if they own the datasite
+                        if user_email and user_email == datasite_owner:
+                            can_write = True
+                            write_users = [datasite_owner]
+                        else:
+                            # File is in someone else's datasite
+                            # We can't know the real permissions without syft.pub.yaml
+                            # So assume read-only to be safe
+                            can_write = False
+                            write_users = [datasite_owner]  # Show the owner at least
+            except Exception:
+                # On error, be conservative - assume no write access for SyftBox files
+                can_write = False
+                write_users = []
         
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -185,34 +200,32 @@ class FileSystemManager:
         """Write content to a file."""
         file_path = self._validate_path(path)
         
-        # Check write permissions using syft-perm
-        try:
-            import syft_perm as sp
-            if user_email:
-                # Check if user has write permission for this file
-                perms = sp.get_file_permissions(str(file_path))
-                if perms and 'write' in perms:
-                    if user_email not in perms['write']:
-                        raise HTTPException(
-                            status_code=403, 
-                            detail=f"You do not have write permission for this file. Only {', '.join(perms['write'])} can edit this file."
-                        )
-                # If no permissions set or file doesn't exist yet, check parent directory
-                elif file_path.exists():
-                    # File exists but no permissions - deny by default
-                    raise HTTPException(
-                        status_code=403,
-                        detail="This file has no write permissions configured. Contact the file owner."
-                    )
-        except ImportError:
-            # syft-perm not available, continue without permission check
-            pass
-        except HTTPException:
-            # Re-raise HTTP exceptions
-            raise
-        except Exception:
-            # Other syft-perm errors, continue without check
-            pass
+        # Check write permissions
+        # For SyftBox files, only allow writes if user owns the datasite
+        syftbox_path = os.path.expanduser("~/SyftBox")
+        if str(file_path).startswith(syftbox_path):
+            try:
+                # Extract the datasite from the path
+                path_parts = str(file_path).split('/')
+                if 'datasites' in path_parts:
+                    ds_idx = path_parts.index('datasites')
+                    if len(path_parts) > ds_idx + 1:
+                        datasite_owner = path_parts[ds_idx + 1]
+                        
+                        # Check if user owns the datasite
+                        if not user_email or user_email != datasite_owner:
+                            raise HTTPException(
+                                status_code=403,
+                                detail=f"You do not have write permission for this file. This file belongs to {datasite_owner}'s datasite."
+                            )
+            except HTTPException:
+                raise
+            except Exception:
+                # On error, deny access to be safe
+                raise HTTPException(
+                    status_code=403,
+                    detail="Cannot verify write permissions for this file."
+                )
         
         # Create parent directories if requested
         if create_dirs:

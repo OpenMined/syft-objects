@@ -4,6 +4,6 @@ rules:
     read:
     - '*'
     write:
-    - test@example.com
+    - '*'
     admin:
-    - test@example.com
+    - '*'
