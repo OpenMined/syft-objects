@@ -257,9 +257,7 @@ class CleanSyftObject:
             "is_folder": self._CleanSyftObject__obj.is_folder,
             "metadata": self._CleanSyftObject__obj.metadata,
             "permissions": {
-                "read": self.get_read_permissions(),
-                "write": self.get_write_permissions(),
-                "admin": self.get_admin_permissions()
+                "discovery": self.get_discovery_permissions()
             },
             "owner_email": self.get_owner()
         }
@@ -268,25 +266,12 @@ class CleanSyftObject:
         """Get the primary (mock) path of the object"""
         return self._CleanSyftObject__obj.mock_path
     
-    def get_read_permissions(self) -> list[str]:
-        """Get read permissions for the syftobject (discovery)"""
+    def get_discovery_permissions(self) -> list[str]:
+        """Get discovery permissions for the syftobject (who can discover this object)"""
         # Use the syftobject_config accessor from accessors.py
         from .accessors import SyftObjectConfigAccessor
         accessor = SyftObjectConfigAccessor(self._CleanSyftObject__obj)
         return accessor.get_read_permissions()
-    
-    def get_write_permissions(self) -> list[str]:
-        """Get write permissions for the object (currently same as admin)"""
-        # For now, write permissions are managed at the file level
-        # Return the owner's email as they have write access
-        owner = self.get_owner()
-        return [owner] if owner != "unknown" else []
-    
-    def get_admin_permissions(self) -> list[str]:
-        """Get admin permissions for the object"""
-        # Admin permissions are typically the owner's email
-        owner = self.get_owner()
-        return [owner] if owner != "unknown" else []
     
     def get_urls(self) -> dict:
         """Get all URLs for the object"""
@@ -382,33 +367,12 @@ class CleanSyftObject:
         
         return self._CleanSyftObject__obj.delete_obj(user_email)
     
-    def set_read_permissions(self, read: list[str]) -> None:
-        """Set read permissions for the syftobject (discovery)"""
+    def set_discovery_permissions(self, read: list[str]) -> None:
+        """Set discovery permissions for the syftobject (who can discover this object)"""
         # Use the syftobject_config accessor from accessors.py
         from .accessors import SyftObjectConfigAccessor
         accessor = SyftObjectConfigAccessor(self._CleanSyftObject__obj)
         accessor.set_read_permissions(read)
-        from .models import utcnow
-        self._CleanSyftObject__obj.updated_at = utcnow()
-    
-    def set_write_permissions(self, write: list[str]) -> None:
-        """Set write permissions for the object files"""
-        # Set write permissions for both mock and private files using accessors
-        from .accessors import MockAccessor, PrivateAccessor
-        mock_accessor = MockAccessor(self._CleanSyftObject__obj)
-        private_accessor = PrivateAccessor(self._CleanSyftObject__obj)
-        mock_accessor.set_write_permissions(write)
-        private_accessor.set_write_permissions(write)
-        from .models import utcnow
-        self._CleanSyftObject__obj.updated_at = utcnow()
-    
-    def set_admin_permissions(self, admin: list[str]) -> None:
-        """Set admin permissions for the object"""
-        # Admin permissions control who can modify the object metadata and permissions
-        # Store in metadata for now
-        if "admin_permissions" not in self._CleanSyftObject__obj.metadata:
-            self._CleanSyftObject__obj.metadata["admin_permissions"] = []
-        self._CleanSyftObject__obj.metadata["admin_permissions"] = admin.copy()
         from .models import utcnow
         self._CleanSyftObject__obj.updated_at = utcnow()
     
@@ -437,10 +401,10 @@ class CleanSyftObject:
             # Getters
             'get_uid', 'get_name', 'get_description', 'get_created_at',
             'get_updated_at', 'get_metadata', 'get_file_type', 'get_info',
-            'get_path', 'get_read_permissions', 'get_write_permissions', 'get_admin_permissions', 'get_urls', 'get_owner',
+            'get_path', 'get_discovery_permissions', 'get_urls', 'get_owner',
             # Setters
             'set_name', 'set_description', 'set_metadata',
-            'set_read_permissions', 'set_write_permissions', 'set_admin_permissions',
+            'set_discovery_permissions',
             # Accessors
             'mock', 'private', 'syftobject_config',
             # Actions
