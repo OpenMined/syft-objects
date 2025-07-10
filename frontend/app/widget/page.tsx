@@ -111,7 +111,7 @@ export default function WidgetPage() {
   useEffect(() => {
     fetchObjects()
     if (autoRefresh) {
-      const interval = setInterval(fetchObjects, 1000)
+      const interval = setInterval(fetchObjects, 1500)
       return () => clearInterval(interval)
     }
   }, [fetchObjects, autoRefresh])
