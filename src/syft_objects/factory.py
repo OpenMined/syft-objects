@@ -375,7 +375,7 @@ def syobj(
     # === PERMISSION HANDLING ===
     final_discovery_read = discovery_read or ["public"]
     final_mock_read = mock_read or ["public"]
-    final_mock_write = mock_write or []
+    final_mock_write = mock_write or [email]  # Default to owner having write access
     final_private_read = private_read or [email]
     final_private_write = private_write or [email]
     
@@ -395,14 +395,37 @@ def syobj(
     
     if syftbox_client:
         # Handle mock file - ALWAYS move to SyftBox
+        moved_mock = False
         if mock_file:
             # When mock_file is provided, we copy (not move) to preserve the original
             if copy_file_to_syftbox_location(mock_source_path, final_mock_path, syftbox_client):
                 files_moved_to_syftbox.append(f"{mock_source_path} → {final_mock_path}")
+                moved_mock = True
         else:
             # When we created the file, we can move it
             if move_file_to_syftbox_location(mock_source_path, final_mock_path, syftbox_client):
                 files_moved_to_syftbox.append(f"{mock_source_path} → {final_mock_path}")
+                moved_mock = True
+        
+        # Set permissions on the moved mock file using syft-perm
+        if moved_mock and create_syftbox_permissions:
+            try:
+                import syft_perm as sp
+                from .client import SyftBoxURL, SYFTBOX_AVAILABLE
+                if SYFTBOX_AVAILABLE:
+                    # Convert syft:// URL to local path
+                    syft_url_obj = SyftBoxURL(final_mock_path)
+                    local_mock_path = syft_url_obj.to_local_path(datasites_path=syftbox_client.datasites)
+                    
+                    # Set permissions with owner having write/admin access
+                    sp.set_file_permissions(
+                        local_mock_path,
+                        read_users=final_mock_read,
+                        write_users=final_mock_write,
+                        admin_users=final_mock_write  # Admin same as write for mock files
+                    )
+            except Exception as e:
+                print(f"Warning: Could not set mock file permissions: {e}")
         
         # Handle private file - only move if move_files_to_syftbox=True
         if move_files_to_syftbox:
@@ -584,42 +607,28 @@ def _set_permissions_with_syft_perm(
     try:
         import syft_perm as sp
         
-        # Set permissions on the syftobject directory (for discovery)
-        syftobject_path = final_syftobj_path or syft_obj.syftobject_path
-        if syftobject_path:
-            # For syftobject, we need the directory containing it
-            from pathlib import Path
-            dir_path = str(Path(syftobject_path).parent)
-            
-            # Get the owner email for write/admin permissions
-            owner_email = syft_obj.get_owner_email() if hasattr(syft_obj, 'get_owner_email') else detect_user_email()
-            
-            sp.set_file_permissions(
-                dir_path,
-                read_users=discovery_read,  # Who can discover/read the syftobject.yaml
-                write_users=[owner_email],  # Only owner can modify
-                admin_users=[owner_email]   # Only owner has admin access
-            )
+        # Note: Permissions for the syftobject.yaml and mock files are already set
+        # in the main syobj function after moving the files to SyftBox.
+        # We only need to set permissions on private files here.
         
-        # Set permissions on mock file/folder
-        mock_path = syft_obj.mock_path
-        if mock_path:
-            sp.set_file_permissions(
-                mock_path,
-                read_users=mock_read,
-                write_users=mock_write,
-                admin_users=mock_write  # Admin defaults to write users
-            )
-        
-        # Set permissions on private file/folder
+        # Set permissions on private file/folder (only if it exists in SyftBox)
         private_path = syft_obj.private_path
         if private_path:
-            sp.set_file_permissions(
-                private_path,
-                read_users=private_read,
-                write_users=private_write,
-                admin_users=private_write  # Admin defaults to write users
-            )
+            # Check if the file actually exists and is in SyftBox
+            from pathlib import Path
+            import os
+            
+            # Get SyftBox path
+            syftbox_path = os.path.expanduser("~/SyftBox")
+            
+            # Only set permissions if the file exists and is within SyftBox
+            if Path(private_path).exists() and str(Path(private_path).resolve()).startswith(syftbox_path):
+                sp.set_file_permissions(
+                    private_path,
+                    read_users=private_read,
+                    write_users=private_write,
+                    admin_users=private_write  # Admin defaults to write users
+                )
     except Exception as e:
         # If syft-perm is not available or fails, continue without setting permissions
         print(f"Warning: Could not set permissions with syft-perm: {e}")
