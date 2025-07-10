@@ -1058,9 +1058,18 @@ async def update_object_permissions(
         else:
             target_obj.updated_at = datetime.now()
         
-        # The object is file-backed, so changes are automatically saved
-        # No need to explicitly save since _sync_to_disk() is called on every attribute change
-        logger.info("Permissions updated - changes automatically synced to disk")
+        # Explicitly sync to disk - the direct attribute access bypasses automatic sync
+        if hasattr(target_obj, '_obj'):
+            # For CleanSyftObject, sync the underlying object
+            raw_obj = target_obj._CleanSyftObject__obj
+            if hasattr(raw_obj, '_sync_to_disk'):
+                raw_obj._sync_to_disk()
+                logger.info("Permissions synced to disk via _sync_to_disk()")
+        else:
+            # For regular SyftObject
+            if hasattr(target_obj, '_sync_to_disk'):
+                target_obj._sync_to_disk()
+                logger.info("Permissions synced to disk via _sync_to_disk()")
         
         # Refresh the collection to reflect changes
         objects.refresh()
@@ -1530,6 +1539,11 @@ async def update_object_metadata(
         from syft_objects.models import utcnow
         raw_obj = target_obj._CleanSyftObject__obj if hasattr(target_obj, '_CleanSyftObject__obj') else target_obj
         raw_obj.updated_at = utcnow()
+        
+        # Explicitly sync to disk - direct attribute updates bypass automatic sync
+        if hasattr(raw_obj, '_sync_to_disk'):
+            raw_obj._sync_to_disk()
+            logger.info("Metadata synced to disk via _sync_to_disk()")
         
         # Refresh objects collection
         objects.refresh()
