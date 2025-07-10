@@ -521,7 +521,7 @@ def generate_editor_html(initial_path: str = None) -> str:
         /* Additional button colors with better harmony */
         .btn-mint {{
             background: #f3f4f6;
-            color: #059669;
+            color: #374151;
         }}
         
         .btn-mint:hover {{
@@ -530,7 +530,7 @@ def generate_editor_html(initial_path: str = None) -> str:
         
         .btn-lavender {{
             background: #f3f4f6;
-            color: #7c3aed;
+            color: #374151;
         }}
         
         .btn-lavender:hover {{

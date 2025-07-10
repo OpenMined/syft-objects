@@ -373,21 +373,21 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .btn-primary {{
-            background-color: #bfdbfe;
-            color: #1e3a8a;
+            background-color: #3b82f6;
+            color: white;
         }}
         
         .btn-primary:hover {{
-            background-color: #93c5fd;
+            background-color: #2563eb;
         }}
         
         .btn-secondary {{
-            background: #e9d5ff;
-            color: #581c87;
+            background: #f3f4f6;
+            color: #374151;
         }}
         
         .btn-secondary:hover {{
-            background: #d8b4fe;
+            background: #e5e7eb;
         }}
         
         .btn-danger {{
@@ -399,41 +399,41 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             background: #fca5a5;
         }}
         
-        /* Additional pastel rainbow button colors */
+        /* Additional button colors - consistent neutral style */
         .btn-mint {{
-            background: #d1fae5;
-            color: #065f46;
+            background: #f3f4f6;
+            color: #374151;
         }}
         
         .btn-mint:hover {{
-            background: #a7f3d0;
+            background: #e5e7eb;
         }}
         
         .btn-peach {{
-            background: #fed7aa;
-            color: #7c2d12;
+            background: #f3f4f6;
+            color: #374151;
         }}
         
         .btn-peach:hover {{
-            background: #fdba74;
+            background: #e5e7eb;
         }}
         
         .btn-lavender {{
-            background: #e9d5ff;
-            color: #581c87;
+            background: #f3f4f6;
+            color: #374151;
         }}
         
         .btn-lavender:hover {{
-            background: #d8b4fe;
+            background: #e5e7eb;
         }}
         
         .btn-lemon {{
-            background: #fef3c7;
-            color: #78350f;
+            background: #f3f4f6;
+            color: #374151;
         }}
         
         .btn-lemon:hover {{
-            background: #fde68a;
+            background: #e5e7eb;
         }}
         
         .permissions-grid {{
@@ -680,17 +680,16 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                 <button class="tab" onclick="switchTab('permissions')">Permissions</button>
             </div>
             <div class="tabs-right">
-                <button class="btn btn-secondary" onclick="openInNewTab()">
+                <button class="btn btn-secondary" onclick="openInNewTab()" title="Open in new tab">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/>
                     </svg>
-                    Open in New Tab
+                    Open
                 </button>
-                <button class="btn btn-primary" onclick="refreshObject()">
+                <button class="btn btn-secondary" onclick="refreshObject()" title="Refresh">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
                     </svg>
-                    Refresh
                 </button>
                 <button id="save-permissions-btn" class="btn btn-primary" style="display: none;" onclick="savePermissions()">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
