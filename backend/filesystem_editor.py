@@ -481,13 +481,13 @@ def generate_editor_html(initial_path: str = None) -> str:
 
         .editor-actions {{
             display: flex;
-            gap: 8px;
+            gap: 6px;
             flex-shrink: 0;
             margin-left: auto;
         }}
 
         .btn {{
-            padding: 4px 10px;
+            padding: 5px 12px;
             border: none;
             border-radius: 4px;
             font-size: 11px;
@@ -496,45 +496,45 @@ def generate_editor_html(initial_path: str = None) -> str:
             transition: all 0.15s;
             display: inline-flex;
             align-items: center;
-            gap: 3px;
+            gap: 4px;
             line-height: 1.4;
         }}
 
         .btn-primary {{
-            background: #bfdbfe;
-            color: #1e3a8a;
+            background: #3b82f6;
+            color: white;
         }}
 
         .btn-primary:hover {{
-            background: #93c5fd;
+            background: #2563eb;
         }}
 
         .btn-secondary {{
-            background: #e9d5ff;
-            color: #581c87;
+            background: #f3f4f6;
+            color: #374151;
         }}
 
         .btn-secondary:hover {{
-            background: #d8b4fe;
+            background: #e5e7eb;
         }}
         
-        /* Additional pastel button colors */
+        /* Additional button colors with better harmony */
         .btn-mint {{
-            background: #d1fae5;
-            color: #065f46;
+            background: #f3f4f6;
+            color: #059669;
         }}
         
         .btn-mint:hover {{
-            background: #a7f3d0;
+            background: #e5e7eb;
         }}
         
         .btn-lavender {{
-            background: #e9d5ff;
-            color: #581c87;
+            background: #f3f4f6;
+            color: #7c3aed;
         }}
         
         .btn-lavender:hover {{
-            background: #d8b4fe;
+            background: #e5e7eb;
         }}
 
         .btn:disabled {{
@@ -754,14 +754,28 @@ def generate_editor_html(initial_path: str = None) -> str:
                                     <path d="M3 3h6l2 3h10a2 2 0 012 2v10a2 2 0 01-2 2H3a2 2 0 01-2-2V5a2 2 0 012-2z"/>
                                 </svg>
                             </button>
-                            <button class="btn btn-primary" id="saveBtn" disabled>
-                                Save
-                            </button>
                             <button class="btn btn-lavender" id="newFileBtn">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="12" y1="18" x2="12" y2="12"/>
+                                    <line x1="9" y1="15" x2="15" y2="15"/>
+                                </svg>
                                 New File
                             </button>
                             <button class="btn btn-mint" id="newFolderBtn">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+                                    <line x1="12" y1="11" x2="12" y2="17"/>
+                                    <line x1="9" y1="14" x2="15" y2="14"/>
+                                </svg>
                                 New Folder
+                            </button>
+                            <button class="btn btn-primary" id="saveBtn" disabled>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z"/>
+                                </svg>
+                                Save
                             </button>
                         </div>
                     </div>
