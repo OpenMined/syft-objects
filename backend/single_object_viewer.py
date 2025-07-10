@@ -358,7 +358,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             border-radius: 4px;
             font-size: 11px;
             font-weight: 500;
-            border: none;
+            border: 1px solid transparent;
             cursor: pointer;
             transition: all 0.15s;
             display: inline-flex;
@@ -372,31 +372,40 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             font-size: 10px;
         }}
         
+        /* Primary button - blue with transparency */
         .btn-primary {{
-            background-color: #3b82f6;
-            color: white;
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+            border-color: rgba(59, 130, 246, 0.2);
         }}
         
         .btn-primary:hover {{
-            background-color: #2563eb;
+            background: rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.3);
         }}
         
+        /* Secondary button - gray with transparency */
         .btn-secondary {{
-            background: #f3f4f6;
-            color: #374151;
+            background: rgba(107, 114, 128, 0.05);
+            color: #6b7280;
+            border-color: rgba(107, 114, 128, 0.1);
         }}
         
         .btn-secondary:hover {{
-            background: #e5e7eb;
+            background: rgba(107, 114, 128, 0.1);
+            border-color: rgba(107, 114, 128, 0.2);
         }}
         
+        /* Danger button - red with transparency */
         .btn-danger {{
-            background: #fecaca;
-            color: #7f1d1d;
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border-color: rgba(239, 68, 68, 0.2);
         }}
         
         .btn-danger:hover {{
-            background: #fca5a5;
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.3);
         }}
         
         /* Additional button colors - consistent neutral style */
@@ -585,45 +594,36 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             margin-top: 12px;
         }}
         
-        .tab-header {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #e5e7eb;
-        }}
-        
-        .tab-title {{
-            font-size: 16px;
-            font-weight: 600;
-            color: #111827;
-            margin: 0;
-        }}
         
         .danger-zone {{
-            margin-top: 24px;
-            padding: 12px;
-            border: 1px solid #fecaca;
+            margin-top: 12px;
+            padding: 8px 10px;
+            border: 1px solid rgba(254, 202, 202, 0.5);
             border-radius: 6px;
-            background: #fef2f2;
+            background: rgba(254, 242, 242, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
         }}
         
         .danger-zone-header {{
-            margin-bottom: 8px;
+            flex: 1;
         }}
         
         .danger-zone-title {{
-            font-size: 13px;
-            font-weight: 600;
-            color: #7f1d1d;
-            margin: 0 0 2px 0;
+            font-size: 11px;
+            font-weight: 500;
+            color: #ef4444;
+            margin: 0;
+            opacity: 0.8;
         }}
         
         .danger-zone-description {{
-            font-size: 11px;
-            color: #991b1b;
+            font-size: 10px;
+            color: #dc2626;
             margin: 0;
+            opacity: 0.7;
         }}
         
         .status-message {{
@@ -691,6 +691,12 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                         <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
                     </svg>
                 </button>
+                <button id="save-overview-btn" class="btn btn-primary" style="display: none;" onclick="saveOverview()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z"/>
+                    </svg>
+                    Save Changes
+                </button>
                 <button id="save-permissions-btn" class="btn btn-primary" style="display: none;" onclick="savePermissions()">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z"/>
@@ -704,16 +710,6 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         <!-- Overview Tab -->
         <div id="overview-tab" class="tab-content active">
-            <div class="tab-header">
-                <h3 class="tab-title">Object Details</h3>
-                <button class="btn btn-primary btn-sm" onclick="saveOverview()">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z"/>
-                    </svg>
-                    Save Changes
-                </button>
-            </div>
-            
             <div class="form-group">
                 <label class="form-label">Name</label>
                 <input type="text" id="name-input" class="form-input" value="{name}">
@@ -765,7 +761,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"/>
                     </svg>
-                    Delete Object
+                    Delete
                 </button>
             </div>
         </div>
@@ -817,16 +813,6 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         <!-- Permissions Tab -->
         <div id="permissions-tab" class="tab-content">
-            <div class="tab-header">
-                <h3 class="tab-title">Access Control</h3>
-                <button class="btn btn-primary btn-sm" onclick="savePermissions()">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z"/>
-                    </svg>
-                    Save Permissions
-                </button>
-            </div>
-            
             <div class="permissions-grid">
                 <!-- Discovery Permissions - Full Width -->
                 <div class="permissions-section full-width">
@@ -908,11 +894,18 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             }});
             document.getElementById(tabName + '-tab').classList.add('active');
             
-            // Show/hide Save Permissions button
+            // Show/hide appropriate save button
+            const saveOverviewBtn = document.getElementById('save-overview-btn');
             const savePermBtn = document.getElementById('save-permissions-btn');
-            if (tabName === 'permissions') {{
+            
+            if (tabName === 'overview') {{
+                saveOverviewBtn.style.display = 'inline-flex';
+                savePermBtn.style.display = 'none';
+            }} else if (tabName === 'permissions') {{
+                saveOverviewBtn.style.display = 'none';
                 savePermBtn.style.display = 'inline-flex';
             }} else {{
+                saveOverviewBtn.style.display = 'none';
                 savePermBtn.style.display = 'none';
             }}
         }}
