@@ -94,6 +94,8 @@ def syobj(
     Create SyftObjects with fine-grained permission control.
     """
     # === SETUP ===
+    from pathlib import Path
+    
     if metadata is None:
         metadata = {}
     
@@ -229,6 +231,29 @@ def syobj(
                         "files_moved_to_syftbox": [f"{save_path} → {final_syftobject_path}"]
                     }
                     folder_obj.metadata.update(clean_metadata)
+                    
+                    # Set permissions on the moved folder syftobject.yaml file using syft-perm
+                    if create_syftbox_permissions:
+                        try:
+                            import syft_perm as sp
+                            # Convert syft:// URL to local path for permission setting
+                            from .client import SyftBoxURL, SYFTBOX_AVAILABLE
+                            if SYFTBOX_AVAILABLE and final_syftobject_path.startswith("syft://"):
+                                try:
+                                    syft_url_obj = SyftBoxURL(final_syftobject_path)
+                                    local_path = syft_url_obj.to_local_path(datasites_path=syftbox_client.datasites)
+                                    
+                                    # Set permissions on the specific folder syftobject.yaml file
+                                    sp.set_file_permissions(
+                                        local_path,
+                                        read_users=discovery_read or ["public"],
+                                        write_users=[email],
+                                        admin_users=[email]
+                                    )
+                                except Exception as e:
+                                    print(f"Warning: Could not set folder discovery permissions on {final_syftobject_path}: {e}")
+                        except Exception as e:
+                            print(f"Warning: Could not set folder discovery permissions: {e}")
             
             # Create permissions using syft-perm
             if create_syftbox_permissions:
@@ -484,11 +509,10 @@ def syobj(
         with open(save_path, 'w') as f:
             yaml.dump(json_data, f, default_flow_style=False, sort_keys=True, indent=2)
         
-        # === CREATE FILE-BACKED SYFT OBJECT ===
-        syft_obj = SyftObject.from_yaml(save_path)
-        
+        # === MOVE FILE TO SYFTBOX FIRST, THEN CREATE OBJECT ===
         # Move .syftobject.yaml file to SyftBox location - ALWAYS move to SyftBox
         final_syftobj_path = save_path
+        
         if syftbox_client and not str(save_path).startswith("syft://"):
             syftobj_filename = Path(save_path).name
             syftobj_url = f"syft://{email}/public/objects/{syftobj_filename}"
@@ -502,8 +526,27 @@ def syobj(
                     try:
                         syft_url_obj = SyftBoxURL(syftobj_url)
                         final_syftobj_path = syft_url_obj.to_local_path(datasites_path=syftbox_client.datasites)
+                        
+                        # Set permissions on the moved syftobject.yaml file using syft-perm
+                        if create_syftbox_permissions:
+                            try:
+                                import syft_perm as sp
+                                owner_email = detect_user_email()
+                                
+                                # Set permissions on the specific syftobject.yaml file
+                                sp.set_file_permissions(
+                                    final_syftobj_path,
+                                    read_users=final_discovery_read,
+                                    write_users=[owner_email],
+                                    admin_users=[owner_email]
+                                )
+                            except Exception as e:
+                                print(f"Warning: Could not set discovery permissions on {final_syftobj_path}: {e}")
                     except:
                         pass
+        
+        # === CREATE FILE-BACKED SYFT OBJECT FROM FINAL LOCATION ===
+        syft_obj = SyftObject.from_yaml(final_syftobj_path)
         
         # Track the final syftobject.yaml file path
         syft_obj.metadata["_file_operations"]["syftobject_yaml_path"] = str(final_syftobj_path)
