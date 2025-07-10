@@ -607,12 +607,47 @@ def generate_editor_html(initial_path: str = None) -> str:
         }}
 
         .success {{
-            background: hsl(142.1 76.2% 36.3% / 0.1);
-            color: hsl(142.1 76.2% 36.3%);
-            padding: 12px;
-            border-radius: 0;
+            color: #065f46;
+            padding: 12px 20px;
+            border-radius: 8px;
             margin: 12px;
-            border: none;
+            border: 1px solid #bbf7d0;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.3s ease-out, rainbowPastel 3s ease-in-out;
+        }}
+        
+        @keyframes slideIn {{
+            from {{
+                transform: translateX(400px);
+                opacity: 0;
+            }}
+            to {{
+                transform: translateX(0);
+                opacity: 1;
+            }}
+        }}
+        
+        @keyframes slideOut {{
+            to {{
+                transform: translateX(400px);
+                opacity: 0;
+            }}
+        }}
+        
+        @keyframes rainbowPastel {{
+            0% {{ background: #ffcccc; border-color: #ffb3b3; }} /* Pastel Pink */
+            14% {{ background: #ffd9b3; border-color: #ffc299; }} /* Pastel Orange */
+            28% {{ background: #ffffcc; border-color: #ffffb3; }} /* Pastel Yellow */
+            42% {{ background: #ccffcc; border-color: #b3ffb3; }} /* Pastel Green */
+            57% {{ background: #ccffff; border-color: #b3ffff; }} /* Pastel Cyan */
+            71% {{ background: #ccccff; border-color: #b3b3ff; }} /* Pastel Blue */
+            85% {{ background: #ffccff; border-color: #ffb3ff; }} /* Pastel Purple */
+            100% {{ background: #dcfce7; border-color: #bbf7d0; }} /* Final teal */
         }}
 
         .empty-state {{
@@ -1088,6 +1123,12 @@ def generate_editor_html(initial_path: str = None) -> str:
             async saveFile() {{
                 if (!this.currentFile) return;
                 
+                // Animate the save button
+                this.saveBtn.style.transform = 'scale(0.95)';
+                setTimeout(() => {{
+                    this.saveBtn.style.transform = '';
+                }}, 150);
+                
                 try {{
                     const response = await fetch('/api/filesystem/write', {{
                         method: 'POST',
@@ -1168,8 +1209,9 @@ def generate_editor_html(initial_path: str = None) -> str:
                 document.body.appendChild(successDiv);
                 
                 setTimeout(() => {{
-                    successDiv.remove();
-                }}, 3000);
+                    successDiv.style.animation = 'slideOut 0.3s ease-in forwards';
+                    setTimeout(() => successDiv.remove(), 300);
+                }}, 3500);  // Show for 3.5 seconds to see full animation
             }}
             
             createNewFile() {{
