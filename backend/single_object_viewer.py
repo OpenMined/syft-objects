@@ -635,9 +635,20 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .status-success {{
-            background: #dcfce7;
             color: #065f46;
             border: 1px solid #bbf7d0;
+            animation: rainbowPastel 3s ease-in-out;
+        }}
+        
+        @keyframes rainbowPastel {{
+            0% {{ background: #ffcccc; border-color: #ffb3b3; }} /* Pastel Pink */
+            14% {{ background: #ffd9b3; border-color: #ffc299; }} /* Pastel Orange */
+            28% {{ background: #ffffcc; border-color: #ffffb3; }} /* Pastel Yellow */
+            42% {{ background: #ccffcc; border-color: #b3ffb3; }} /* Pastel Green */
+            57% {{ background: #ccffff; border-color: #b3ffff; }} /* Pastel Cyan */
+            71% {{ background: #ccccff; border-color: #b3b3ff; }} /* Pastel Blue */
+            85% {{ background: #ffccff; border-color: #ffb3ff; }} /* Pastel Purple */
+            100% {{ background: #dcfce7; border-color: #bbf7d0; }} /* Final teal */
         }}
         
         .status-error {{
@@ -720,6 +731,11 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                 <textarea id="description-input" class="form-input">{description or ''}</textarea>
             </div>
             
+            <div class="form-group">
+                <label class="form-label">Mock Note</label>
+                <textarea id="mock-note-input" class="form-input" placeholder="Describe what makes this mock data different from the real data..."></textarea>
+            </div>
+            
             <div class="info-grid">
                 <div class="info-item">
                     <div class="info-label">UID</div>
@@ -745,11 +761,6 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                     <div class="info-label">Object Type</div>
                     <div class="info-value" id="object-type-value">Loading...</div>
                 </div>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">Mock Note</label>
-                <textarea id="mock-note-input" class="form-input" placeholder="Describe what makes this mock data different from the real data..."></textarea>
             </div>
             
             <div class="danger-zone">
@@ -1224,7 +1235,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             
             setTimeout(() => {{
                 statusEl.style.display = 'none';
-            }}, 3000);
+            }}, 3500);  // Slightly longer to show full animation
         }}
     </script>
 </body>
