@@ -960,6 +960,14 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                             <button class="btn btn-primary" onclick="addPermission('mock', 'write')">Add</button>
                         </div>
                     </div>
+                    <div class="permission-group">
+                        <div class="permission-label">Admin Access</div>
+                        <div id="mock-admin-list" class="email-list"></div>
+                        <div class="add-email">
+                            <input type="email" id="mock-admin-input" placeholder="Add email address">
+                            <button class="btn btn-primary" onclick="addPermission('mock', 'admin')">Add</button>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="permissions-section half-width">
@@ -978,6 +986,14 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                         <div class="add-email">
                             <input type="email" id="private-write-input" placeholder="Add email address">
                             <button class="btn btn-primary" onclick="addPermission('private', 'write')">Add</button>
+                        </div>
+                    </div>
+                    <div class="permission-group">
+                        <div class="permission-label">Admin Access</div>
+                        <div id="private-admin-list" class="email-list"></div>
+                        <div class="add-email">
+                            <input type="email" id="private-admin-input" placeholder="Add email address">
+                            <button class="btn btn-primary" onclick="addPermission('private', 'admin')">Add</button>
                         </div>
                     </div>
                 </div>
@@ -1073,11 +1089,13 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                             discovery_permissions: data.permissions.read || [],
                             mock_permissions: {{
                                 "read": data.permissions.read || [],
-                                "write": data.permissions.write || []
+                                "write": data.permissions.write || [],
+                                "admin": data.permissions.admin || []
                             }},
                             private_permissions: {{
                                 "read": data.permissions.admin || [],  // Admin has private read
-                                "write": data.permissions.admin || []   // Admin has private write
+                                "write": data.permissions.admin || [],  // Admin has private write
+                                "admin": data.permissions.admin || []
                             }}
                         }};
                     }} else {{
@@ -1105,8 +1123,10 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             renderPermissionList('syftobject-read-list', currentPermissions.discovery_permissions || []);
             renderPermissionList('mock-read-list', currentPermissions.mock_permissions?.read || []);
             renderPermissionList('mock-write-list', currentPermissions.mock_permissions?.write || []);
+            renderPermissionList('mock-admin-list', currentPermissions.mock_permissions?.admin || []);
             renderPermissionList('private-read-list', currentPermissions.private_permissions?.read || []);
             renderPermissionList('private-write-list', currentPermissions.private_permissions?.write || []);
+            renderPermissionList('private-admin-list', currentPermissions.private_permissions?.admin || []);
         }}
         
         function renderPermissionList(elementId, emails) {{
@@ -1250,8 +1270,10 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                     discovery_read: currentPermissions.discovery_permissions || [],
                     mock_read: currentPermissions.mock_permissions?.read || [],
                     mock_write: currentPermissions.mock_permissions?.write || [],
+                    mock_admin: currentPermissions.mock_permissions?.admin || [],
                     private_read: currentPermissions.private_permissions?.read || [],
-                    private_write: currentPermissions.private_permissions?.write || []
+                    private_write: currentPermissions.private_permissions?.write || [],
+                    private_admin: currentPermissions.private_permissions?.admin || []
                 }};
                 
                 const response = await fetch(`/api/objects/${{objectUid}}/permissions`, {{

@@ -1042,6 +1042,13 @@ async def update_object_permissions(
             else:
                 logger.warning(f"Object {object_uid} does not support mock.set_write_permissions")
         
+        if 'mock_admin' in permissions:
+            if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'set_admin_permissions'):
+                target_obj.mock.set_admin_permissions(permissions['mock_admin'])
+                updated_fields.append('mock_admin')
+            else:
+                logger.warning(f"Object {object_uid} does not support mock.set_admin_permissions")
+        
         # Update private permissions
         if 'private_read' in permissions:
             if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'set_read_permissions'):
@@ -1056,6 +1063,13 @@ async def update_object_permissions(
                 updated_fields.append('private_write')
             else:
                 logger.warning(f"Object {object_uid} does not support private.set_write_permissions")
+        
+        if 'private_admin' in permissions:
+            if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'set_admin_permissions'):
+                target_obj.private.set_admin_permissions(permissions['private_admin'])
+                updated_fields.append('private_admin')
+            else:
+                logger.warning(f"Object {object_uid} does not support private.set_admin_permissions")
         
         logger.info(f"Updated fields: {updated_fields}")
         
@@ -1433,11 +1447,13 @@ async def get_object_metadata(object_uid: str) -> Dict[str, Any]:
                 "discovery_permissions": target_obj.get_read_permissions() if hasattr(target_obj, 'get_read_permissions') else [],
                 "mock_permissions": {
                     "read": target_obj.mock.get_read_permissions() if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'get_read_permissions') else [],
-                    "write": target_obj.mock.get_write_permissions() if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'get_write_permissions') else []
+                    "write": target_obj.mock.get_write_permissions() if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'get_write_permissions') else [],
+                    "admin": target_obj.mock.get_admin_permissions() if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'get_admin_permissions') else []
                 },
                 "private_permissions": {
                     "read": target_obj.private.get_read_permissions() if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'get_read_permissions') else [],
-                    "write": target_obj.private.get_write_permissions() if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'get_write_permissions') else []
+                    "write": target_obj.private.get_write_permissions() if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'get_write_permissions') else [],
+                    "admin": target_obj.private.get_admin_permissions() if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'get_admin_permissions') else []
                 }
             })(),
             "urls": target_obj.get_urls() if hasattr(target_obj, 'get_urls') else {

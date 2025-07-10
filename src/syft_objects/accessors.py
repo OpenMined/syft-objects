@@ -80,7 +80,7 @@ class MockAccessor(DataAccessor):
                     path,
                     read_users=current.get('read', []),
                     write_users=write,
-                    admin_users=write  # admin defaults to write users
+                    admin_users=current.get('admin', [])  # preserve existing admin users
                 )
         except Exception as e:
             # Fallback to old attribute-based permissions
@@ -180,7 +180,7 @@ class PrivateAccessor(DataAccessor):
                     path,
                     read_users=current.get('read', []),
                     write_users=write,
-                    admin_users=write  # admin defaults to write users
+                    admin_users=current.get('admin', [])  # preserve existing admin users
                 )
         except Exception as e:
             # Fallback to old attribute-based permissions
@@ -280,7 +280,7 @@ class SyftObjectConfigAccessor:
                 self._syft_object.syftobject_permissions = read
     
     def set_write_permissions(self, write: List[str]) -> None:
-        """Set write permissions for the syftobject file (updates admin)"""
+        """Set write permissions for the syftobject file"""
         try:
             import syft_perm as sp
             path = self.get_path()
@@ -293,7 +293,7 @@ class SyftObjectConfigAccessor:
                     dir_path,
                     read_users=current.get('read', []),
                     write_users=write,
-                    admin_users=write
+                    admin_users=current.get('admin', [])  # preserve existing admin users
                 )
         except Exception as e:
             pass
