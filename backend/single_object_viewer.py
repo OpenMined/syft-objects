@@ -65,8 +65,10 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             padding: 0;
             margin: 0;
             color: #374151;
-            font-size: 13px;
-            line-height: 1.5;
+            font-size: 12px;
+            line-height: 1.4;
+            height: 100vh;
+            overflow: hidden;
         }}
         
         .widget-container {{
@@ -76,50 +78,38 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             width: 100%;
             max-width: none;
             margin: 0;
+            height: calc(100vh - 20px);
             overflow: hidden;
-        }}
-        
-        .widget-header {{
-            background: white;
-            padding: 8px 12px;
-            border-bottom: 1px solid #e5e7eb;
             display: flex;
-            align-items: center;
-            justify-content: space-between;
+            flex-direction: column;
         }}
         
-        .widget-title {{
-            font-size: 14px;
-            font-weight: 600;
-            color: #111827;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }}
-        
-        .uid-badge {{
-            font-size: 10px;
-            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
-            background: #f3f4f6;
-            padding: 2px 6px;
-            border-radius: 3px;
-            color: #6b7280;
-            font-weight: 500;
-        }}
         
         .tabs {{
             display: flex;
             background: #f8f9fa;
             border-bottom: 1px solid #e5e7eb;
             overflow-x: auto;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        
+        .tabs-left {{
+            display: flex;
+        }}
+        
+        .tabs-right {{
+            display: flex;
+            gap: 6px;
+            padding-right: 12px;
         }}
         
         .tab {{
-            padding: 10px 20px;
+            padding: 6px 16px;
             cursor: pointer;
             border: none;
             background: none;
-            font-size: 13px;
+            font-size: 12px;
             color: #6b7280;
             white-space: nowrap;
             transition: all 0.2s;
@@ -149,25 +139,35 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .tab-content {{
             display: none;
-            padding: 16px;
+            padding: 12px;
             animation: fadeIn 0.3s ease-in-out;
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
         }}
         
         /* Files, Permissions, and Metadata tabs should have no left/right padding */
         #files-tab {{
             padding: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }}
         
         #permissions-tab {{
-            padding: 16px 0;
+            padding: 12px 0;
         }}
         
         #metadata-tab {{
-            padding: 16px 0;
+            padding: 12px 0;
         }}
         
         .tab-content.active {{
             display: block;
+        }}
+        
+        #files-tab.active {{
+            display: flex;
         }}
         
         @keyframes fadeIn {{
@@ -182,25 +182,25 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .form-group {{
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }}
         
         .form-label {{
             display: block;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 600;
             color: #6b7280;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }}
         
         .form-input {{
             width: 100%;
-            padding: 6px 10px;
+            padding: 4px 8px;
             border: 1px solid #e5e7eb;
             border-radius: 4px;
-            font-size: 13px;
+            font-size: 12px;
             transition: all 0.2s;
             font-family: inherit;
             background: white;
@@ -220,19 +220,19 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         textarea.form-input {{
             resize: vertical;
-            min-height: 40px;
+            min-height: 32px;
         }}
         
         .info-grid {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 6px;
+            margin-bottom: 8px;
         }}
         
         .info-item {{
             background: #f8f9fa;
-            padding: 6px 10px;
+            padding: 4px 8px;
             border-radius: 4px;
             border: 1px solid #e5e7eb;
         }}
@@ -260,14 +260,17 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             background: #f8f9fa;
             border-bottom: 1px solid #e5e7eb;
             overflow-x: auto;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }}
         
         .sub-tab {{
-            padding: 8px 16px;
+            padding: 6px 12px;
             cursor: pointer;
             border: none;
             background: none;
-            font-size: 12px;
+            font-size: 11px;
             color: #6b7280;
             white-space: nowrap;
             transition: all 0.15s;
@@ -289,6 +292,8 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         .file-tab-content {{
             display: none;
             position: relative;
+            flex: 1;
+            overflow-y: auto;
         }}
         
         .file-tab-content.active {{
@@ -299,7 +304,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 8px 12px;
+            padding: 6px 10px;
             background: #f8f9fa;
             border-bottom: 1px solid #e5e7eb;
         }}
@@ -319,9 +324,39 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .file-iframe-full {{
             width: 100%;
-            height: 300px;
+            height: 320px;
             border: none;
             background: white;
+        }}
+        
+        .file-not-found {{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 320px;
+            background: #f9fafb;
+            border-radius: 8px;
+            text-align: center;
+            padding: 20px;
+        }}
+        
+        .file-not-found svg {{
+            margin-bottom: 16px;
+        }}
+        
+        .file-not-found h3 {{
+            color: #374151;
+            font-size: 16px;
+            margin: 0 0 6px 0;
+            font-weight: 600;
+        }}
+        
+        .file-not-found p {{
+            color: #6b7280;
+            font-size: 12px;
+            margin: 0;
+            max-width: 400px;
         }}
         
         .btn {{
@@ -430,10 +465,10 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         }}
         
         .permissions-title {{
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             color: #374151;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }}
         
         .permission-group {{
@@ -490,17 +525,17 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .add-email {{
             display: flex;
-            gap: 6px;
-            margin-top: 4px;
+            gap: 4px;
+            margin-top: 2px;
         }}
         
         .add-email input {{
             flex: 1;
-            padding: 4px 8px;
+            padding: 3px 6px;
             border: 1px solid #d1d5db;
-            border-radius: 4px;
-            font-size: 12px;
-            line-height: 1.4;
+            border-radius: 3px;
+            font-size: 11px;
+            line-height: 1.3;
         }}
         
         .metadata-editor {{
@@ -644,23 +679,32 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
 </head>
 <body>
     <div class="widget-container">
-        <div class="widget-header">
-            <div class="widget-title">
-                <span id="object-name">{name}</span>
-                <span class="uid-badge">{object_uid[:8]}...</span>
-            </div>
-            <button class="btn btn-primary" onclick="refreshObject()">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-                </svg>
-                Refresh
-            </button>
-        </div>
-        
         <div class="tabs">
-            <button class="tab active" onclick="switchTab('overview')">Overview</button>
-            <button class="tab" onclick="switchTab('files')">Files</button>
-            <button class="tab" onclick="switchTab('permissions')">Permissions</button>
+            <div class="tabs-left">
+                <button class="tab active" onclick="switchTab('overview')">Overview</button>
+                <button class="tab" onclick="switchTab('files')">Files</button>
+                <button class="tab" onclick="switchTab('permissions')">Permissions</button>
+            </div>
+            <div class="tabs-right">
+                <button class="btn btn-secondary" onclick="openInNewTab()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/>
+                    </svg>
+                    Open in New Tab
+                </button>
+                <button class="btn btn-primary" onclick="refreshObject()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                    </svg>
+                    Refresh
+                </button>
+                <button id="save-permissions-btn" class="btn btn-primary" style="display: none;" onclick="savePermissions()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z"/>
+                    </svg>
+                    Save Permissions
+                </button>
+            </div>
         </div>
         
         <div id="status-message" class="status-message"></div>
@@ -745,27 +789,48 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             <div id="file-mock" class="file-tab-content active">
                 <div class="file-toolbar">
                     <span class="file-path">Path: <code id="mock-path">{mock_path or 'Not found'}</code></span>
-                    <button class="btn btn-lavender" onclick="openInEditor('mock')">Open in Editor</button>
+                    {'<button class="btn btn-lavender" onclick="openInEditor(\'mock\')">Open in Editor</button>' if mock_path else ''}
                 </div>
-                <iframe id="mock-iframe" class="file-iframe-full" src="/editor?path={mock_path}&embedded=true"></iframe>
+                {f'<iframe id="mock-iframe" class="file-iframe-full" src="/editor?path={mock_path}&embedded=true"></iframe>' if mock_path else 
+                 '''<div class="file-not-found">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5">
+                        <path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <h3>File Not Found</h3>
+                    <p>This file doesn't exist locally or you don't have permission to access it.</p>
+                </div>'''}
             </div>
             
             <!-- Private File Sub-Tab -->
             <div id="file-private" class="file-tab-content">
                 <div class="file-toolbar">
                     <span class="file-path">Path: <code id="private-path">{private_path or 'Not found'}</code></span>
-                    <button class="btn btn-mint" onclick="openInEditor('private')">Open in Editor</button>
+                    {'<button class="btn btn-mint" onclick="openInEditor(\'private\')">Open in Editor</button>' if private_path else ''}
                 </div>
-                <iframe id="private-iframe" class="file-iframe-full" src="/editor?path={private_path}&embedded=true"></iframe>
+                {f'<iframe id="private-iframe" class="file-iframe-full" src="/editor?path={private_path}&embedded=true"></iframe>' if private_path else 
+                 '''<div class="file-not-found">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5">
+                        <path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <h3>File Not Found</h3>
+                    <p>This file doesn't exist locally or you don't have permission to access it.</p>
+                </div>'''}
             </div>
             
             <!-- Config File Sub-Tab -->
             <div id="file-config" class="file-tab-content">
                 <div class="file-toolbar">
                     <span class="file-path">Path: <code id="syftobject-path">{syftobject_path or 'Not found'}</code></span>
-                    <button class="btn btn-peach" onclick="openInEditor('syftobject')">Open in Editor</button>
+                    {'<button class="btn btn-peach" onclick="openInEditor(\'syftobject\')">Open in Editor</button>' if syftobject_path else ''}
                 </div>
-                <iframe id="syftobject-iframe" class="file-iframe-full" src="/editor?path={syftobject_path}&embedded=true"></iframe>
+                {f'<iframe id="syftobject-iframe" class="file-iframe-full" src="/editor?path={syftobject_path}&embedded=true"></iframe>' if syftobject_path else 
+                 '''<div class="file-not-found">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5">
+                        <path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <h3>File Not Found</h3>
+                    <p>This file doesn't exist locally or you don't have permission to access it.</p>
+                </div>'''}
             </div>
         </div>
         
@@ -861,6 +926,14 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                 content.classList.remove('active');
             }});
             document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // Show/hide Save Permissions button
+            const savePermBtn = document.getElementById('save-permissions-btn');
+            if (tabName === 'permissions') {{
+                savePermBtn.style.display = 'inline-flex';
+            }} else {{
+                savePermBtn.style.display = 'none';
+            }}
         }}
         
         function switchFileTab(tabName) {{
@@ -987,10 +1060,6 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                 
                 showStatus(`${{field}} updated successfully`, 'success');
                 
-                // Update the header if name changed
-                if (field === 'name') {{
-                    document.getElementById('object-name').textContent = value;
-                }}
                 
             }} catch (error) {{
                 showStatus('Error updating field: ' + error.message, 'error');
@@ -1019,8 +1088,6 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                 
                 showStatus('Overview saved successfully', 'success');
                 
-                // Update the header if name changed
-                document.getElementById('object-name').textContent = nameValue;
                 
             }} catch (error) {{
                 showStatus('Error saving overview: ' + error.message, 'error');
@@ -1162,6 +1229,11 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             if (path) {{
                 window.open(`/editor?path=${{encodeURIComponent(path)}}`, '_blank');
             }}
+        }}
+        
+        function openInNewTab() {{
+            const currentUrl = window.location.href;
+            window.open(currentUrl, '_blank');
         }}
         
         function refreshObject() {{
