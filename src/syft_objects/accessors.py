@@ -98,7 +98,20 @@ class MockAccessor(DataAccessor):
     
     def set_admin_permissions(self, admin: List[str]) -> None:
         """Set admin permissions for mock data"""
-        self._syft_object.metadata["admin_permissions"] = admin
+        try:
+            import syft_perm as sp
+            path = self.get_path()
+            if path:
+                current = sp.get_file_permissions(path)
+                sp.set_file_permissions(
+                    path,
+                    read_users=current.get('read', []),
+                    write_users=current.get('write', []),
+                    admin_users=admin
+                )
+        except Exception as e:
+            # Fallback to metadata
+            self._syft_object.metadata["admin_permissions"] = admin
     
     def is_folder(self) -> bool:
         """Check if the mock is a folder"""
@@ -207,7 +220,20 @@ class PrivateAccessor(DataAccessor):
     
     def set_admin_permissions(self, admin: List[str]) -> None:
         """Set admin permissions for private data"""
-        self._syft_object.metadata["admin_permissions"] = admin
+        try:
+            import syft_perm as sp
+            path = self.get_path()
+            if path:
+                current = sp.get_file_permissions(path)
+                sp.set_file_permissions(
+                    path,
+                    read_users=current.get('read', []),
+                    write_users=current.get('write', []),
+                    admin_users=admin
+                )
+        except Exception as e:
+            # Fallback to metadata
+            self._syft_object.metadata["admin_permissions"] = admin
     
     def is_folder(self) -> bool:
         """Check if the private is a folder"""
@@ -332,6 +358,24 @@ class SyftObjectConfigAccessor:
     
     def set_admin_permissions(self, admin: List[str]) -> None:
         """Set admin permissions for the syftobject file"""
+        try:
+            import syft_perm as sp
+            path = self.get_path()
+            if path:
+                # For syftobject, we need the directory containing it
+                from pathlib import Path
+                dir_path = str(Path(path).parent)
+                current = sp.get_file_permissions(dir_path)
+                sp.set_file_permissions(
+                    dir_path,
+                    read_users=current.get('read', []),
+                    write_users=current.get('write', []),
+                    admin_users=admin
+                )
+        except Exception as e:
+            # Always update metadata for syftobject admin
+            pass
+        # Always update metadata admin permissions for backward compatibility
         self._syft_object.metadata["admin_permissions"] = admin
     
     def __repr__(self) -> str:
