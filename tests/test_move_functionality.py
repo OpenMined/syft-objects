@@ -7,7 +7,7 @@ import shutil
 from unittest.mock import Mock, patch, MagicMock
 
 from syft_objects import create_object
-from syft_objects.clean_api import MockAccessor, PrivateAccessor, SyftObjectConfigAccessor
+from syft_objects.accessors import MockAccessor, PrivateAccessor, SyftObjectConfigAccessor
 
 
 class TestMovePathFunctionality:

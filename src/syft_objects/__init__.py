@@ -1,6 +1,6 @@
 # syft-objects - Distributed file discovery and addressing system 
 
-__version__ = "0.10.12"
+__version__ = "0.10.13"
 
 # Internal imports (hidden from public API)
 from . import models as _models
@@ -25,7 +25,7 @@ from .config import config
 objects = ObjectsCollection()
 
 # Create clearer API endpoints
-def create_object(name=None, **kwargs):
+def create_object(name=None, *, move_files_to_syftbox=None, **kwargs):
     """Create a new SyftObject with explicit naming.
     
     Creates a new SyftObject with the specified parameters.
@@ -46,10 +46,22 @@ def create_object(name=None, **kwargs):
             - private_write: List of who can write private
             - metadata: Additional metadata dict
             - skip_validation: Skip mock/real file validation
+            - mock_note: Optional note explaining mock data differences
+            - suggest_mock_notes: Whether to suggest mock notes (None uses config)
+            - move_files_to_syftbox: Whether to copy/move files to SyftBox (default: False)
+                - When True: User files are copied, generated files are moved
+                - When False: Files stay in their original locations
     
     Returns:
         SyftObject: The newly created object
     """
+    # Handle move_files_to_syftbox parameter
+    if move_files_to_syftbox is not None:
+        # If explicitly provided, add to metadata
+        if 'metadata' not in kwargs:
+            kwargs['metadata'] = {}
+        kwargs['metadata']['move_files_to_syftbox'] = move_files_to_syftbox
+    
     # Use the internal factory module's syobj function
     return _factory.syobj(name, **kwargs)
 

@@ -10,7 +10,6 @@ import os
 from pydantic import BaseModel, Field, model_validator
 
 from .client import get_syftbox_client, extract_local_path_from_syft_url
-from .permissions import set_file_permissions_wrapper
 from .display import create_html_display
 from .data_accessor import DataAccessor
 from ._validation import MockRealValidationError
@@ -43,27 +42,9 @@ class SyftObject(BaseModel):
         description="Type of object: 'file' or 'folder'"
     )
     
-    # Permission metadata - who can access what (read/write granularity)
-    syftobject_permissions: list[str] = Field(
-        default_factory=lambda: ["public"], 
-        description="Who can read the .syftobject.yaml file (know the object exists)"
-    )
-    mock_permissions: list[str] = Field(
-        default_factory=lambda: ["public"], 
-        description="Who can read the mock/fake version of the object"
-    )
-    mock_write_permissions: list[str] = Field(
-        default_factory=list,
-        description="Who can write/update the mock/fake version of the object"
-    )
-    private_permissions: list[str] = Field(
-        default_factory=list, 
-        description="Who can read the private/real data"
-    )
-    private_write_permissions: list[str] = Field(
-        default_factory=list,
-        description="Who can write/update the private/real data"
-    )
+    # Permissions are now managed by syft-perm on the actual files/folders
+    # Removed: syftobject_permissions, mock_permissions, mock_write_permissions, 
+    # private_permissions, private_write_permissions
     
     # Recommended metadata
     name: Optional[str] = Field(None, description="Human-readable name for the object")
@@ -129,6 +110,14 @@ class SyftObject(BaseModel):
         
         with open(file_path, 'r') as f:
             data = yaml.safe_load(f)
+        
+        # Remove old permission fields for backward compatibility
+        permission_fields = [
+            'syftobject_permissions', 'mock_permissions', 'mock_write_permissions',
+            'private_permissions', 'private_write_permissions'
+        ]
+        for field in permission_fields:
+            data.pop(field, None)
         
         # Add the yaml path to the data
         data['_yaml_path'] = file_path
@@ -385,14 +374,6 @@ class SyftObject(BaseModel):
         # This now uses from_yaml which provides file-backed storage
         return cls.from_yaml(file_path)
 
-    def _create_syftbox_permissions(self, syftobject_file_path: Path) -> None:
-        """Create SyftBox permission files for the syft object"""
-        # Create permissions for the .syftobject.yaml file itself (discovery)
-        set_file_permissions_wrapper(str(syftobject_file_path), self.syftobject_permissions)
-        
-        # Create permissions for mock and private files
-        set_file_permissions_wrapper(self.mock_url, self.mock_permissions, self.mock_write_permissions)
-        set_file_permissions_wrapper(self.private_url, self.private_permissions, self.private_write_permissions)
 
     
     def delete_obj(self, user_email: str = None) -> bool:

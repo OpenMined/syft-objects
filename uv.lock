@@ -2465,7 +2465,7 @@ wheels = [
 
 [[package]]
 name = "syft-objects"
-version = "0.10.10"
+version = "0.10.13"
 source = { editable = "." }
 dependencies = [
     { name = "build" },
@@ -2506,14 +2506,12 @@ docs = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "build" },
     { name = "httpx" },
     { name = "pandas" },
     { name = "pyarrow" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "tabulate" },
-    { name = "twine" },
 ]
 
 [package.metadata]
@@ -2548,14 +2546,12 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "build", specifier = ">=1.2.2.post1" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "pandas", specifier = ">=2.3.0" },
     { name = "pyarrow", specifier = ">=20.0.0" },
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "pytest-cov", specifier = ">=6.2.1" },
     { name = "tabulate", specifier = ">=0.9.0" },
-    { name = "twine", specifier = ">=6.1.0" },
 ]
 
 [[package]]

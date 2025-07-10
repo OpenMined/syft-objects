@@ -38,6 +38,9 @@ def create_html_display(syft_obj: 'SyftObject') -> str:
 def create_static_display(syft_obj: 'SyftObject') -> str:
     """Create a static HTML display that matches the localhost viewer's appearance"""
     
+    # Import accessor classes
+    from .accessors import MockAccessor, PrivateAccessor, SyftObjectConfigAccessor
+    
     # Get basic object info
     name = syft_obj.name or 'Syft Object'
     uid = str(syft_obj.uid)
@@ -529,20 +532,20 @@ def create_static_display(syft_obj: 'SyftObject') -> str:
                 <h3 class="syft-section-title">Permissions</h3>
                 
                 {render_permissions_section("Discovery Permissions", "Who can discover this object exists", 
-                                          syft_obj.syftobject_permissions)}
+                                          SyftObjectConfigAccessor(syft_obj).get_read_permissions())}
                 
                 <div class="syft-permissions-section">
                     <h4 class="syft-permissions-title">Mock File Permissions</h4>
                     <div class="syft-permission-group">
                         <div class="syft-permission-label">Read Access</div>
                         <div class="syft-email-list">
-                            {render_permission_tags(syft_obj.mock_permissions)}
+                            {render_permission_tags(MockAccessor(syft_obj).get_read_permissions())}
                         </div>
                     </div>
                     <div class="syft-permission-group">
                         <div class="syft-permission-label">Write Access</div>
                         <div class="syft-email-list">
-                            {render_permission_tags(syft_obj.mock_write_permissions)}
+                            {render_permission_tags(MockAccessor(syft_obj).get_write_permissions())}
                         </div>
                     </div>
                 </div>
@@ -552,13 +555,13 @@ def create_static_display(syft_obj: 'SyftObject') -> str:
                     <div class="syft-permission-group">
                         <div class="syft-permission-label">Read Access</div>
                         <div class="syft-email-list">
-                            {render_permission_tags(syft_obj.private_permissions)}
+                            {render_permission_tags(PrivateAccessor(syft_obj).get_read_permissions())}
                         </div>
                     </div>
                     <div class="syft-permission-group">
                         <div class="syft-permission-label">Write Access</div>
                         <div class="syft-email-list">
-                            {render_permission_tags(syft_obj.private_write_permissions)}
+                            {render_permission_tags(PrivateAccessor(syft_obj).get_write_permissions())}
                         </div>
                     </div>
                 </div>

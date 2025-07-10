@@ -270,7 +270,10 @@ class CleanSyftObject:
     
     def get_read_permissions(self) -> list[str]:
         """Get read permissions for the syftobject (discovery)"""
-        return self._CleanSyftObject__obj.syftobject_permissions.copy()
+        # Use the syftobject_config accessor from accessors.py
+        from .accessors import SyftObjectConfigAccessor
+        accessor = SyftObjectConfigAccessor(self._CleanSyftObject__obj)
+        return accessor.get_read_permissions()
     
     def get_write_permissions(self) -> list[str]:
         """Get write permissions for the object (currently same as admin)"""
@@ -349,16 +352,19 @@ class CleanSyftObject:
     @property
     def mock(self):
         """Access mock-related properties and methods"""
+        from .accessors import MockAccessor
         return MockAccessor(self._CleanSyftObject__obj)
     
     @property
     def private(self):
         """Access private-related properties and methods"""
+        from .accessors import PrivateAccessor
         return PrivateAccessor(self._CleanSyftObject__obj)
     
     @property
     def syftobject_config(self):
         """Access syftobject configuration properties and methods"""
+        from .accessors import SyftObjectConfigAccessor
         return SyftObjectConfigAccessor(self._CleanSyftObject__obj)
     
     # ===== Actions =====
@@ -378,15 +384,21 @@ class CleanSyftObject:
     
     def set_read_permissions(self, read: list[str]) -> None:
         """Set read permissions for the syftobject (discovery)"""
-        self._CleanSyftObject__obj.syftobject_permissions = read.copy()
+        # Use the syftobject_config accessor from accessors.py
+        from .accessors import SyftObjectConfigAccessor
+        accessor = SyftObjectConfigAccessor(self._CleanSyftObject__obj)
+        accessor.set_read_permissions(read)
         from .models import utcnow
         self._CleanSyftObject__obj.updated_at = utcnow()
     
     def set_write_permissions(self, write: list[str]) -> None:
         """Set write permissions for the object files"""
-        # Set write permissions for both mock and private files
-        self._CleanSyftObject__obj.mock_write_permissions = write.copy()
-        self._CleanSyftObject__obj.private_write_permissions = write.copy()
+        # Set write permissions for both mock and private files using accessors
+        from .accessors import MockAccessor, PrivateAccessor
+        mock_accessor = MockAccessor(self._CleanSyftObject__obj)
+        private_accessor = PrivateAccessor(self._CleanSyftObject__obj)
+        mock_accessor.set_write_permissions(write)
+        private_accessor.set_write_permissions(write)
         from .models import utcnow
         self._CleanSyftObject__obj.updated_at = utcnow()
     
@@ -444,501 +456,6 @@ class CleanSyftObject:
         raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
 
 
-# ===== Accessor Classes =====
-class MockAccessor:
-    """Accessor for mock-related properties and methods"""
-    
-    def __init__(self, syft_obj):
-        self._CleanSyftObject__obj = syft_obj
-    
-    def get_path(self) -> str:
-        """Get the local file path for the mock data"""
-        return self._CleanSyftObject__obj.mock_path
-    
-    def get_url(self) -> str:
-        """Get the syft:// URL for the mock data"""
-        return self._CleanSyftObject__obj.mock_url
-    
-    def get_read_permissions(self) -> list[str]:
-        """Get read permissions for the mock data"""
-        return self._CleanSyftObject__obj.mock_permissions.copy()
-    
-    def get_write_permissions(self) -> list[str]:
-        """Get write permissions for the mock data"""
-        return self._CleanSyftObject__obj.mock_write_permissions.copy()
-    
-    def get_admin_permissions(self) -> list[str]:
-        """Get admin permissions for the mock data (same as object admin)"""
-        admin_perms = self._CleanSyftObject__obj.metadata.get("admin_permissions", [])
-        return admin_perms.copy() if admin_perms else []
-    
-    def set_read_permissions(self, read: list[str]) -> None:
-        """Set read permissions for the mock data"""
-        self._CleanSyftObject__obj.mock_permissions = read.copy()
-        from .models import utcnow
-        self._CleanSyftObject__obj.updated_at = utcnow()
-    
-    def set_write_permissions(self, write: list[str]) -> None:
-        """Set write permissions for the mock data"""
-        self._CleanSyftObject__obj.mock_write_permissions = write.copy()
-        from .models import utcnow
-        self._CleanSyftObject__obj.updated_at = utcnow()
-    
-    def set_admin_permissions(self, admin: list[str]) -> None:
-        """Set admin permissions for the mock data (updates object admin)"""
-        self._CleanSyftObject__obj.metadata["admin_permissions"] = admin.copy()
-        from .models import utcnow
-        self._CleanSyftObject__obj.updated_at = utcnow()
-    
-    def get_note(self) -> Optional[str]:
-        """Get the mock note describing the mock data characteristics"""
-        return self._CleanSyftObject__obj.metadata.get("mock_note")
-    
-    def set_note(self, note: str) -> None:
-        """Set the mock note"""
-        self._CleanSyftObject__obj.metadata["mock_note"] = note
-        from .models import utcnow
-        self._CleanSyftObject__obj.updated_at = utcnow()
-    
-    def is_folder(self) -> bool:
-        """Check if the mock is a folder"""
-        mock_path = self.get_path()
-        if mock_path and Path(mock_path).exists():
-            return Path(mock_path).is_dir()
-        return False
-
-    def get_editor_url(self, base_url: str = "http://localhost:8004") -> str:
-        """Get the editor URL for folder mocks"""
-        if self.is_folder():
-            path = self.get_path()
-            if path:
-                return f"{base_url}/editor?path={path}"
-        return None
-    
-    def _repr_html_(self) -> str:
-        """HTML representation for Jupyter display"""
-        path = self.get_path()
-        if not path:
-            return '''
-            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
-                <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">🔍 Mock File</h3>
-                <div style="color: #dc3545; font-size: 14px;">Path not found</div>
-            </div>
-            '''
-        
-        # Check if localhost editor is available
-        if _is_localhost_available():
-            # Online mode - show iframe
-            if self.is_folder():
-                return f'''
-                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
-                    <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">📁 Mock Folder</h3>
-                    <div style="margin-bottom: 8px; font-size: 12px; color: #666;">
-                        <strong>Path:</strong> <code>{path}</code>
-                    </div>
-                    <iframe src="http://localhost:8004/editor?path={path}" 
-                            style="width: 100%; height: 600px; border: 1px solid #ccc; border-radius: 4px;">
-                    </iframe>
-                </div>
-                '''
-            else:
-                return f'''
-                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
-                    <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">🔍 Mock File</h3>
-                    <div style="margin-bottom: 8px; font-size: 12px; color: #666;">
-                        <strong>Path:</strong> <code>{path}</code>
-                    </div>
-                    <iframe src="http://localhost:8004/editor?path={path}" 
-                            style="width: 100%; height: 600px; border: 1px solid #ccc; border-radius: 4px;">
-                    </iframe>
-                </div>
-                '''
-        else:
-            # Offline mode - show custom viewer
-            if self.is_folder():
-                return _create_offline_folder_viewer(path, "Mock Folder", "📁")
-            else:
-                return _create_offline_file_viewer(path, "Mock File", "🔍")
-    
-    def move_path(self, new_path: str, user_email: str = None) -> bool:
-        """Move the mock file to a new location (requires admin permissions)
-        
-        Args:
-            new_path: New syft:// URL or local path for the mock file
-            user_email: Email of the user attempting the move (optional, will try to detect)
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        from .file_ops import move_object_to_syftbox_location
-        from .client import get_syftbox_client, extract_local_path_from_syft_url
-        
-        try:
-            client = get_syftbox_client()
-            
-            # Check admin permissions
-            if not user_email and client and hasattr(client, 'email'):
-                user_email = client.email
-            
-            admin_perms = self.get_admin_permissions()
-            if user_email and user_email not in admin_perms:
-                return False  # Not authorized
-            
-            # Get current local path
-            current_local = extract_local_path_from_syft_url(
-                self._CleanSyftObject__obj.mock_url,
-                client.datasites if client else None
-            )
-            
-            if not current_local or not current_local.exists():
-                return False
-            
-            # Determine target URL
-            if new_path.startswith("syft://"):
-                target_url = new_path
-            else:
-                # Convert local path to syft URL
-                # Extract email from current URL
-                parts = self._CleanSyftObject__obj.mock_url.split("/")
-                email = parts[2] if len(parts) > 2 else "unknown"
-                # Determine if public or private based on current permissions
-                is_public = "public" in self._CleanSyftObject__obj.mock_permissions
-                prefix = "public" if is_public else "private"
-                target_url = f"syft://{email}/{prefix}/objects/{Path(new_path).name}"
-            
-            # Move the file
-            if move_object_to_syftbox_location(current_local, target_url, client):
-                # Update the URL in the model
-                self._CleanSyftObject__obj.mock_url = target_url
-                from .models import utcnow
-                self._CleanSyftObject__obj.updated_at = utcnow()
-                return True
-            
-            return False
-        except Exception:
-            return False
-
-
-class PrivateAccessor:
-    """Accessor for private-related properties and methods"""
-    
-    def __init__(self, syft_obj):
-        self._CleanSyftObject__obj = syft_obj
-    
-    def get_path(self) -> str:
-        """Get the local file path for the private data"""
-        return self._CleanSyftObject__obj.private_path
-    
-    def get_url(self) -> str:
-        """Get the syft:// URL for the private data"""
-        return self._CleanSyftObject__obj.private_url
-    
-    def get_read_permissions(self) -> list[str]:
-        """Get read permissions for the private data"""
-        return self._CleanSyftObject__obj.private_permissions.copy()
-    
-    def get_write_permissions(self) -> list[str]:
-        """Get write permissions for the private data"""
-        return self._CleanSyftObject__obj.private_write_permissions.copy()
-    
-    def get_admin_permissions(self) -> list[str]:
-        """Get admin permissions for the private data (same as object admin)"""
-        admin_perms = self._CleanSyftObject__obj.metadata.get("admin_permissions", [])
-        return admin_perms.copy() if admin_perms else []
-    
-    def set_read_permissions(self, read: list[str]) -> None:
-        """Set read permissions for the private data"""
-        self._CleanSyftObject__obj.private_permissions = read.copy()
-        from .models import utcnow
-        self._CleanSyftObject__obj.updated_at = utcnow()
-    
-    def set_write_permissions(self, write: list[str]) -> None:
-        """Set write permissions for the private data"""
-        self._CleanSyftObject__obj.private_write_permissions = write.copy()
-        from .models import utcnow
-        self._CleanSyftObject__obj.updated_at = utcnow()
-    
-    def set_admin_permissions(self, admin: list[str]) -> None:
-        """Set admin permissions for the private data (updates object admin)"""
-        self._CleanSyftObject__obj.metadata["admin_permissions"] = admin.copy()
-        from .models import utcnow
-        self._CleanSyftObject__obj.updated_at = utcnow()
-    
-    def is_folder(self) -> bool:
-        """Check if the private is a folder"""
-        private_path = self.get_path()
-        if private_path and Path(private_path).exists():
-            return Path(private_path).is_dir()
-        return False
-
-    def get_editor_url(self, base_url: str = "http://localhost:8004") -> str:
-        """Get the editor URL for folder privates"""
-        if self.is_folder():
-            path = self.get_path()
-            if path:
-                return f"{base_url}/editor?path={path}"
-        return None
-    
-    def _repr_html_(self) -> str:
-        """HTML representation for Jupyter display"""
-        path = self.get_path()
-        if not path:
-            return '''
-            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
-                <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">🔐 Private File</h3>
-                <div style="color: #dc3545; font-size: 14px;">Path not found</div>
-            </div>
-            '''
-        
-        # Check if localhost editor is available
-        if _is_localhost_available():
-            # Online mode - show iframe
-            if self.is_folder():
-                return f'''
-                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
-                    <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">🔐 Private Folder</h3>
-                    <div style="margin-bottom: 8px; font-size: 12px; color: #666;">
-                        <strong>Path:</strong> <code>{path}</code>
-                    </div>
-                    <iframe src="http://localhost:8004/editor?path={path}" 
-                            style="width: 100%; height: 600px; border: 1px solid #ccc; border-radius: 4px;">
-                    </iframe>
-                </div>
-                '''
-            else:
-                return f'''
-                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
-                    <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">🔐 Private File</h3>
-                    <div style="margin-bottom: 8px; font-size: 12px; color: #666;">
-                        <strong>Path:</strong> <code>{path}</code>
-                    </div>
-                    <iframe src="http://localhost:8004/editor?path={path}" 
-                            style="width: 100%; height: 600px; border: 1px solid #ccc; border-radius: 4px;">
-                    </iframe>
-                </div>
-                '''
-        else:
-            # Offline mode - show custom viewer
-            if self.is_folder():
-                return _create_offline_folder_viewer(path, "Private Folder", "🔐")
-            else:
-                return _create_offline_file_viewer(path, "Private File", "🔐")
-    
-    def move_path(self, new_path: str, user_email: str = None) -> bool:
-        """Move the private file to a new location (requires admin permissions)
-        
-        Args:
-            new_path: New syft:// URL or local path for the private file
-            user_email: Email of the user attempting the move (optional, will try to detect)
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        from .file_ops import move_object_to_syftbox_location
-        from .client import get_syftbox_client, extract_local_path_from_syft_url
-        
-        try:
-            client = get_syftbox_client()
-            
-            # Check admin permissions
-            if not user_email and client and hasattr(client, 'email'):
-                user_email = client.email
-            
-            admin_perms = self.get_admin_permissions()
-            if user_email and user_email not in admin_perms:
-                return False  # Not authorized
-            
-            # Get current local path
-            current_local = extract_local_path_from_syft_url(
-                self._CleanSyftObject__obj.private_url,
-                client.datasites if client else None
-            )
-            
-            if not current_local or not current_local.exists():
-                return False
-            
-            # Determine target URL
-            if new_path.startswith("syft://"):
-                target_url = new_path
-            else:
-                # Convert local path to syft URL
-                # Extract email from current URL
-                parts = self._CleanSyftObject__obj.private_url.split("/")
-                email = parts[2] if len(parts) > 2 else "unknown"
-                # Private files are always in private directory
-                target_url = f"syft://{email}/private/objects/{Path(new_path).name}"
-            
-            # Move the file
-            if move_object_to_syftbox_location(current_local, target_url, client):
-                # Update the URL in the model
-                self._CleanSyftObject__obj.private_url = target_url
-                from .models import utcnow
-                self._CleanSyftObject__obj.updated_at = utcnow()
-                return True
-            
-            return False
-        except Exception:
-            return False
-    
-
-
-class SyftObjectConfigAccessor:
-    """Accessor for syftobject configuration properties and methods"""
-    
-    def __init__(self, syft_obj):
-        self._CleanSyftObject__obj = syft_obj
-    
-    def get_path(self) -> str:
-        """Get the local file path for the syftobject configuration"""
-        from .client import get_syftbox_client, extract_local_path_from_syft_url
-        
-        # First try to get the actual local path from the syft:// URL
-        syft_url = self._CleanSyftObject__obj.syftobject
-        if syft_url:
-            client = get_syftbox_client()
-            local_path = extract_local_path_from_syft_url(syft_url)
-            if local_path and Path(local_path).exists():
-                return str(local_path)
-        
-        # Fallback to syftobject_path if URL conversion fails
-        return self._CleanSyftObject__obj.syftobject_path
-    
-    def get_url(self) -> str:
-        """Get the syft:// URL for the syftobject configuration"""
-        return self._CleanSyftObject__obj.syftobject
-    
-    def get_read_permissions(self) -> list[str]:
-        """Get read permissions for the syftobject configuration (discovery)"""
-        return self._CleanSyftObject__obj.syftobject_permissions.copy()
-    
-    def get_write_permissions(self) -> list[str]:
-        """Get write permissions for the syftobject configuration"""
-        # SyftObject config write permissions are typically admin-only
-        admin_perms = self._CleanSyftObject__obj.metadata.get("admin_permissions", [])
-        return admin_perms.copy() if admin_perms else []
-    
-    def get_admin_permissions(self) -> list[str]:
-        """Get admin permissions for the syftobject configuration"""
-        admin_perms = self._CleanSyftObject__obj.metadata.get("admin_permissions", [])
-        return admin_perms.copy() if admin_perms else []
-    
-    def set_read_permissions(self, read: list[str]) -> None:
-        """Set read permissions for the syftobject configuration (discovery)"""
-        self._CleanSyftObject__obj.syftobject_permissions = read.copy()
-        from .models import utcnow
-        self._CleanSyftObject__obj.updated_at = utcnow()
-    
-    def set_write_permissions(self, write: list[str]) -> None:
-        """Set write permissions for the syftobject configuration (updates admin)"""
-        self._CleanSyftObject__obj.metadata["admin_permissions"] = write.copy()
-        from .models import utcnow
-        self._CleanSyftObject__obj.updated_at = utcnow()
-    
-    def set_admin_permissions(self, admin: list[str]) -> None:
-        """Set admin permissions for the syftobject configuration"""
-        self._CleanSyftObject__obj.metadata["admin_permissions"] = admin.copy()
-        from .models import utcnow
-        self._CleanSyftObject__obj.updated_at = utcnow()
-    
-    def move_path(self, new_path: str, user_email: str = None) -> bool:
-        """Move the syftobject config file to a new location (requires admin permissions)
-        
-        Args:
-            new_path: New syft:// URL or local path for the .syftobject.yaml file
-            user_email: Email of the user attempting the move (optional, will try to detect)
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        from .file_ops import move_object_to_syftbox_location
-        from .client import get_syftbox_client, extract_local_path_from_syft_url
-        
-        try:
-            client = get_syftbox_client()
-            
-            # Check admin permissions
-            if not user_email and client and hasattr(client, 'email'):
-                user_email = client.email
-            
-            admin_perms = self.get_admin_permissions()
-            if user_email and user_email not in admin_perms:
-                return False  # Not authorized
-            
-            # Get current local path
-            current_local = extract_local_path_from_syft_url(
-                self._CleanSyftObject__obj.syftobject,
-                client.datasites if client else None
-            )
-            
-            if not current_local or not current_local.exists():
-                return False
-            
-            # Determine target URL
-            if new_path.startswith("syft://"):
-                target_url = new_path
-            else:
-                # Convert local path to syft URL
-                # Extract email from current URL
-                parts = self._CleanSyftObject__obj.syftobject.split("/")
-                email = parts[2] if len(parts) > 2 else "unknown"
-                # SyftObject configs are typically public
-                is_public = "public" in self._CleanSyftObject__obj.syftobject_permissions
-                prefix = "public" if is_public else "private"
-                
-                # Ensure .syftobject.yaml extension
-                path_obj = Path(new_path)
-                if not path_obj.name.endswith('.syftobject.yaml'):
-                    # Replace extension or add it
-                    new_name = path_obj.stem + '.syftobject.yaml'
-                    target_url = f"syft://{email}/{prefix}/objects/{new_name}"
-                else:
-                    target_url = f"syft://{email}/{prefix}/objects/{path_obj.name}"
-            
-            # Move the file
-            if move_object_to_syftbox_location(current_local, target_url, client):
-                # Update the URL in the model
-                self._CleanSyftObject__obj.syftobject = target_url
-                # Update the yaml path if it exists
-                if hasattr(self._CleanSyftObject__obj, '_yaml_path') and self._CleanSyftObject__obj._yaml_path:
-                    new_local = extract_local_path_from_syft_url(target_url, client.datasites if client else None)
-                    if new_local:
-                        self._CleanSyftObject__obj._yaml_path = new_local
-                from .models import utcnow
-                self._CleanSyftObject__obj.updated_at = utcnow()
-                return True
-            
-            return False
-        except Exception:
-            return False
-    
-    def _repr_html_(self) -> str:
-        """HTML representation for Jupyter display"""
-        path = self.get_path()
-        if not path:
-            return '''
-            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
-                <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">📋 SyftObject Config</h3>
-                <div style="color: #dc3545; font-size: 14px;">Path not found</div>
-            </div>
-            '''
-        
-        # Check if localhost editor is available
-        if _is_localhost_available():
-            # Online mode - show iframe
-            return f'''
-            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
-                <h3 style="margin: 0 0 12px 0; color: #333; font-size: 16px;">📋 SyftObject Config (.syftobject.yaml)</h3>
-                <div style="margin-bottom: 8px; font-size: 12px; color: #666;">
-                    <strong>Path:</strong> <code>{path}</code>
-                </div>
-                <iframe src="http://localhost:8004/editor?path={path}" 
-                        style="width: 100%; height: 600px; border: 1px solid #ccc; border-radius: 4px;">
-                </iframe>
-            </div>
-            '''
-        else:
-            # Offline mode - show custom viewer
-            return _create_offline_file_viewer(path, "SyftObject Config (.syftobject.yaml)", "📋")
 
 
 def wrap_syft_object(obj) -> CleanSyftObject:

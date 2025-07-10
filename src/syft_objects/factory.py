@@ -103,7 +103,7 @@ def syobj(
     email = metadata.get("email")
     create_syftbox_permissions = metadata.get("create_syftbox_permissions", True)
     auto_save = metadata.get("auto_save", True)
-    move_files_to_syftbox = metadata.get("move_files_to_syftbox", True)
+    move_files_to_syftbox = metadata.get("move_files_to_syftbox", False)
     
     # Create clean metadata dict for the SyftObject (exclude system settings)
     system_keys = {"description", "save_to", "email", "create_syftbox_permissions", "auto_save", "move_files_to_syftbox"}
@@ -197,12 +197,7 @@ def syobj(
             "description": description or f"Folder object: {name}",
             "created_at": utcnow(),
             "updated_at": utcnow(),
-            "metadata": clean_metadata,
-            "syftobject_permissions": discovery_read or ["public"],
-            "mock_permissions": mock_read or ["public"],
-            "mock_write_permissions": mock_write or [],
-            "private_permissions": private_read or [email],
-            "private_write_permissions": private_write or [email]
+            "metadata": clean_metadata
         }
         
         # Save folder yaml for file-backed storage
@@ -228,9 +223,16 @@ def syobj(
                     }
                     folder_obj.metadata.update(clean_metadata)
             
-            # Create permissions
+            # Create permissions using syft-perm
             if create_syftbox_permissions:
-                folder_obj._create_syftbox_permissions(save_path)
+                _set_permissions_with_syft_perm(
+                    folder_obj,
+                    discovery_read or ["public"],
+                    mock_read or ["public"],
+                    mock_write or [],
+                    private_read or [email],
+                    private_write or [email]
+                )
         else:
             # Create in-memory object
             folder_obj = SyftObject(**folder_obj_data)
@@ -437,12 +439,7 @@ def syobj(
         "description": description,
         "created_at": utcnow(),
         "updated_at": utcnow(),
-        "metadata": clean_metadata,
-        "syftobject_permissions": final_discovery_read,
-        "mock_permissions": final_mock_read,
-        "mock_write_permissions": final_mock_write,
-        "private_permissions": final_private_read,
-        "private_write_permissions": final_private_write
+        "metadata": clean_metadata
     }
     
     # === TRACK FILE OPERATIONS ===
@@ -499,9 +496,16 @@ def syobj(
         # Track the final syftobject.yaml file path
         syft_obj.metadata["_file_operations"]["syftobject_yaml_path"] = str(final_syftobj_path)
         
-        # Create SyftBox permission files in the final location
+        # Create permissions using syft-perm
         if create_syftbox_permissions:
-            syft_obj._create_syftbox_permissions(Path(final_syftobj_path))
+            _set_permissions_with_syft_perm(
+                syft_obj,
+                final_discovery_read,
+                final_mock_read,
+                final_mock_write,
+                final_private_read,
+                final_private_write
+            )
     else:
         # If not auto-saving, create in-memory object with yaml path set to None
         syft_obj = SyftObject(**syft_obj_data)
@@ -509,6 +513,55 @@ def syobj(
     # Wrap in clean API
     from .clean_api import wrap_syft_object
     return wrap_syft_object(syft_obj)
+
+
+def _set_permissions_with_syft_perm(
+    syft_obj: SyftObject,
+    discovery_read: List[str],
+    mock_read: List[str],
+    mock_write: List[str],
+    private_read: List[str],
+    private_write: List[str]
+) -> None:
+    """Set permissions on the files using syft-perm."""
+    try:
+        import syft_perm as sp
+        
+        # Set permissions on the syftobject directory (for discovery)
+        syftobject_path = syft_obj.syftobject_path
+        if syftobject_path:
+            # For syftobject, we need the directory containing it
+            from pathlib import Path
+            dir_path = str(Path(syftobject_path).parent)
+            sp.set_file_permissions(
+                dir_path,
+                read_users=discovery_read,
+                write_users=discovery_read,  # Same as read for discovery
+                admin_users=discovery_read
+            )
+        
+        # Set permissions on mock file/folder
+        mock_path = syft_obj.mock_path
+        if mock_path:
+            sp.set_file_permissions(
+                mock_path,
+                read_users=mock_read,
+                write_users=mock_write,
+                admin_users=mock_write  # Admin defaults to write users
+            )
+        
+        # Set permissions on private file/folder
+        private_path = syft_obj.private_path
+        if private_path:
+            sp.set_file_permissions(
+                private_path,
+                read_users=private_read,
+                write_users=private_write,
+                admin_users=private_write  # Admin defaults to write users
+            )
+    except Exception as e:
+        # If syft-perm is not available or fails, continue without setting permissions
+        print(f"Warning: Could not set permissions with syft-perm: {e}")
 
 
 def _create_mock_folder_structure(source: Path, target: Path):
