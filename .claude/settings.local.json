@@ -51,7 +51,10 @@
       "Bash(done)",
       "Bash(python:*)",
       "Bash(sed:*)",
-      "Bash(git revert:*)"
+      "Bash(git revert:*)",
+      "Bash(git checkout:*)",
+      "Bash(git branch:*)",
+      "Bash(git merge:*)"
     ],
     "deny": []
   }
