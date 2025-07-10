@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.18] - 2024-12-30
+
+### Added
+- **Enhanced Create Object API**: Added new parameters to `create_object()` function:
+  - `move_files_to_syftbox`: Control whether files are copied/moved to SyftBox (default: False)
+  - `mock_note`: Optional note explaining mock data differences
+  - `suggest_mock_notes`: Whether to suggest mock notes (uses config if not specified)
+- **File Management Options**: When `move_files_to_syftbox=True`, user files are copied and generated files are moved
+- **Improved Documentation**: Enhanced docstring with detailed parameter explanations
+
+### Changed
+- **API Enhancement**: `create_object()` now accepts keyword-only parameters for better API clarity
+- **Metadata Handling**: `move_files_to_syftbox` setting is automatically stored in object metadata
+
 ## [0.10.10] - 2024-12-30
 
 ### Fixed
