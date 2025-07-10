@@ -353,13 +353,13 @@ class CleanSyftObject:
     def mock(self):
         """Access mock-related properties and methods"""
         from .accessors import MockAccessor
-        return MockAccessor(self._CleanSyftObject__obj)
+        return MockAccessor(self._CleanSyftObject__obj.mock_url, self._CleanSyftObject__obj)
     
     @property
     def private(self):
         """Access private-related properties and methods"""
         from .accessors import PrivateAccessor
-        return PrivateAccessor(self._CleanSyftObject__obj)
+        return PrivateAccessor(self._CleanSyftObject__obj.private_url, self._CleanSyftObject__obj)
     
     @property
     def syftobject_config(self):

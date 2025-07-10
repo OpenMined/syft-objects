@@ -4,106 +4,138 @@
 
 [![PyPI version](https://badge.fury.io/py/syft-objects.svg)](https://badge.fury.io/py/syft-objects)
 
-## Quick Start
+## 🚀 Quick Start
 
 ```python
-import syft_objects as syo
+from syft_objects import create_object
 
 # Create an object with demo and real content
-obj = syo.syobj(
+obj = create_object(
     name="AI Results",
     mock_contents="Model achieved good performance",
     private_contents="Accuracy: 94.5%, Cost: $127"
 )
 
-# Browse all your objects interactively
-syo.objects
-
-# Search for specific objects
-syo.objects.search("financial")
+# Display the object in Jupyter with interactive buttons
+obj  # Shows rich HTML display with View Demo/Real buttons
 ```
 
-## What It Does
+## 🎯 What It Does
 
 **Mock vs Private Pattern**: Every object has two versions:
 - **Mock**: What everyone sees (demo/sample data)
 - **Private**: What authorized users see (real data)
 
-**Example**:
+### Example Use Case
+
 ```python
-obj = syo.syobj(
+from syft_objects import create_object
+
+# Share customer analysis with different levels of detail
+analysis = create_object(
     name="Customer Analysis", 
     mock_contents="Sample: 100 customers, avg age 42, 60% retention rate",
-    private_contents="Full: 47,293 customers, avg age 41.7, 58.3% retention, avg LTV $1,247"
-)
-```
-
-## Interactive Object Browser
-
-The `syo.objects` collection provides a beautiful interactive interface:
-
-```python
-# Browse all objects with search and selection
-syo.objects
-
-# Search by name, email, description, or metadata
-syo.objects.search("financial")
-syo.objects.search("customer")
-
-# Filter by email
-syo.objects.filter_by_email("andrew")
-
-# Get specific objects
-selected = [syo.objects[i] for i in [0, 1, 5]]
-
-# Refresh after creating new objects
-syo.objects.refresh()
-```
-
-### Interactive Features
-
-- **🔍 Real-time search** across names, emails, descriptions, and metadata
-- **☑️ Multi-select** with checkboxes
-- **📋 Code generation** - click "Generate Code" to get copy-paste Python
-- **📊 10-column table** with all object details
-- **🔄 Auto-refresh** - new objects appear immediately
-- **📱 Responsive design** with horizontal scrolling
-
-## Rich Object Display
-
-Each object shows beautifully in Jupyter with:
-
-- **📁 File information** with availability status
-- **🎯 Permission levels** with color-coded badges  
-- **📋 Metadata** including creation/update times
-- **🖱️ Interactive buttons** to view content inline
-- **📄 Smart truncation** for long content (first 1000 chars)
-
-## Permission Control
-
-```python
-obj = syo.syobj(
-    name="Financial Report",
-    mock_contents="Q4 Summary: Revenue up 10%", 
-    private_contents="Q4: $2.5M revenue, $400K profit, 23.7% margin",
+    private_contents="Full: 47,293 customers, avg age 41.7, 58.3% retention, avg LTV $1,247",
+    
+    # Permission control
     discovery_read=["public"],           # Who knows it exists
     mock_read=["employee@company.com"],  # Who sees demo
     private_read=["cfo@company.com"]     # Who sees real data
 )
+
+# In Jupyter, this shows a beautiful widget with:
+# - File availability status
+# - Permission badges (discovery, mock, private)
+# - Interactive buttons to view content inline
+# - Copy file path functionality
+analysis
 ```
 
-## File-Based Objects
+## 📊 Interactive Display Features
+
+When displayed in Jupyter, objects show a rich HTML widget with:
+
+### 🖱️ Interactive Buttons
+- **View Demo** → Shows mock content inline (first 1000 chars)
+- **View Real** → Shows private content inline  
+- **📋 Copy** → Copies file path to clipboard
+- **✕ Close** → Hides content display
+
+### 📄 Smart Content Handling
+- Automatic truncation for content over 1000 characters
+- Binary file detection with appropriate messaging
+- Error handling for missing files
+- No external file viewers needed
+
+### 🎨 Rich Metadata Display
+- Color-coded permission badges
+- Creation and update timestamps
+- File type and owner information
+- Beautiful responsive design
+
+## 🔒 Permission Control
 
 ```python
-# Use existing files
-obj = syo.syobj(
-    name="Dataset Analysis",
-    mock_file="sample_100_rows.csv",      # Demo file
-    private_file="full_50k_rows.csv"      # Real file  
+# Fine-grained access control
+report = create_object(
+    name="Financial Report",
+    mock_contents="Q4 Summary: Revenue up 10%", 
+    private_contents="Q4: $2.5M revenue, $400K profit, 23.7% margin",
+    
+    # Control who can discover, view mock, and view private
+    discovery_read=["public"],                    # Everyone can know it exists
+    mock_read=["employee@company.com"],           # Employees see summary
+    mock_write=["manager@company.com"],           # Managers can edit mock
+    private_read=["cfo@company.com"],             # CFO sees real numbers
+    private_write=["cfo@company.com", "ceo@company.com"]  # C-suite can edit
 )
 ```
 
-## Installation
+## 📁 File-Based Objects
+
+```python
+# Use existing files instead of inline content
+dataset = create_object(
+    name="Dataset Analysis",
+    mock_file="sample_100_rows.csv",      # Demo file path
+    private_file="full_50k_rows.csv",     # Real file path
+    discovery_read=["public"]
+)
+
+# Supports both files and folders
+model = create_object(
+    name="ML Model",
+    mock_file="demo_model/",              # Demo folder
+    private_file="production_model/",     # Production folder
+    mock_note="This is a simplified model for demonstration"
+)
+```
+
+## 🌐 Web Interface
+
+Access your objects through a modern web UI:
+
+```bash
+# Start the web server
+./run.sh
+```
+
+Visit `http://localhost:8004` to:
+- Browse all objects in a searchable table
+- View detailed object information
+- Edit files with syntax highlighting
+- Manage permissions interactively
+
+### API Endpoints
+
+- `GET /api/objects` - List all objects with search/filter
+- `GET /api/object/{uid}` - Get object details
+- `GET /api/object/{uid}/view` - View object in web UI
+- `PUT /api/object/{uid}/metadata` - Update object metadata
+- `PUT /api/objects/{uid}/permissions` - Update permissions
+- `DELETE /api/objects/{uid}` - Delete an object
+
+## 📦 Installation
 
 ```bash
 pip install syft-objects
@@ -114,177 +146,92 @@ For SyftBox integration:
 pip install syft-objects[syftbox]
 ```
 
-### 🚀 SyftBox Auto-Installation
+### 🤖 SyftBox Auto-Installation
 
-When you import `syft-objects`, it automatically checks if you have SyftBox installed locally and sets up the syft-objects app for you:
+When you import `syft_objects`, it automatically sets up the SyftBox app if SyftBox is installed:
 
 ```python
-import syft_objects as syo  # Auto-installs to SyftBox if detected
+import syft_objects  # Auto-installs to ~/SyftBox/apps/ if needed
 ```
 
-**What happens automatically:**
-- ✅ **Detects SyftBox**: Checks for `~/SyftBox/` directory
-- ✅ **Verifies app**: Looks for existing `~/SyftBox/apps/syft-objects/`  
-- ✅ **Auto-clones**: If missing, runs `git clone https://github.com/OpenMined/syft-objects.git`
-- ✅ **Silent operation**: Only shows messages during installation
-- ✅ **Graceful fallback**: Works fine without SyftBox too
+## 🛠️ Advanced Features
 
-**Requirements for auto-installation:**
-- SyftBox installed locally (creates `~/SyftBox/` directory)
-- Git available in your system PATH
-- Internet connection for cloning
+### Mock Notes
 
-**Manual installation** (if needed):
-```bash
-cd ~/SyftBox/apps/
-git clone https://github.com/OpenMined/syft-objects.git
+Add context about what makes mock data different:
+
+```python
+obj = create_object(
+    name="Sales Data",
+    mock_contents="Sample sales data from 2023",
+    private_contents="Complete sales records 2020-2024",
+    mock_note="Mock data includes only public transactions with anonymized customer IDs"
+)
 ```
 
-## Key Features
+### Metadata
 
-- **🎯 One function**: `syo.syobj()` - simple and clean
-- **🔒 Explicit control**: You decide what goes in mock vs private
+Attach custom metadata:
+
+```python
+obj = create_object(
+    name="Research Results",
+    mock_contents="Summary findings...",
+    private_contents="Detailed analysis...",
+    metadata={
+        "experiment_id": "EXP-2024-001",
+        "department": "R&D",
+        "classification": "confidential"
+    }
+)
+```
+
+### Programmatic Access
+
+```python
+from syft_objects import Client
+
+# Create a client to interact with objects
+client = Client()
+
+# List all objects
+objects = client.list_objects()
+
+# Search objects
+results = client.search_objects(query="financial")
+
+# Get specific object
+obj = client.get_object("object-uid-here")
+
+# Update permissions programmatically
+client.update_permissions(
+    uid="object-uid-here",
+    mock_read=["new-user@company.com"]
+)
+```
+
+## 🎨 Widget Customization
+
+The Jupyter widget display includes:
+- **Permission badges** with color coding
+- **File status** indicators (available/not found)
+- **Inline content** viewing up to 1000 characters
+- **Copy functionality** for file paths
+- **Responsive design** for different screen sizes
+
+## 🔑 Key Features Summary
+
+- **🎯 Simple API**: One main function - `create_object()`
+- **🔒 Explicit control**: Clear mock vs private separation
 - **🎨 Beautiful display**: Rich HTML widgets in Jupyter
-- **🔍 Interactive browsing**: Search and select objects easily  
-- **🆔 Unique filenames**: No collisions with UID-based naming
-- **⚡ Real-time updates**: New objects appear immediately
-- **📊 Comprehensive table**: 10 columns with all object details
-- **🖱️ Inline content**: View file contents directly in notebook
-- **🎯 Permission system**: Fine-grained access control
-
-## Quick Reference
-
-```python
-import syft_objects as syo
-
-# Create objects
-obj = syo.syobj(name="My Data", mock_contents="Demo", private_contents="Real")
-
-# Browse interactively
-syo.objects                    # Show interactive table
-syo.objects[0]                 # Get first object  
-syo.objects[:3]                # Get first 3 objects
-len(syo.objects)               # Count objects
-
-# Search and filter
-syo.objects.search("keyword")           # Search everywhere
-syo.objects.filter_by_email("user")    # Filter by email
-syo.objects.get_by_indices([0,1,5])    # Get specific objects
-
-# Utilities
-syo.objects.list_unique_emails()       # List all emails
-syo.objects.refresh()                  # Refresh collection
-```
+- **🖱️ Interactive**: View content inline, copy paths
+- **📊 Smart truncation**: Handles long content gracefully
+- **🌐 Web UI**: Full-featured web interface
+- **🔍 Search**: Find objects by name, metadata, or content
+- **⚡ Real-time**: Updates reflected immediately
+- **🎯 Permissions**: Fine-grained access control
+- **📁 Flexible**: Support for files, folders, and inline content
 
 ## License
 
 Apache License 2.0
-
-## Syft Objects
-
-A distributed file discovery and addressing system for SyftBox.
-
-Syft Objects allows you to discover, share, and access data objects across the SyftBox network through a simple Python interface and web UI.
-
-## Features
-
-- **🔍 Object Discovery**: Automatically find and catalog distributed syft objects
-- **🌐 Web Interface**: Modern, responsive UI for browsing and managing objects
-- **🐍 Python API**: Simple and intuitive Python interface
-- **🔒 Privacy-First**: Respects SyftBox privacy and permission models
-- **⚡ Real-time**: Live updates and synchronization
-- **📱 Mobile-Friendly**: Works seamlessly on all devices
-
-## Web Interface
-
-The syft-objects package includes a modern web UI for browsing and managing objects:
-
-### Features
-- **Browse Objects**: View all syft objects in a clean table format
-- **Search & Filter**: Search by keywords and filter by email addresses
-- **Object Details**: View detailed information including metadata, permissions, and file previews
-- **Real-time Status**: Monitor SyftBox connection status
-- **Refresh**: Manually refresh the objects collection
-
-### Running the Web UI
-
-Launch the integrated web interface using the provided script:
-
-```bash
-./run.sh
-```
-
-This will start a combined backend/frontend server. The UI will be available at `http://localhost:8003` (or the port specified by `SYFTBOX_ASSIGNED_PORT`).
-
-### API Endpoints
-
-The backend provides a REST API:
-- `GET /api/status` - Get application and SyftBox status
-- `GET /api/objects` - List objects with search/filter support
-- `GET /api/objects/{uid}` - Get detailed object information  
-- `GET /api/objects/refresh` - Refresh the objects collection
-- `GET /api/metadata/emails` - Get unique email addresses
-
-## Installation
-
-### Option 1: Direct Installation
-
-```bash
-pip install syft-objects
-```
-
-### Option 2: Auto-Installation via SyftBox
-
-If you have SyftBox installed, syft-objects will automatically install itself as a SyftBox app when you first import it:
-
-```python
-import syft_objects  # This triggers auto-installation if SyftBox is present
-```
-
-#### Auto-Installation Details
-
-When you import syft-objects, it will:
-
-1. **Check for SyftBox**: Detect if SyftBox is installed on your system
-2. **Locate Apps Directory**: Find your `~/SyftBox/apps/` directory
-3. **Auto-Clone**: Automatically clone the syft-objects repository if not present
-4. **Graceful Fallback**: Work normally even if SyftBox is not available
-
-**Requirements for Auto-Installation:**
-- SyftBox must be installed and configured
-- Git must be available in your system PATH
-- Internet connection for cloning the repository
-
-**Manual Installation (if auto-install fails):**
-```bash
-cd ~/SyftBox/apps/
-git clone https://github.com/OpenMined/syft-objects.git
-```
-
-The auto-installation feature makes it seamless to get started with syft-objects in SyftBox environments while maintaining compatibility with standalone usage.
-
-## Port Discovery
-
-When syft-objects runs as a SyftBox app, it uses dynamic port assignment via the `SYFTBOX_ASSIGNED_PORT` environment variable. The system automatically:
-
-1. **Port Assignment**: SyftBox assigns a port via `SYFTBOX_ASSIGNED_PORT` 
-2. **Port Persistence**: The `run.sh` script saves the assigned port to a `.port` file
-3. **Dynamic Discovery**: The Python API automatically discovers the port by checking:
-   - Current working directory: `./.port`
-   - SyftBox apps directory: `~/SyftBox/apps/syft-objects/.port`
-   - Package directory: `<package_path>/.port`
-4. **Fallback**: Uses port 8003 if no port file is found
-
-This ensures the widget and API calls always connect to the correct server instance.
-
-**Usage:**
-```python
-import syft_objects as syo
-
-# Widget automatically uses the correct port
-syo.objects.widget()  # Uses dynamic port discovery
-
-# Manual port/URL access
-port = syo.get_syft_objects_port()  # Get current port
-url = syo.get_syft_objects_url("api/objects")  # Get API URL
-```
