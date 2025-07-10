@@ -49,6 +49,15 @@ class MockAccessor(DataAccessor):
     
     def get_admin_permissions(self) -> List[str]:
         """Get admin permissions for mock data"""
+        try:
+            import syft_perm as sp
+            path = self.get_path()
+            if path:
+                perms = sp.get_file_permissions(path)
+                return perms.get('admin', [])
+        except Exception:
+            pass
+        # Fallback to metadata
         return self._syft_object.metadata.get("admin_permissions", [])
     
     def set_read_permissions(self, read: List[str]) -> None:
@@ -149,6 +158,15 @@ class PrivateAccessor(DataAccessor):
     
     def get_admin_permissions(self) -> List[str]:
         """Get admin permissions for private data"""
+        try:
+            import syft_perm as sp
+            path = self.get_path()
+            if path:
+                perms = sp.get_file_permissions(path)
+                return perms.get('admin', [])
+        except Exception:
+            pass
+        # Fallback to metadata
         return self._syft_object.metadata.get("admin_permissions", [])
     
     def set_read_permissions(self, read: List[str]) -> None:
@@ -256,6 +274,18 @@ class SyftObjectConfigAccessor:
     
     def get_admin_permissions(self) -> List[str]:
         """Get admin permissions for the syftobject file"""
+        try:
+            import syft_perm as sp
+            path = self.get_path()
+            if path:
+                # For syftobject, we need the directory containing it
+                from pathlib import Path
+                dir_path = str(Path(path).parent)
+                perms = sp.get_file_permissions(dir_path)
+                return perms.get('admin', [])
+        except Exception:
+            pass
+        # Fallback to metadata
         return self._syft_object.metadata.get("admin_permissions", [])
     
     def set_read_permissions(self, read: List[str]) -> None:
