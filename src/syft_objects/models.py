@@ -66,9 +66,8 @@ class SyftObject(BaseModel):
         if yaml_path:
             self._yaml_path = Path(yaml_path) if not isinstance(yaml_path, Path) else yaml_path
         
-        # If we have a yaml path, sync to disk immediately
-        if self._yaml_path:
-            self._sync_to_disk()
+        # Don't sync to disk on init - we only sync when attributes are modified
+        # This prevents rewriting files every time we load from YAML
     
     def __setattr__(self, name: str, value: Any) -> None:
         """Override setattr to sync changes to disk"""

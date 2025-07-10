@@ -200,32 +200,9 @@ class FileSystemManager:
         """Write content to a file."""
         file_path = self._validate_path(path)
         
-        # Check write permissions
-        # For SyftBox files, only allow writes if user owns the datasite
-        syftbox_path = os.path.expanduser("~/SyftBox")
-        if str(file_path).startswith(syftbox_path):
-            try:
-                # Extract the datasite from the path
-                path_parts = str(file_path).split('/')
-                if 'datasites' in path_parts:
-                    ds_idx = path_parts.index('datasites')
-                    if len(path_parts) > ds_idx + 1:
-                        datasite_owner = path_parts[ds_idx + 1]
-                        
-                        # Check if user owns the datasite
-                        if not user_email or user_email != datasite_owner:
-                            raise HTTPException(
-                                status_code=403,
-                                detail=f"You do not have write permission for this file. This file belongs to {datasite_owner}'s datasite."
-                            )
-            except HTTPException:
-                raise
-            except Exception:
-                # On error, deny access to be safe
-                raise HTTPException(
-                    status_code=403,
-                    detail="Cannot verify write permissions for this file."
-                )
+        # For SyftBox files in other people's datasites, we allow the write attempt
+        # but warn that it might fail. The server will handle the actual permission check
+        # and create a .syftconflict file if the user doesn't have permission.
         
         # Create parent directories if requested
         if create_dirs:
@@ -1188,10 +1165,34 @@ def generate_editor_html(initial_path: str = None) -> str:
                     this.editor.value = data.content;
                     this.isModified = false;
                     this.isReadOnly = !data.can_write;
+                    this.isUncertainPermissions = false;
                     
-                    // Set editor read-only state
+                    // Check if this is a file in someone else's datasite (uncertain permissions)
+                    const pathStr = data.path || path;
+                    if (pathStr.includes('/SyftBox/datasites/') && data.write_users && data.write_users.length > 0) {
+                        // If we marked it as read-only but it's not our datasite, we're uncertain
+                        const pathParts = pathStr.split('/');
+                        const dsIdx = pathParts.indexOf('datasites');
+                        if (dsIdx >= 0 && pathParts.length > dsIdx + 1) {
+                            const datasite = pathParts[dsIdx + 1];
+                            // Get current user email from somewhere (might need to add this to API)
+                            // For now, if it's marked read-only and has write_users, it's uncertain
+                            if (this.isReadOnly && !data.write_users.includes('*')) {
+                                this.isUncertainPermissions = true;
+                                this.isReadOnly = false; // Allow editing, but with warning
+                            }
+                        }
+                    }
+                    
+                    // Set editor state based on permissions
                     this.editor.readOnly = this.isReadOnly;
-                    this.editor.style.backgroundColor = this.isReadOnly ? '#f9fafb' : '#ffffff';
+                    if (this.isReadOnly) {
+                        this.editor.style.backgroundColor = '#f9fafb';
+                    } else if (this.isUncertainPermissions) {
+                        this.editor.style.backgroundColor = '#fffbeb'; // Light yellow warning color
+                    } else {
+                        this.editor.style.backgroundColor = '#ffffff';
+                    }
                     
                     this.updateUI();
                     
@@ -1199,14 +1200,24 @@ def generate_editor_html(initial_path: str = None) -> str:
                     this.emptyState.style.display = 'none';
                     this.editor.style.display = 'block';
                     
-                    // Update file info with read-only indicator
-                    const readOnlyBadge = this.isReadOnly ? ' <span style="color: #dc2626; font-weight: 600;">[READ-ONLY]</span>' : '';
-                    this.fileInfo.innerHTML = `${{path.split('/').pop()}} (${{data.extension}})${{readOnlyBadge}}`;
+                    // Update file info with appropriate indicator
+                    let badge = '';
+                    if (this.isReadOnly) {
+                        badge = ' <span style="color: #dc2626; font-weight: 600;">[READ-ONLY]</span>';
+                    } else if (this.isUncertainPermissions) {
+                        badge = ' <span style="color: #f59e0b; font-weight: 600;">[UNCERTAIN PERMISSIONS]</span>';
+                    }
+                    this.fileInfo.innerHTML = `${{path.split('/').pop()}} (${{data.extension}})${{badge}}`;
                     this.fileSize.textContent = this.formatFileSize(data.size);
                     
-                    // Show permission info if read-only
+                    // Remove any existing permission warnings
+                    const existingWarnings = this.editor.parentElement.querySelectorAll('.permission-warning');
+                    existingWarnings.forEach(w => w.remove());
+                    
+                    // Show permission info
                     if (this.isReadOnly && data.write_users && data.write_users.length > 0) {{
                         const permissionInfo = document.createElement('div');
+                        permissionInfo.className = 'permission-warning';
                         permissionInfo.style.cssText = `
                             background: #fef2f2;
                             border: 1px solid #fecaca;
@@ -1221,17 +1232,44 @@ def generate_editor_html(initial_path: str = None) -> str:
                             Only <strong>${{data.write_users.join(', ')}}</strong> can edit this file.
                         `;
                         this.editor.parentElement.insertBefore(permissionInfo, this.editor);
+                    }} else if (this.isUncertainPermissions) {{
+                        const permissionInfo = document.createElement('div');
+                        permissionInfo.className = 'permission-warning';
+                        permissionInfo.id = 'uncertain-permissions-warning';
+                        permissionInfo.style.cssText = `
+                            background: #fef3c7;
+                            border: 1px solid #fcd34d;
+                            border-radius: 6px;
+                            padding: 12px;
+                            margin: 10px 0;
+                            font-size: 13px;
+                            color: #d97706;
+                        `;
+                        permissionInfo.innerHTML = `
+                            <strong>⚠️ Uncertain Permissions:</strong> This file is in another user's datasite. 
+                            We can't verify your write permissions until the server processes your changes.
+                            If you don't have permission, a conflict file will be created.
+                        `;
+                        this.editor.parentElement.insertBefore(permissionInfo, this.editor);
                     }}
                     
                     // Update read-only indicator in footer
                     if (this.readOnlyIndicator) {{
-                        this.readOnlyIndicator.style.display = this.isReadOnly ? 'inline' : 'none';
+                        if (this.isReadOnly) {{
+                            this.readOnlyIndicator.textContent = 'READ-ONLY';
+                            this.readOnlyIndicator.style.color = '#dc2626';
+                            this.readOnlyIndicator.style.display = 'inline';
+                        }} else if (this.isUncertainPermissions) {{
+                            this.readOnlyIndicator.textContent = 'UNCERTAIN PERMISSIONS';
+                            this.readOnlyIndicator.style.color = '#f59e0b';
+                            this.readOnlyIndicator.style.display = 'inline';
+                        }} else {{
+                            this.readOnlyIndicator.style.display = 'none';
+                        }}
                     }}
                     
-                    // Focus editor only if not read-only
-                    if (!this.isReadOnly) {{
-                        this.editor.focus();
-                    }}
+                    // Focus editor
+                    this.editor.focus();
                     
                 }} catch (error) {{
                     this.showError('Failed to load file: ' + error.message);
