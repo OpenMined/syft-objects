@@ -149,6 +149,9 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         /* Files, Permissions, and Metadata tabs should have no left/right padding */
         #files-tab {{
             padding: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }}
         
         #permissions-tab {{
@@ -161,6 +164,10 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .tab-content.active {{
             display: block;
+        }}
+        
+        #files-tab.active {{
+            display: flex;
         }}
         
         @keyframes fadeIn {{
@@ -253,6 +260,9 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             background: #f8f9fa;
             border-bottom: 1px solid #e5e7eb;
             overflow-x: auto;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }}
         
         .sub-tab {{
@@ -282,6 +292,8 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         .file-tab-content {{
             display: none;
             position: relative;
+            flex: 1;
+            overflow-y: auto;
         }}
         
         .file-tab-content.active {{
