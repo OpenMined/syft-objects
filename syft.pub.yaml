@@ -4,6 +4,6 @@ rules:
     read:
     - '*'
     write:
-    - liamtrask@gmail.com
+    - test@example.com
     admin:
-    - liamtrask@gmail.com
+    - test@example.com

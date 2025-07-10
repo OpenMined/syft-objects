@@ -272,18 +272,16 @@ class SyftObjectConfigAccessor:
             import syft_perm as sp
             path = self.get_path()
             if path:
-                # For syftobject, we need the directory containing it
-                from pathlib import Path
-                dir_path = str(Path(path).parent)
-                perms = sp.get_file_permissions(dir_path)
+                # Get permissions for the specific syftobject.yaml file
+                perms = sp.get_file_permissions(path)
                 if perms is None:
-                    # No syft.pub.yaml exists - check if it's a public directory
-                    if '/public/' in dir_path:
+                    # No permissions for this specific file - check if it's in a public directory
+                    if '/public/' in path:
                         return ['*']  # Public directories are readable by everyone
                     else:
-                        # Create a syft.pub.yaml with default permissions
+                        # Create permissions for this specific file with default permissions
                         owner_email = self._syft_object.get_owner_email() if hasattr(self._syft_object, 'get_owner_email') else 'unknown'
-                        sp.set_file_permissions(dir_path, read_users=[owner_email], write_users=[owner_email], admin_users=[owner_email])
+                        sp.set_file_permissions(path, read_users=[owner_email], write_users=[owner_email], admin_users=[owner_email])
                         return [owner_email]
                 return perms.get('read', [])
         except Exception:
@@ -297,10 +295,8 @@ class SyftObjectConfigAccessor:
             import syft_perm as sp
             path = self.get_path()
             if path:
-                # For syftobject, we need the directory containing it
-                from pathlib import Path
-                dir_path = str(Path(path).parent)
-                perms = sp.get_file_permissions(dir_path)
+                # Get permissions for the specific syftobject.yaml file
+                perms = sp.get_file_permissions(path)
                 return perms.get('write', [])
         except Exception:
             pass
@@ -313,10 +309,8 @@ class SyftObjectConfigAccessor:
             import syft_perm as sp
             path = self.get_path()
             if path:
-                # For syftobject, we need the directory containing it
-                from pathlib import Path
-                dir_path = str(Path(path).parent)
-                perms = sp.get_file_permissions(dir_path)
+                # Get permissions for the specific syftobject.yaml file
+                perms = sp.get_file_permissions(path)
                 return perms.get('admin', [])
         except Exception:
             pass
@@ -329,22 +323,20 @@ class SyftObjectConfigAccessor:
             import syft_perm as sp
             path = self.get_path()
             if path:
-                # For syftobject, we need the directory containing it
-                from pathlib import Path
-                dir_path = str(Path(path).parent)
-                current = sp.get_file_permissions(dir_path)
+                # Set permissions on the specific syftobject.yaml file
+                current = sp.get_file_permissions(path)
                 if current is None:
-                    # No permissions file exists - create one with sensible defaults
+                    # No permissions for this file exist - create with sensible defaults
                     owner_email = self._syft_object.get_owner_email() if hasattr(self._syft_object, 'get_owner_email') else 'unknown'
                     sp.set_file_permissions(
-                        dir_path,
+                        path,
                         read_users=read,
                         write_users=[owner_email],
                         admin_users=[owner_email]
                     )
                 else:
                     sp.set_file_permissions(
-                        dir_path,
+                        path,
                         read_users=read,
                         write_users=current.get('write', []),
                         admin_users=current.get('admin', current.get('write', []))
@@ -360,12 +352,10 @@ class SyftObjectConfigAccessor:
             import syft_perm as sp
             path = self.get_path()
             if path:
-                # For syftobject, we need the directory containing it
-                from pathlib import Path
-                dir_path = str(Path(path).parent)
-                current = sp.get_file_permissions(dir_path)
+                # Set permissions on the specific syftobject.yaml file
+                current = sp.get_file_permissions(path)
                 sp.set_file_permissions(
-                    dir_path,
+                    path,
                     read_users=current.get('read', []),
                     write_users=write,
                     admin_users=current.get('admin', [])  # preserve existing admin users
@@ -381,12 +371,10 @@ class SyftObjectConfigAccessor:
             import syft_perm as sp
             path = self.get_path()
             if path:
-                # For syftobject, we need the directory containing it
-                from pathlib import Path
-                dir_path = str(Path(path).parent)
-                current = sp.get_file_permissions(dir_path)
+                # Set permissions on the specific syftobject.yaml file
+                current = sp.get_file_permissions(path)
                 sp.set_file_permissions(
-                    dir_path,
+                    path,
                     read_users=current.get('read', []),
                     write_users=current.get('write', []),
                     admin_users=admin
