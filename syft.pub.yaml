@@ -1,0 +1,9 @@
+rules:
+- pattern: tmp
+  access:
+    read:
+    - '*'
+    write:
+    - liamtrask@gmail.com
+    admin:
+    - liamtrask@gmail.com
