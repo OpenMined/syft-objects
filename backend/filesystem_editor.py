@@ -501,12 +501,17 @@ def generate_editor_html(initial_path: str = None) -> str:
         }}
 
         .btn-primary {{
-            background: #3b82f6;
-            color: white;
+            background: rgba(147, 197, 253, 0.25);  /* Very light pastel blue */
+            color: #3b82f6;
+            border: 1px solid rgba(147, 197, 253, 0.4);
+            backdrop-filter: blur(4px);
         }}
 
         .btn-primary:hover {{
-            background: #2563eb;
+            background: rgba(147, 197, 253, 0.35);  /* Slightly more opaque on hover */
+            border-color: rgba(147, 197, 253, 0.5);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(147, 197, 253, 0.2);
         }}
 
         .btn-secondary {{
