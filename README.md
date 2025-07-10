@@ -17,8 +17,10 @@ Syft Objects solves this by providing a simple mock/private pattern for any file
 ## Installation
 
 ```bash
-pip install syft-objects
+pip install syft-objects>=0.10.18
 ```
+
+> **Latest**: v0.10.18 includes enhanced `create_object()` API with file management options and mock note suggestions.
 
 ## Quick Start
 
@@ -32,7 +34,9 @@ analysis = so.create_object(
     private_contents="Revenue: $2,547,891.23",       # What you see
     discovery_read=["public"],                       # Who can discover it
     mock_read=["team@customer_company.com"],         # Who can see mock
-    private_read=["cfo@our_company.com"]             # Who can see real data
+    private_read=["cfo@our_company.com"],            # Who can see real data
+    mock_note="Anonymized version with rounded figures",  # NEW: Explain mock differences
+    move_files_to_syftbox=False                      # NEW: Keep files in original location
 )
 
 # Browse available objects
@@ -71,16 +75,21 @@ def analyze_netflix_data():
 dataset = so.create_object(
     name="Customer Dataset",
     mock_file="sample_100.csv",
-    private_file="customers_full.csv"
+    private_file="customers_full.csv",
+    mock_note="100 randomly sampled rows",           # NEW: Explain mock data
+    move_files_to_syftbox=True                       # NEW: Copy files to SyftBox
 )
 
 # From folders
 model = so.create_object(
     name="ML Model",
     mock_folder="model_demo/",
-    private_folder="model_prod/"
+    private_folder="model_prod/",
+    suggest_mock_notes=True                          # NEW: Auto-suggest mock notes
 )
 ```
+
+> **v0.10.18+**: New parameters `mock_note`, `suggest_mock_notes`, and `move_files_to_syftbox` provide better control over file handling and documentation.
 
 ### Finding and Using Objects
 ```python
