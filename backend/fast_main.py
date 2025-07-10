@@ -1587,16 +1587,41 @@ async def list_directory(path: str = Query(...)):
 @app.get("/api/filesystem/read")
 async def read_file(path: str = Query(...)):
     """Read file contents."""
-    return filesystem_manager.read_file(path)
+    # Get user email from SyftBox client
+    user_email = None
+    try:
+        import sys
+        sys.path.insert(0, '../src')
+        from syft_objects.client import get_syftbox_client
+        syftbox_client = get_syftbox_client()
+        if syftbox_client and hasattr(syftbox_client, 'email'):
+            user_email = syftbox_client.email
+    except:
+        pass
+    
+    return filesystem_manager.read_file(path, user_email=user_email)
 
 @app.post("/api/filesystem/write")
 async def write_file(
     path: str = Body(...),
     content: str = Body(...),
-    create_dirs: bool = Body(False)
+    create_dirs: bool = Body(False),
+    request: Request = None
 ):
     """Write content to a file."""
-    return filesystem_manager.write_file(path, content, create_dirs)
+    # Get user email from SyftBox client
+    user_email = None
+    try:
+        import sys
+        sys.path.insert(0, '../src')
+        from syft_objects.client import get_syftbox_client
+        syftbox_client = get_syftbox_client()
+        if syftbox_client and hasattr(syftbox_client, 'email'):
+            user_email = syftbox_client.email
+    except:
+        pass
+    
+    return filesystem_manager.write_file(path, content, create_dirs, user_email=user_email)
 
 @app.post("/api/filesystem/create-directory")
 async def create_directory(path: str = Body(...)):

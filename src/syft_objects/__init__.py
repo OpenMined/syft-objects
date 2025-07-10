@@ -1,6 +1,6 @@
 # syft-objects - Distributed file discovery and addressing system 
 
-__version__ = "0.10.32"
+__version__ = "0.10.33"
 
 # Internal imports (hidden from public API)
 from . import models as _models

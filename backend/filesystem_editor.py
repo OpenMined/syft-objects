@@ -121,7 +121,7 @@ class FileSystemManager:
         except PermissionError:
             raise HTTPException(status_code=403, detail="Permission denied")
     
-    def read_file(self, path: str) -> Dict[str, Any]:
+    def read_file(self, path: str, user_email: str = None) -> Dict[str, Any]:
         """Read file contents."""
         file_path = self._validate_path(path)
         
@@ -137,6 +137,30 @@ class FileSystemManager:
         if not self._is_text_file(file_path):
             raise HTTPException(status_code=415, detail="File type not supported for editing")
         
+        # Check write permissions using syft-perm
+        can_write = True  # Default to true if syft-perm not available
+        write_users = []
+        try:
+            import syft_perm as sp
+            perms = sp.get_file_permissions(str(file_path))
+            if perms and 'write' in perms:
+                write_users = perms.get('write', [])
+                if user_email:
+                    can_write = user_email in write_users
+                else:
+                    can_write = False  # No user email = read-only
+            elif file_path.exists() and user_email:
+                # File exists but no permissions - check if within SyftBox
+                syftbox_path = os.path.expanduser("~/SyftBox")
+                if str(file_path).startswith(syftbox_path):
+                    can_write = False  # Deny by default in SyftBox without permissions
+        except ImportError:
+            # syft-perm not available, allow writes
+            pass
+        except Exception:
+            # Other syft-perm errors, allow writes
+            pass
+        
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
@@ -148,16 +172,47 @@ class FileSystemManager:
                 'size': stat.st_size,
                 'modified': datetime.fromtimestamp(stat.st_mtime).isoformat(),
                 'extension': file_path.suffix.lower(),
-                'encoding': 'utf-8'
+                'encoding': 'utf-8',
+                'can_write': can_write,
+                'write_users': write_users
             }
         except UnicodeDecodeError:
             raise HTTPException(status_code=415, detail="File encoding not supported")
         except PermissionError:
             raise HTTPException(status_code=403, detail="Permission denied")
     
-    def write_file(self, path: str, content: str, create_dirs: bool = False) -> Dict[str, Any]:
+    def write_file(self, path: str, content: str, create_dirs: bool = False, user_email: str = None) -> Dict[str, Any]:
         """Write content to a file."""
         file_path = self._validate_path(path)
+        
+        # Check write permissions using syft-perm
+        try:
+            import syft_perm as sp
+            if user_email:
+                # Check if user has write permission for this file
+                perms = sp.get_file_permissions(str(file_path))
+                if perms and 'write' in perms:
+                    if user_email not in perms['write']:
+                        raise HTTPException(
+                            status_code=403, 
+                            detail=f"You do not have write permission for this file. Only {', '.join(perms['write'])} can edit this file."
+                        )
+                # If no permissions set or file doesn't exist yet, check parent directory
+                elif file_path.exists():
+                    # File exists but no permissions - deny by default
+                    raise HTTPException(
+                        status_code=403,
+                        detail="This file has no write permissions configured. Contact the file owner."
+                    )
+        except ImportError:
+            # syft-perm not available, continue without permission check
+            pass
+        except HTTPException:
+            # Re-raise HTTP exceptions
+            raise
+        except Exception:
+            # Other syft-perm errors, continue without check
+            pass
         
         # Create parent directories if requested
         if create_dirs:
@@ -879,6 +934,7 @@ def generate_editor_html(initial_path: str = None) -> str:
                             <span id="fileInfo">Ready</span>
                         </div>
                         <div class="status-right">
+                            <span id="readOnlyIndicator" style="color: #dc2626; font-weight: 600; margin-right: 10px; display: none;">READ-ONLY</span>
                             <span id="cursorPosition">Ln 1, Col 1</span>
                             <span id="fileSize">0 bytes</span>
                         </div>
@@ -936,6 +992,7 @@ def generate_editor_html(initial_path: str = None) -> str:
                 this.cursorPosition = document.getElementById('cursorPosition');
                 this.fileSize = document.getElementById('fileSize');
                 this.toggleExplorerBtn = document.getElementById('toggleExplorerBtn');
+                this.readOnlyIndicator = document.getElementById('readOnlyIndicator');
             }}
             
             setupEventListeners() {{
@@ -1117,18 +1174,51 @@ def generate_editor_html(initial_path: str = None) -> str:
                     this.currentFile = data;
                     this.editor.value = data.content;
                     this.isModified = false;
+                    this.isReadOnly = !data.can_write;
+                    
+                    // Set editor read-only state
+                    this.editor.readOnly = this.isReadOnly;
+                    this.editor.style.backgroundColor = this.isReadOnly ? '#f9fafb' : '#ffffff';
+                    
                     this.updateUI();
                     
                     // Show editor, hide empty state
                     this.emptyState.style.display = 'none';
                     this.editor.style.display = 'block';
                     
-                    // Update file info
-                    this.fileInfo.textContent = `${{path.split('/').pop()}} (${{data.extension}})`;
+                    // Update file info with read-only indicator
+                    const readOnlyBadge = this.isReadOnly ? ' <span style="color: #dc2626; font-weight: 600;">[READ-ONLY]</span>' : '';
+                    this.fileInfo.innerHTML = `${{path.split('/').pop()}} (${{data.extension}})${{readOnlyBadge}}`;
                     this.fileSize.textContent = this.formatFileSize(data.size);
                     
-                    // Focus editor
-                    this.editor.focus();
+                    // Show permission info if read-only
+                    if (this.isReadOnly && data.write_users && data.write_users.length > 0) {{
+                        const permissionInfo = document.createElement('div');
+                        permissionInfo.style.cssText = `
+                            background: #fef2f2;
+                            border: 1px solid #fecaca;
+                            border-radius: 6px;
+                            padding: 12px;
+                            margin: 10px 0;
+                            font-size: 13px;
+                            color: #dc2626;
+                        `;
+                        permissionInfo.innerHTML = `
+                            <strong>⚠️ Read-Only:</strong> You don't have write permission for this file. 
+                            Only <strong>${{data.write_users.join(', ')}}</strong> can edit this file.
+                        `;
+                        this.editor.parentElement.insertBefore(permissionInfo, this.editor);
+                    }}
+                    
+                    // Update read-only indicator in footer
+                    if (this.readOnlyIndicator) {{
+                        this.readOnlyIndicator.style.display = this.isReadOnly ? 'inline' : 'none';
+                    }}
+                    
+                    // Focus editor only if not read-only
+                    if (!this.isReadOnly) {{
+                        this.editor.focus();
+                    }}
                     
                 }} catch (error) {{
                     this.showError('Failed to load file: ' + error.message);
@@ -1137,6 +1227,12 @@ def generate_editor_html(initial_path: str = None) -> str:
             
             async saveFile() {{
                 if (!this.currentFile) return;
+                
+                // Check if file is read-only
+                if (this.isReadOnly) {{
+                    this.showError('Cannot save: This file is read-only. You don\\'t have write permission.');
+                    return;
+                }}
                 
                 // Animate the save button with rainbow effect
                 this.saveBtn.classList.add('saving');
@@ -1243,11 +1339,24 @@ def generate_editor_html(initial_path: str = None) -> str:
             
             updateUI() {{
                 const title = this.currentFile ? 
-                    `${{this.currentFile.path.split('/').pop()}}${{this.isModified ? ' •' : ''}}` : 
+                    `${{this.currentFile.path.split('/').pop()}}${{this.isModified ? ' •' : ''}}${{this.isReadOnly ? ' [READ-ONLY]' : ''}}` : 
                     'No file selected';
                 
                 this.editorTitle.textContent = title;
-                this.saveBtn.disabled = !this.currentFile || !this.isModified;
+                
+                // Disable save button if no file, not modified, or read-only
+                this.saveBtn.disabled = !this.currentFile || !this.isModified || this.isReadOnly;
+                
+                // Update save button appearance for read-only
+                if (this.isReadOnly) {{
+                    this.saveBtn.style.opacity = '0.5';
+                    this.saveBtn.style.cursor = 'not-allowed';
+                    this.saveBtn.title = 'File is read-only';
+                }} else {{
+                    this.saveBtn.style.opacity = '';
+                    this.saveBtn.style.cursor = '';
+                    this.saveBtn.title = 'Save file (Ctrl+S)';
+                }}
             }}
             
             updateCursorPosition() {{
