@@ -513,6 +513,21 @@ def generate_editor_html(initial_path: str = None) -> str:
             transform: translateY(-1px);
             box-shadow: 0 2px 8px rgba(147, 197, 253, 0.2);
         }}
+        
+        .btn-primary.saving {{
+            animation: buttonRainbow 1s ease-in-out;
+        }}
+        
+        @keyframes buttonRainbow {{
+            0% {{ background: rgba(255, 204, 204, 0.5); border-color: rgba(255, 179, 179, 0.7); }}
+            14% {{ background: rgba(255, 217, 179, 0.5); border-color: rgba(255, 194, 153, 0.7); }}
+            28% {{ background: rgba(255, 255, 204, 0.5); border-color: rgba(255, 255, 179, 0.7); }}
+            42% {{ background: rgba(204, 255, 204, 0.5); border-color: rgba(179, 255, 179, 0.7); }}
+            57% {{ background: rgba(204, 255, 255, 0.5); border-color: rgba(179, 255, 255, 0.7); }}
+            71% {{ background: rgba(204, 204, 255, 0.5); border-color: rgba(179, 179, 255, 0.7); }}
+            85% {{ background: rgba(255, 204, 255, 0.5); border-color: rgba(255, 179, 255, 0.7); }}
+            100% {{ background: rgba(147, 197, 253, 0.25); border-color: rgba(147, 197, 253, 0.4); }}
+        }}
 
         .btn-secondary {{
             background: #f3f4f6;
@@ -1123,11 +1138,71 @@ def generate_editor_html(initial_path: str = None) -> str:
             async saveFile() {{
                 if (!this.currentFile) return;
                 
-                // Animate the save button
+                // Animate the save button with rainbow effect
+                this.saveBtn.classList.add('saving');
                 this.saveBtn.style.transform = 'scale(0.95)';
+                
+                // Create a more visible notification
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    padding: 20px 40px;
+                    border-radius: 12px;
+                    font-weight: 600;
+                    font-size: 16px;
+                    color: #065f46;
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+                    z-index: 10000;
+                    animation: saveNotification 2s ease-in-out forwards;
+                `;
+                notification.textContent = '✨ Saving...';
+                document.body.appendChild(notification);
+                
+                // Add the animation style if not already present
+                if (!document.getElementById('save-animation-style')) {{
+                    const style = document.createElement('style');
+                    style.id = 'save-animation-style';
+                    style.textContent = `
+                        @keyframes saveNotification {{
+                            0% {{
+                                background: #ffcccc;
+                                border: 2px solid #ffb3b3;
+                                opacity: 0;
+                                transform: translate(-50%, -50%) scale(0.8);
+                            }}
+                            10% {{
+                                opacity: 1;
+                                transform: translate(-50%, -50%) scale(1);
+                            }}
+                            20% {{ background: #ffd9b3; border-color: #ffc299; }}
+                            30% {{ background: #ffffcc; border-color: #ffffb3; }}
+                            40% {{ background: #ccffcc; border-color: #b3ffb3; }}
+                            50% {{ background: #ccffff; border-color: #b3ffff; }}
+                            60% {{ background: #ccccff; border-color: #b3b3ff; }}
+                            70% {{ background: #ffccff; border-color: #ffb3ff; }}
+                            80% {{ background: #dcfce7; border-color: #bbf7d0; }}
+                            90% {{
+                                opacity: 1;
+                                transform: translate(-50%, -50%) scale(1);
+                            }}
+                            100% {{
+                                background: #dcfce7;
+                                border-color: #bbf7d0;
+                                opacity: 0;
+                                transform: translate(-50%, -50%) scale(1.1);
+                            }}
+                        }}
+                    `;
+                    document.head.appendChild(style);
+                }}
+                
                 setTimeout(() => {{
                     this.saveBtn.style.transform = '';
-                }}, 150);
+                    this.saveBtn.classList.remove('saving');
+                }}, 1000);
                 
                 try {{
                     const response = await fetch('/api/filesystem/write', {{
@@ -1149,6 +1224,13 @@ def generate_editor_html(initial_path: str = None) -> str:
                     
                     this.isModified = false;
                     this.updateUI();
+                    // Update notification to show success
+                    const notification = document.querySelector('div[style*="saveNotification"]');
+                    if (notification) {{
+                        notification.textContent = '✅ Saved!';
+                        setTimeout(() => notification.remove(), 500);
+                    }}
+                    
                     this.showSuccess('File saved successfully');
                     
                     // Update file info
