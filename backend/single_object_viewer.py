@@ -201,8 +201,39 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .form-input:focus {{
             outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            border-color: rgba(147, 51, 234, 0.3);
+            box-shadow: 
+                0 0 20px rgba(255, 0, 0, 0.15),
+                0 0 40px rgba(255, 127, 0, 0.15),
+                0 0 60px rgba(255, 255, 0, 0.15),
+                0 0 80px rgba(0, 255, 0, 0.15),
+                0 0 100px rgba(0, 0, 255, 0.15),
+                0 0 120px rgba(75, 0, 130, 0.15),
+                0 0 140px rgba(148, 0, 211, 0.15);
+            animation: rainbowGlow 3s ease-in-out infinite;
+        }}
+        
+        @keyframes rainbowGlow {{
+            0%, 100% {{
+                box-shadow: 
+                    0 0 20px rgba(255, 0, 0, 0.15),
+                    0 0 40px rgba(255, 127, 0, 0.15),
+                    0 0 60px rgba(255, 255, 0, 0.15),
+                    0 0 80px rgba(0, 255, 0, 0.15),
+                    0 0 100px rgba(0, 0, 255, 0.15),
+                    0 0 120px rgba(75, 0, 130, 0.15),
+                    0 0 140px rgba(148, 0, 211, 0.15);
+            }}
+            50% {{
+                box-shadow: 
+                    0 0 25px rgba(148, 0, 211, 0.2),
+                    0 0 45px rgba(75, 0, 130, 0.2),
+                    0 0 65px rgba(0, 0, 255, 0.2),
+                    0 0 85px rgba(0, 255, 0, 0.2),
+                    0 0 105px rgba(255, 255, 0, 0.2),
+                    0 0 125px rgba(255, 127, 0, 0.2),
+                    0 0 145px rgba(255, 0, 0, 0.2);
+            }}
         }}
         
         .form-input:disabled {{
@@ -539,6 +570,21 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             border-radius: 3px;
             font-size: 11px;
             line-height: 1.3;
+            transition: all 0.3s ease;
+        }}
+        
+        .add-email input:focus {{
+            outline: none;
+            border-color: rgba(147, 51, 234, 0.3);
+            box-shadow: 
+                0 0 15px rgba(255, 0, 0, 0.1),
+                0 0 30px rgba(255, 127, 0, 0.1),
+                0 0 45px rgba(255, 255, 0, 0.1),
+                0 0 60px rgba(0, 255, 0, 0.1),
+                0 0 75px rgba(0, 0, 255, 0.1),
+                0 0 90px rgba(75, 0, 130, 0.1),
+                0 0 105px rgba(148, 0, 211, 0.1);
+            animation: rainbowGlow 3s ease-in-out infinite;
         }}
         
         .metadata-editor {{
@@ -563,6 +609,21 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             border-radius: 4px;
             font-size: 13px;
             font-family: monospace;
+            transition: all 0.3s ease;
+        }}
+        
+        .metadata-key:focus {{
+            outline: none;
+            border-color: rgba(147, 51, 234, 0.3);
+            box-shadow: 
+                0 0 15px rgba(255, 0, 0, 0.1),
+                0 0 30px rgba(255, 127, 0, 0.1),
+                0 0 45px rgba(255, 255, 0, 0.1),
+                0 0 60px rgba(0, 255, 0, 0.1),
+                0 0 75px rgba(0, 0, 255, 0.1),
+                0 0 90px rgba(75, 0, 130, 0.1),
+                0 0 105px rgba(148, 0, 211, 0.1);
+            animation: rainbowGlow 3s ease-in-out infinite;
         }}
         
         .metadata-value {{
@@ -572,6 +633,21 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             border-radius: 4px;
             font-size: 13px;
             font-family: monospace;
+            transition: all 0.3s ease;
+        }}
+        
+        .metadata-value:focus {{
+            outline: none;
+            border-color: rgba(147, 51, 234, 0.3);
+            box-shadow: 
+                0 0 15px rgba(255, 0, 0, 0.1),
+                0 0 30px rgba(255, 127, 0, 0.1),
+                0 0 45px rgba(255, 255, 0, 0.1),
+                0 0 60px rgba(0, 255, 0, 0.1),
+                0 0 75px rgba(0, 0, 255, 0.1),
+                0 0 90px rgba(75, 0, 130, 0.1),
+                0 0 105px rgba(148, 0, 211, 0.1);
+            animation: rainbowGlow 3s ease-in-out infinite;
         }}
         
         .metadata-remove {{
