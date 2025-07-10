@@ -1016,60 +1016,51 @@ async def update_object_permissions(
         logger.info(f"Current permissions: {target_obj.__dict__}")
         logger.info(f"New permissions: {permissions}")
         
-        # Update the object's permissions
+        # Update the object's permissions using proper setter methods
         updated_fields = []
-        if 'private_read' in permissions:
-            if hasattr(target_obj, '_obj'):
-                target_obj._CleanSyftObject__obj.private_permissions = permissions['private_read']
+        
+        # Update discovery permissions (syftobject read)
+        if 'discovery_read' in permissions:
+            if hasattr(target_obj, 'set_read_permissions'):
+                target_obj.set_read_permissions(permissions['discovery_read'])
+                updated_fields.append('discovery_read')
             else:
-                target_obj.private_permissions = permissions['private_read']
-            updated_fields.append('private_read')
-        if 'private_write' in permissions:
-            if hasattr(target_obj, '_obj'):
-                target_obj._CleanSyftObject__obj.private_write_permissions = permissions['private_write']
-            else:
-                target_obj.private_write_permissions = permissions['private_write']
-            updated_fields.append('private_write')
+                logger.warning(f"Object {object_uid} does not support set_read_permissions")
+        
+        # Update mock permissions
         if 'mock_read' in permissions:
-            if hasattr(target_obj, '_obj'):
-                target_obj._CleanSyftObject__obj.mock_permissions = permissions['mock_read']
+            if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'set_read_permissions'):
+                target_obj.mock.set_read_permissions(permissions['mock_read'])
+                updated_fields.append('mock_read')
             else:
-                target_obj.mock_permissions = permissions['mock_read']
-            updated_fields.append('mock_read')
+                logger.warning(f"Object {object_uid} does not support mock.set_read_permissions")
+                
         if 'mock_write' in permissions:
-            if hasattr(target_obj, '_obj'):
-                target_obj._CleanSyftObject__obj.mock_write_permissions = permissions['mock_write']
+            if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'set_write_permissions'):
+                target_obj.mock.set_write_permissions(permissions['mock_write'])
+                updated_fields.append('mock_write')
             else:
-                target_obj.mock_write_permissions = permissions['mock_write']
-            updated_fields.append('mock_write')
-        if 'syftobject' in permissions:
-            if hasattr(target_obj, '_obj'):
-                target_obj._CleanSyftObject__obj.syftobject_permissions = permissions['syftobject']
+                logger.warning(f"Object {object_uid} does not support mock.set_write_permissions")
+        
+        # Update private permissions
+        if 'private_read' in permissions:
+            if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'set_read_permissions'):
+                target_obj.private.set_read_permissions(permissions['private_read'])
+                updated_fields.append('private_read')
             else:
-                target_obj.syftobject_permissions = permissions['syftobject']
-            updated_fields.append('syftobject')
+                logger.warning(f"Object {object_uid} does not support private.set_read_permissions")
+                
+        if 'private_write' in permissions:
+            if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'set_write_permissions'):
+                target_obj.private.set_write_permissions(permissions['private_write'])
+                updated_fields.append('private_write')
+            else:
+                logger.warning(f"Object {object_uid} does not support private.set_write_permissions")
         
         logger.info(f"Updated fields: {updated_fields}")
-        logger.info(f"Updated object permissions: {target_obj.__dict__}")
         
-        # Update the updated_at timestamp
-        if hasattr(target_obj, '_obj'):
-            target_obj._CleanSyftObject__obj.updated_at = datetime.now()
-        else:
-            target_obj.updated_at = datetime.now()
-        
-        # Explicitly sync to disk - the direct attribute access bypasses automatic sync
-        if hasattr(target_obj, '_obj'):
-            # For CleanSyftObject, sync the underlying object
-            raw_obj = target_obj._CleanSyftObject__obj
-            if hasattr(raw_obj, '_sync_to_disk'):
-                raw_obj._sync_to_disk()
-                logger.info("Permissions synced to disk via _sync_to_disk()")
-        else:
-            # For regular SyftObject
-            if hasattr(target_obj, '_sync_to_disk'):
-                target_obj._sync_to_disk()
-                logger.info("Permissions synced to disk via _sync_to_disk()")
+        # The setter methods handle syncing to disk automatically
+        logger.info("Permissions updated and synced to disk via setter methods")
         
         # Refresh the collection to reflect changes
         objects.refresh()
@@ -1438,15 +1429,17 @@ async def get_object_metadata(object_uid: str) -> Dict[str, Any]:
             "file_type": target_obj.get_file_type() if hasattr(target_obj, 'get_file_type') else getattr(target_obj, 'file_type', None),
             "is_folder": (target_obj.type == "folder" if hasattr(target_obj, 'type') else getattr(target_obj, 'is_folder', False)),
             "metadata": target_obj.get_metadata() if hasattr(target_obj, 'get_metadata') else getattr(target_obj, 'metadata', {}),
-            "permissions": {
-                "read": target_obj.get_read_permissions(),
-                "write": target_obj.get_write_permissions(),
-                "admin": target_obj.get_admin_permissions()
-            } if hasattr(target_obj, 'get_read_permissions') else {
-                "syftobject": {"read": getattr(target_obj, 'syftobject_permissions', [])},
-                "mock": {"read": getattr(target_obj, 'mock_permissions', []), "write": getattr(target_obj, 'mock_write_permissions', [])},
-                "private": {"read": getattr(target_obj, 'private_permissions', []), "write": getattr(target_obj, 'private_write_permissions', [])}
-            },
+            "permissions": (lambda: {
+                "discovery_permissions": target_obj.get_read_permissions() if hasattr(target_obj, 'get_read_permissions') else [],
+                "mock_permissions": {
+                    "read": target_obj.mock.get_read_permissions() if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'get_read_permissions') else [],
+                    "write": target_obj.mock.get_write_permissions() if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'get_write_permissions') else []
+                },
+                "private_permissions": {
+                    "read": target_obj.private.get_read_permissions() if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'get_read_permissions') else [],
+                    "write": target_obj.private.get_write_permissions() if hasattr(target_obj, 'private') and hasattr(target_obj.private, 'get_write_permissions') else []
+                }
+            })(),
             "urls": target_obj.get_urls() if hasattr(target_obj, 'get_urls') else {
                 "private": getattr(target_obj, 'private_url', None),
                 "mock": getattr(target_obj, 'mock_url', None),
