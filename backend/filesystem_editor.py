@@ -846,6 +846,8 @@ def generate_editor_html(initial_path: str = None) -> str:
                     // If initial path is a file, load it directly
                     this.loadFile(this.initialFilePath);
                     this.toggleFileOnlyMode(true);
+                    // Hide toggle button when viewing a single file
+                    this.toggleExplorerBtn.style.display = 'none';
                 }} else {{
                     // Otherwise load the directory
                     this.loadDirectory(this.currentPath);
