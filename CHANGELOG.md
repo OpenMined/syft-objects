@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.10] - 2024-12-30
+
+### Fixed
+- **CleanSyftObject AttributeError**: Fixed `'CleanSyftObject' object has no attribute 'name'` error in ObjectsCollection
+- **HTML Display**: Fixed widget generation for CleanSyftObject instances in Jupyter notebooks
+- **Backward Compatibility**: Maintained compatibility with both CleanSyftObject and regular SyftObject instances
+
+### Technical
+- Updated `_objects_data_json()` method to handle both CleanSyftObject and SyftObject instances
+- Added proper attribute access methods for CleanSyftObject (using getters vs direct access)
+- Fixed mock_path and private_path access for CleanSyftObject instances
+
 ## [0.3.2] - 2024-12-30
 
 ### Changed
