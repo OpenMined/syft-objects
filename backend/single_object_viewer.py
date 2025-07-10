@@ -412,16 +412,19 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             font-size: 10px;
         }}
         
-        /* Primary button - blue with transparency */
+        /* Primary button - more transparent and airy pastel */
         .btn-primary {{
-            background: rgba(59, 130, 246, 0.1);
+            background: rgba(147, 197, 253, 0.25);  /* Very light pastel blue */
             color: #3b82f6;
-            border-color: rgba(59, 130, 246, 0.2);
+            border-color: rgba(147, 197, 253, 0.4);
+            backdrop-filter: blur(4px);
         }}
         
         .btn-primary:hover {{
-            background: rgba(59, 130, 246, 0.15);
-            border-color: rgba(59, 130, 246, 0.3);
+            background: rgba(147, 197, 253, 0.35);  /* Slightly more opaque on hover */
+            border-color: rgba(147, 197, 253, 0.5);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(147, 197, 253, 0.2);
         }}
         
         /* Secondary button - gray with transparency */
@@ -802,11 +805,11 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                         <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
                     </svg>
                 </button>
-                <button id="save-overview-btn" class="btn btn-primary" style="display: none;" onclick="saveOverview()">
+                <button id="save-overview-btn" class="btn btn-primary" onclick="saveOverview()">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z"/>
                     </svg>
-                    Save Changes
+                    Save
                 </button>
                 <button id="save-permissions-btn" class="btn btn-primary" style="display: none;" onclick="savePermissions()">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
