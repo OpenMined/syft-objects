@@ -953,10 +953,11 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
                 document.getElementById('owner-value').textContent = data.owner_email || 'Unknown';
                 document.getElementById('object-type-value').textContent = data.is_folder ? 'Folder' : 'File';
                 
-                // Update file paths
-                document.getElementById('mock-path').textContent = data.paths.mock || 'Not found';
-                document.getElementById('private-path').textContent = data.paths.private || 'Not found';
-                document.getElementById('syftobject-path').textContent = data.paths.syftobject || 'Not found';
+                // File paths are now handled via iframes in the Files tab
+                // These elements no longer exist in the HTML
+                // document.getElementById('mock-path').textContent = data.paths.mock || 'Not found';
+                // document.getElementById('private-path').textContent = data.paths.private || 'Not found';
+                // document.getElementById('syftobject-path').textContent = data.paths.syftobject || 'Not found';
                 
                 // Update permissions - handle both new and old format
                 if (data.permissions) {{
