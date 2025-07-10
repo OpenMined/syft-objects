@@ -141,6 +141,16 @@ def syobj(
         uid_short = str(uid)[:8]
         if name is None:
             name = Path(private_folder or mock_folder).name
+        
+        # Validate folder name
+        invalid_chars = ['/', '\\', '?', '*', ':', '|', '"', '<', '>', '\0']
+        found_invalid = [char for char in invalid_chars if char in name]
+        if found_invalid:
+            raise ValueError(
+                f"Object name contains invalid characters: {', '.join(repr(char) for char in found_invalid)}. "
+                f"Please remove these characters from the name: '{name}'"
+            )
+        
         folder_name = f"{name.lower().replace(' ', '_')}_{uid_short}"
         
         # Copy folders to tmp location
@@ -191,14 +201,14 @@ def syobj(
         
         # Create SyftObject with folder type
         syftobj_filename = f"{folder_name}.syftobject.yaml"
-        final_syftobject_path = generate_syftobject_url(email, syftobj_filename, syftbox_client)
+        final_syftobject_url = generate_syftobject_url(email, syftobj_filename, syftbox_client)
         
         # Create folder SyftObject data
         folder_obj_data = {
             "uid": str(uid),
             "private_url": private_url,
             "mock_url": mock_url,
-            "syftobject": final_syftobject_path,
+            "syftobject": final_syftobject_url,
             "name": name,
             "object_type": "folder",  # KEY: Mark as folder
             "description": description or f"Folder object: {name}",
@@ -299,6 +309,16 @@ def syobj(
         else:
             name = "Syft Object"
     
+    # === VALIDATE NAME ===
+    # Check for problematic characters that can't be used in filenames
+    invalid_chars = ['/', '\\', '?', '*', ':', '|', '"', '<', '>', '\0']
+    found_invalid = [char for char in invalid_chars if char in name]
+    if found_invalid:
+        raise ValueError(
+            f"Object name contains invalid characters: {', '.join(repr(char) for char in found_invalid)}. "
+            f"Please remove these characters from the name: '{name}'"
+        )
+    
     # === GENERATE UID FOR UNIQUE FILENAMES ===
     uid = uuid4()
     uid_short = str(uid)[:8]  # Use first 8 characters for readability
@@ -387,7 +407,7 @@ def syobj(
     
     # Generate syftobject URL
     syftobj_filename = f"{name.lower().replace(' ', '_').replace('-', '_')}_{uid_short}.syftobject.yaml"
-    final_syftobject_path = generate_syftobject_url(email, syftobj_filename, syftbox_client)
+    final_syftobject_url = generate_syftobject_url(email, syftobj_filename, syftbox_client)
     
     # === MOVE FILES TO SYFTBOX LOCATIONS ===
     # Mock files and syftobject.yaml are ALWAYS moved to SyftBox
@@ -494,7 +514,7 @@ def syobj(
         "uid": uid,
         "private_url": final_private_path,
         "mock_url": final_mock_path,
-        "syftobject": final_syftobject_path,
+        "syftobject": final_syftobject_url,
         "name": name,
         "description": description,
         "created_at": utcnow(),
