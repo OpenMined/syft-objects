@@ -780,10 +780,6 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             
             <!-- Mock File Sub-Tab -->
             <div id="file-mock" class="file-tab-content active">
-                <div class="file-toolbar">
-                    <span class="file-path">Path: <code id="mock-path">{mock_path or 'Not found'}</code></span>
-                    {'<button class="btn btn-lavender" onclick="openInEditor(\'mock\')">Open in Editor</button>' if mock_path else ''}
-                </div>
                 {f'<iframe id="mock-iframe" class="file-iframe-full" src="/editor?path={mock_path}&embedded=true"></iframe>' if mock_path else 
                  '''<div class="file-not-found">
                     <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5">
@@ -796,10 +792,6 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             
             <!-- Private File Sub-Tab -->
             <div id="file-private" class="file-tab-content">
-                <div class="file-toolbar">
-                    <span class="file-path">Path: <code id="private-path">{private_path or 'Not found'}</code></span>
-                    {'<button class="btn btn-mint" onclick="openInEditor(\'private\')">Open in Editor</button>' if private_path else ''}
-                </div>
                 {f'<iframe id="private-iframe" class="file-iframe-full" src="/editor?path={private_path}&embedded=true"></iframe>' if private_path else 
                  '''<div class="file-not-found">
                     <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5">
@@ -812,10 +804,6 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             
             <!-- Config File Sub-Tab -->
             <div id="file-config" class="file-tab-content">
-                <div class="file-toolbar">
-                    <span class="file-path">Path: <code id="syftobject-path">{syftobject_path or 'Not found'}</code></span>
-                    {'<button class="btn btn-peach" onclick="openInEditor(\'syftobject\')">Open in Editor</button>' if syftobject_path else ''}
-                </div>
                 {f'<iframe id="syftobject-iframe" class="file-iframe-full" src="/editor?path={syftobject_path}&embedded=true"></iframe>' if syftobject_path else 
                  '''<div class="file-not-found">
                     <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5">
