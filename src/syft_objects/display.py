@@ -539,13 +539,13 @@ def create_static_display(syft_obj: 'SyftObject') -> str:
                     <div class="syft-permission-group">
                         <div class="syft-permission-label">Read Access</div>
                         <div class="syft-email-list">
-                            {render_permission_tags(MockAccessor(syft_obj).get_read_permissions())}
+                            {render_permission_tags(MockAccessor(syft_obj.mock_url, syft_obj).get_read_permissions())}
                         </div>
                     </div>
                     <div class="syft-permission-group">
                         <div class="syft-permission-label">Write Access</div>
                         <div class="syft-email-list">
-                            {render_permission_tags(MockAccessor(syft_obj).get_write_permissions())}
+                            {render_permission_tags(MockAccessor(syft_obj.mock_url, syft_obj).get_write_permissions())}
                         </div>
                     </div>
                 </div>
@@ -555,13 +555,13 @@ def create_static_display(syft_obj: 'SyftObject') -> str:
                     <div class="syft-permission-group">
                         <div class="syft-permission-label">Read Access</div>
                         <div class="syft-email-list">
-                            {render_permission_tags(PrivateAccessor(syft_obj).get_read_permissions())}
+                            {render_permission_tags(PrivateAccessor(syft_obj.private_url, syft_obj).get_read_permissions())}
                         </div>
                     </div>
                     <div class="syft-permission-group">
                         <div class="syft-permission-label">Write Access</div>
                         <div class="syft-email-list">
-                            {render_permission_tags(PrivateAccessor(syft_obj).get_write_permissions())}
+                            {render_permission_tags(PrivateAccessor(syft_obj.private_url, syft_obj).get_write_permissions())}
                         </div>
                     </div>
                 </div>
