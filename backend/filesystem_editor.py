@@ -1167,32 +1167,32 @@ def generate_editor_html(initial_path: str = None) -> str:
                     this.isReadOnly = !data.can_write;
                     this.isUncertainPermissions = false;
                     
-                    // Check if this is a file in someone else's datasite (uncertain permissions)
+                    // Check if this is a file in someone else datasite (uncertain permissions)
                     const pathStr = data.path || path;
-                    if (pathStr.includes('/SyftBox/datasites/') && data.write_users && data.write_users.length > 0) {
-                        // If we marked it as read-only but it's not our datasite, we're uncertain
+                    if (pathStr.includes('/SyftBox/datasites/') && data.write_users && data.write_users.length > 0) {{
+                        // If we marked it as read-only but it is not our datasite, we are uncertain
                         const pathParts = pathStr.split('/');
                         const dsIdx = pathParts.indexOf('datasites');
-                        if (dsIdx >= 0 && pathParts.length > dsIdx + 1) {
+                        if (dsIdx >= 0 && pathParts.length > dsIdx + 1) {{
                             const datasite = pathParts[dsIdx + 1];
                             // Get current user email from somewhere (might need to add this to API)
-                            // For now, if it's marked read-only and has write_users, it's uncertain
-                            if (this.isReadOnly && !data.write_users.includes('*')) {
+                            // For now, if it is marked read-only and has write_users, it is uncertain
+                            if (this.isReadOnly && !data.write_users.includes('*')) {{
                                 this.isUncertainPermissions = true;
                                 this.isReadOnly = false; // Allow editing, but with warning
-                            }
-                        }
-                    }
+                            }}
+                        }}
+                    }}
                     
                     // Set editor state based on permissions
                     this.editor.readOnly = this.isReadOnly;
-                    if (this.isReadOnly) {
+                    if (this.isReadOnly) {{
                         this.editor.style.backgroundColor = '#f9fafb';
-                    } else if (this.isUncertainPermissions) {
+                    }} else if (this.isUncertainPermissions) {{
                         this.editor.style.backgroundColor = '#fffbeb'; // Light yellow warning color
-                    } else {
+                    }} else {{
                         this.editor.style.backgroundColor = '#ffffff';
-                    }
+                    }}
                     
                     this.updateUI();
                     
@@ -1202,11 +1202,11 @@ def generate_editor_html(initial_path: str = None) -> str:
                     
                     // Update file info with appropriate indicator
                     let badge = '';
-                    if (this.isReadOnly) {
+                    if (this.isReadOnly) {{
                         badge = ' <span style="color: #dc2626; font-weight: 600;">[READ-ONLY]</span>';
-                    } else if (this.isUncertainPermissions) {
+                    }} else if (this.isUncertainPermissions) {{
                         badge = ' <span style="color: #f59e0b; font-weight: 600;">[UNCERTAIN PERMISSIONS]</span>';
-                    }
+                    }}
                     this.fileInfo.innerHTML = `${{path.split('/').pop()}} (${{data.extension}})${{badge}}`;
                     this.fileSize.textContent = this.formatFileSize(data.size);
                     
@@ -1283,6 +1283,13 @@ def generate_editor_html(initial_path: str = None) -> str:
                 if (this.isReadOnly) {{
                     this.showError('Cannot save: This file is read-only. You don\\'t have write permission.');
                     return;
+                }}
+                
+                // Check if we have uncertain permissions
+                if (this.isUncertainPermissions) {{
+                    // Show modal to confirm save attempt
+                    const userConfirmed = await this.showPermissionModal();
+                    if (!userConfirmed) return; // User cancelled
                 }}
                 
                 // Animate the save button with rainbow effect
@@ -1535,6 +1542,139 @@ def generate_editor_html(initial_path: str = None) -> str:
             
             showSuccess(message) {{
                 console.log('Success: ' + message);
+            }}
+            
+            async showPermissionModal() {{
+                return new Promise((resolve) => {{
+                    // Create modal overlay
+                    const overlay = document.createElement('div');
+                    overlay.style.cssText = `
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: rgba(0, 0, 0, 0.5);
+                        z-index: 9999;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        animation: fadeIn 0.2s ease-out;
+                    `;
+                    
+                    // Create modal content
+                    const modal = document.createElement('div');
+                    modal.style.cssText = `
+                        background: white;
+                        border-radius: 8px;
+                        padding: 24px;
+                        max-width: 500px;
+                        width: 90%;
+                        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+                        animation: slideIn 0.3s ease-out;
+                    `;
+                    
+                    const fileName = this.currentFile.path.split('/').pop();
+                    const fileExt = this.currentFile.extension || '.txt';
+                    
+                    modal.innerHTML = `
+                        <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #111827;">
+                            ⚠️ Uncertain Write Permissions
+                        </h3>
+                        <div style="color: #374151; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+                            <p style="margin: 0 0 12px 0;">
+                                This file is in another user's datasite. We can't verify your write permissions 
+                                until the server processes your changes.
+                            </p>
+                            <p style="margin: 0 0 12px 0;">
+                                <strong>If you have permission:</strong> Your changes will be saved normally.
+                            </p>
+                            <p style="margin: 0;">
+                                <strong>If you don't have permission:</strong> A conflict file 
+                                (<code style="background: #f3f4f6; padding: 2px 4px; border-radius: 3px;">${{fileName}}.syftconflict${{fileExt}}</code>) 
+                                will be created with your changes.
+                            </p>
+                        </div>
+                        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                            <button id="cancelSave" style="
+                                padding: 8px 16px;
+                                border: 1px solid #d1d5db;
+                                background: white;
+                                color: #374151;
+                                border-radius: 6px;
+                                font-size: 14px;
+                                font-weight: 500;
+                                cursor: pointer;
+                                transition: all 0.2s;
+                            " onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'">
+                                Cancel
+                            </button>
+                            <button id="confirmSave" style="
+                                padding: 8px 16px;
+                                border: 1px solid #fbbf24;
+                                background: #fbbf24;
+                                color: #78350f;
+                                border-radius: 6px;
+                                font-size: 14px;
+                                font-weight: 500;
+                                cursor: pointer;
+                                transition: all 0.2s;
+                            " onmouseover="this.style.background='#f59e0b'" onmouseout="this.style.background='#fbbf24'">
+                                Save Anyway
+                            </button>
+                        </div>
+                    `;
+                    
+                    overlay.appendChild(modal);
+                    document.body.appendChild(overlay);
+                    
+                    // Add animation styles if not present
+                    if (!document.getElementById('modal-animations')) {{
+                        const style = document.createElement('style');
+                        style.id = 'modal-animations';
+                        style.textContent = `
+                            @keyframes fadeIn {{
+                                from {{ opacity: 0; }}
+                                to {{ opacity: 1; }}
+                            }}
+                            @keyframes slideIn {{
+                                from {{ transform: translateY(-20px); opacity: 0; }}
+                                to {{ transform: translateY(0); opacity: 1; }}
+                            }}
+                        `;
+                        document.head.appendChild(style);
+                    }}
+                    
+                    // Handle button clicks
+                    const cancelBtn = modal.querySelector('#cancelSave');
+                    const confirmBtn = modal.querySelector('#confirmSave');
+                    
+                    const cleanup = () => {{
+                        overlay.style.animation = 'fadeIn 0.2s ease-out reverse';
+                        modal.style.animation = 'slideIn 0.2s ease-out reverse';
+                        setTimeout(() => overlay.remove(), 200);
+                    }};
+                    
+                    cancelBtn.addEventListener('click', () => {{
+                        cleanup();
+                        resolve(false);
+                    }});
+                    
+                    confirmBtn.addEventListener('click', () => {{
+                        cleanup();
+                        resolve(true);
+                    }});
+                    
+                    // Close on escape key
+                    const escHandler = (e) => {{
+                        if (e.key === 'Escape') {{
+                            cleanup();
+                            resolve(false);
+                            document.removeEventListener('keydown', escHandler);
+                        }}
+                    }};
+                    document.addEventListener('keydown', escHandler);
+                }});
             }}
         }}
         
