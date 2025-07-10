@@ -2465,7 +2465,7 @@ wheels = [
 
 [[package]]
 name = "syft-objects"
-version = "0.9.83"
+version = "0.9.84"
 source = { editable = "." }
 dependencies = [
     { name = "build" },

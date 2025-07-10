@@ -281,6 +281,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         .file-tab-content {{
             display: none;
             position: relative;
+            height: 100%;
         }}
         
         .file-tab-content.active {{
