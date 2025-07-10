@@ -78,16 +78,20 @@ class TestSingleObjectViewer:
             os.makedirs(mock_dir)
             os.makedirs(private_dir)
             
-            # Create mock object with folder paths
+            # Create mock object with folder paths using get_path methods
             mock_obj = Mock()
-            mock_obj.name = "Folder Object"
-            mock_obj.description = "Object with folders"
+            mock_obj.get_name = Mock(return_value="Folder Object")
+            mock_obj.get_description = Mock(return_value="Object with folders")
+            
+            # Set up mock and private objects with get_path methods
             mock_obj.mock = Mock()
-            mock_obj.mock.path = mock_dir
+            mock_obj.mock.get_path = Mock(return_value=mock_dir)
+            
             mock_obj.private = Mock()
-            mock_obj.private.path = private_dir
+            mock_obj.private.get_path = Mock(return_value=private_dir)
+            
             mock_obj.syftobject_config = Mock()
-            mock_obj.syftobject_config.path = "/test/config.yaml"
+            mock_obj.syftobject_config.get_path = Mock(return_value="/test/config.yaml")
             
             # Generate HTML
             html = generate_single_object_viewer_html(mock_obj, "folder-uid-123")
@@ -100,13 +104,15 @@ class TestSingleObjectViewer:
         """Test that all elements referenced by textContent in JavaScript exist in HTML."""
         import re
         
-        # Create a mock object
-        mock_obj = Mock()
-        mock_obj.name = "Test Object"
-        mock_obj.description = "Test Description"
-        mock_obj.mock = None
-        mock_obj.private = None
-        mock_obj.syftobject_config = None
+        # Create a minimal object to avoid path issues
+        class MinimalTestObject:
+            def get_name(self):
+                return "Test Object"
+            
+            def get_description(self):
+                return "Test Description"
+        
+        mock_obj = MinimalTestObject()
         
         # Generate HTML
         html = generate_single_object_viewer_html(mock_obj, "test-uid-123")
