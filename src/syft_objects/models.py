@@ -508,29 +508,35 @@ class SyftObject(BaseModel):
             return False
     
     def _delete_standard_object(self) -> bool:
-        """Delete a standard syft-object by removing its files."""
+        """Delete a standard syft-object by removing its files and syft.pub.yaml entries."""
         try:
             from pathlib import Path
             deleted_files = []
             
-            # Delete private file if it exists
+            # Delete private file and remove from syft.pub.yaml
             if hasattr(self, 'private_path') and self.private_path:
                 private_path = Path(self.private_path)
                 if private_path.exists():
+                    # Remove from syft.pub.yaml before deleting file
+                    self._remove_from_syft_pub_yaml(private_path)
                     private_path.unlink()
                     deleted_files.append("private")
             
-            # Delete mock file if it exists
+            # Delete mock file and remove from syft.pub.yaml
             if hasattr(self, 'mock_path') and self.mock_path:
                 mock_path = Path(self.mock_path)
                 if mock_path.exists():
+                    # Remove from syft.pub.yaml before deleting file
+                    self._remove_from_syft_pub_yaml(mock_path)
                     mock_path.unlink()
                     deleted_files.append("mock")
             
-            # Delete syftobject file if it exists
+            # Delete syftobject file and remove from syft.pub.yaml
             if hasattr(self, 'syftobject_path') and self.syftobject_path:
                 syftobject_path = Path(self.syftobject_path)
                 if syftobject_path.exists():
+                    # Remove from syft.pub.yaml before deleting file
+                    self._remove_from_syft_pub_yaml(syftobject_path)
                     syftobject_path.unlink()
                     deleted_files.append("syftobject")
             
@@ -552,3 +558,63 @@ class SyftObject(BaseModel):
         except Exception as e:
             print(f"Error deleting standard object: {e}")
             return False
+    
+    def _remove_from_syft_pub_yaml(self, file_path: 'Path') -> None:
+        """Remove a file entry from its directory's syft.pub.yaml file using syft-perm."""
+        try:
+            import syft_perm as sp
+            
+            # Use syft-perm to remove the file's permissions (which removes it from syft.pub.yaml)
+            sp.remove_file_permissions(str(file_path))
+            
+        except ImportError:
+            # syft-perm not available, try manual removal
+            self._remove_from_syft_pub_yaml_manual(file_path)
+        except Exception as e:
+            # If syft-perm fails, try manual removal as fallback
+            try:
+                self._remove_from_syft_pub_yaml_manual(file_path)
+            except Exception as e2:
+                print(f"Warning: Could not remove {file_path.name} from syft.pub.yaml: {e2}")
+    
+    def _remove_from_syft_pub_yaml_manual(self, file_path: 'Path') -> None:
+        """Manually remove a file entry from syft.pub.yaml by editing the file."""
+        try:
+            # Find the syft.pub.yaml file in the same directory
+            syft_pub_file = file_path.parent / 'syft.pub.yaml'
+            
+            if not syft_pub_file.exists():
+                return  # No syft.pub.yaml to update
+            
+            # Read the current content
+            with open(syft_pub_file, 'r') as f:
+                content = f.read()
+            
+            # Parse and remove the entry for this file
+            lines = content.split('\n')
+            new_lines = []
+            skip_until_next_pattern = False
+            filename = file_path.name
+            
+            for line in lines:
+                if skip_until_next_pattern:
+                    # Skip lines until we hit the next pattern or end
+                    if line.strip().startswith('- pattern:'):
+                        skip_until_next_pattern = False
+                        new_lines.append(line)
+                    # Skip this line (it's part of the entry we're removing)
+                    continue
+                elif f'pattern: {filename}' in line:
+                    # Found the entry to remove, start skipping
+                    skip_until_next_pattern = True
+                    continue
+                else:
+                    new_lines.append(line)
+            
+            # Write back the updated content
+            new_content = '\n'.join(new_lines)
+            with open(syft_pub_file, 'w') as f:
+                f.write(new_content)
+                
+        except Exception as e:
+            print(f"Warning: Could not manually remove {file_path.name} from syft.pub.yaml: {e}")
