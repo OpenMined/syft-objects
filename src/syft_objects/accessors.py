@@ -276,6 +276,15 @@ class SyftObjectConfigAccessor:
                 from pathlib import Path
                 dir_path = str(Path(path).parent)
                 perms = sp.get_file_permissions(dir_path)
+                if perms is None:
+                    # No syft.pub.yaml exists - check if it's a public directory
+                    if '/public/' in dir_path:
+                        return ['*']  # Public directories are readable by everyone
+                    else:
+                        # Create a syft.pub.yaml with default permissions
+                        owner_email = self._syft_object.get_owner_email() if hasattr(self._syft_object, 'get_owner_email') else 'unknown'
+                        sp.set_file_permissions(dir_path, read_users=[owner_email], write_users=[owner_email], admin_users=[owner_email])
+                        return [owner_email]
                 return perms.get('read', [])
         except Exception:
             pass
@@ -324,12 +333,22 @@ class SyftObjectConfigAccessor:
                 from pathlib import Path
                 dir_path = str(Path(path).parent)
                 current = sp.get_file_permissions(dir_path)
-                sp.set_file_permissions(
-                    dir_path,
-                    read_users=read,
-                    write_users=current.get('write', []),
-                    admin_users=current.get('admin', current.get('write', []))
-                )
+                if current is None:
+                    # No permissions file exists - create one with sensible defaults
+                    owner_email = self._syft_object.get_owner_email() if hasattr(self._syft_object, 'get_owner_email') else 'unknown'
+                    sp.set_file_permissions(
+                        dir_path,
+                        read_users=read,
+                        write_users=[owner_email],
+                        admin_users=[owner_email]
+                    )
+                else:
+                    sp.set_file_permissions(
+                        dir_path,
+                        read_users=read,
+                        write_users=current.get('write', []),
+                        admin_users=current.get('admin', current.get('write', []))
+                    )
         except Exception as e:
             # Fallback to old attribute-based permissions
             if hasattr(self._syft_object, 'syftobject_permissions'):
