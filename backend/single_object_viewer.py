@@ -78,7 +78,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             width: 100%;
             max-width: none;
             margin: 0;
-            height: calc(100vh - 20px);
+            height: 100%;
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -287,6 +287,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             position: relative;
             flex: 1;
             overflow-y: auto;
+            height: 100%;
         }}
         
         .file-tab-content.active {{
@@ -317,7 +318,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .file-iframe-full {{
             width: 100%;
-            height: calc(100vh - 72px);
+            height: calc(100vh - 54px);
             border: none;
             background: white;
         }}
