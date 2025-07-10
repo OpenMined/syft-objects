@@ -78,7 +78,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             width: 100%;
             max-width: none;
             margin: 0;
-            height: 100vh;
+            height: calc(100vh - 20px);
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -143,6 +143,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
             animation: fadeIn 0.3s ease-in-out;
             flex: 1;
             overflow-y: auto;
+            min-height: 0;
         }}
         
         /* Files, Permissions, and Metadata tabs should have no left/right padding */
@@ -311,7 +312,7 @@ def generate_single_object_viewer_html(target_obj: Any, object_uid: str) -> str:
         
         .file-iframe-full {{
             width: 100%;
-            height: calc(100vh - 200px);
+            height: 320px;
             border: none;
             background: white;
         }}
