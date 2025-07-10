@@ -208,7 +208,7 @@ async def get_objects(
                 # This is a CleanSyftObject
                 urls = obj.get_urls()
                 perms = {
-                    "syftobject": {"read": obj.get_read_permissions()},
+                    "syftobject": {"read": obj.get_discovery_permissions()},
                     "mock": {"read": obj.mock.get_read_permissions(), "write": obj.mock.get_write_permissions()},
                     "private": {"read": obj.private.get_read_permissions(), "write": obj.private.get_write_permissions()}
                 }
@@ -593,7 +593,7 @@ async def get_object_details(object_uid: str) -> Dict[str, Any]:
             # This is a CleanSyftObject
             urls = target_obj.get_urls()
             perms = {
-                "syftobject": {"read": target_obj.get_read_permissions()},
+                "syftobject": {"read": target_obj.get_discovery_permissions()},
                 "mock": {"read": target_obj.mock.get_read_permissions(), "write": target_obj.mock.get_write_permissions()},
                 "private": {"read": target_obj.private.get_read_permissions(), "write": target_obj.private.get_write_permissions()}
             }
@@ -1021,11 +1021,11 @@ async def update_object_permissions(
         
         # Update discovery permissions (syftobject read)
         if 'discovery_read' in permissions:
-            if hasattr(target_obj, 'set_read_permissions'):
-                target_obj.set_read_permissions(permissions['discovery_read'])
+            if hasattr(target_obj, 'set_discovery_permissions'):
+                target_obj.set_discovery_permissions(permissions['discovery_read'])
                 updated_fields.append('discovery_read')
             else:
-                logger.warning(f"Object {object_uid} does not support set_read_permissions")
+                logger.warning(f"Object {object_uid} does not support set_discovery_permissions")
         
         # Update mock permissions
         if 'mock_read' in permissions:
@@ -1444,7 +1444,7 @@ async def get_object_metadata(object_uid: str) -> Dict[str, Any]:
             "is_folder": (target_obj.type == "folder" if hasattr(target_obj, 'type') else getattr(target_obj, 'is_folder', False)),
             "metadata": target_obj.get_metadata() if hasattr(target_obj, 'get_metadata') else getattr(target_obj, 'metadata', {}),
             "permissions": (lambda: {
-                "discovery_permissions": target_obj.get_read_permissions() if hasattr(target_obj, 'get_read_permissions') else [],
+                "discovery_permissions": target_obj.get_discovery_permissions() if hasattr(target_obj, 'get_discovery_permissions') else [],
                 "mock_permissions": {
                     "read": target_obj.mock.get_read_permissions() if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'get_read_permissions') else [],
                     "write": target_obj.mock.get_write_permissions() if hasattr(target_obj, 'mock') and hasattr(target_obj.mock, 'get_write_permissions') else [],
