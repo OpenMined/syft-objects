@@ -236,8 +236,8 @@ def syobj(
         # Create folder SyftObject data
         folder_obj_data = {
             "uid": str(uid),
-            "private_url": private_url,
-            "mock_url": mock_url,
+            "private": private_url,
+            "mock": mock_url,
             "syftobject": final_syftobject_url,
             "name": name,
             "object_type": "folder",  # KEY: Mark as folder
@@ -543,8 +543,8 @@ def syobj(
     # === CREATE SYFT OBJECT DATA ===
     syft_obj_data = {
         "uid": str(uid),
-        "private_url": final_private_path,
-        "mock_url": final_mock_path,
+        "private": final_private_path,
+        "mock": final_mock_path,
         "syftobject": final_syftobject_url,
         "name": name,
         "description": description,

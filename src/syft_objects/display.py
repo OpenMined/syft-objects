@@ -61,7 +61,7 @@ def create_static_display(syft_obj: 'SyftObject') -> str:
     else:
         # Try to extract from URL
         try:
-            parts = syft_obj.private_url.split('/')
+            parts = syft_obj.private.split('/')
             if len(parts) > 2 and '@' in parts[2]:
                 owner_email = parts[2]
         except:
@@ -76,8 +76,8 @@ def create_static_display(syft_obj: 'SyftObject') -> str:
     syftobject_path = syft_obj.syftobject_path or 'Not found'
     
     # Check file existence
-    mock_exists = syft_obj._check_file_exists(syft_obj.mock_url)
-    private_exists = syft_obj._check_file_exists(syft_obj.private_url)
+    mock_exists = syft_obj._check_file_exists(syft_obj.mock)
+    private_exists = syft_obj._check_file_exists(syft_obj.private)
     
     # Check if paths point to folders or files
     mock_is_folder = False
@@ -539,13 +539,13 @@ def create_static_display(syft_obj: 'SyftObject') -> str:
                     <div class="syft-permission-group">
                         <div class="syft-permission-label">Read Access</div>
                         <div class="syft-email-list">
-                            {render_permission_tags(MockAccessor(syft_obj.mock_url, syft_obj).get_read_permissions())}
+                            {render_permission_tags(MockAccessor(syft_obj.mock, syft_obj).get_read_permissions())}
                         </div>
                     </div>
                     <div class="syft-permission-group">
                         <div class="syft-permission-label">Write Access</div>
                         <div class="syft-email-list">
-                            {render_permission_tags(MockAccessor(syft_obj.mock_url, syft_obj).get_write_permissions())}
+                            {render_permission_tags(MockAccessor(syft_obj.mock, syft_obj).get_write_permissions())}
                         </div>
                     </div>
                 </div>
@@ -555,13 +555,13 @@ def create_static_display(syft_obj: 'SyftObject') -> str:
                     <div class="syft-permission-group">
                         <div class="syft-permission-label">Read Access</div>
                         <div class="syft-email-list">
-                            {render_permission_tags(PrivateAccessor(syft_obj.private_url, syft_obj).get_read_permissions())}
+                            {render_permission_tags(PrivateAccessor(syft_obj.private, syft_obj).get_read_permissions())}
                         </div>
                     </div>
                     <div class="syft-permission-group">
                         <div class="syft-permission-label">Write Access</div>
                         <div class="syft-email-list">
-                            {render_permission_tags(PrivateAccessor(syft_obj.private_url, syft_obj).get_write_permissions())}
+                            {render_permission_tags(PrivateAccessor(syft_obj.private, syft_obj).get_write_permissions())}
                         </div>
                     </div>
                 </div>

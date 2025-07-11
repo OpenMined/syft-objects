@@ -82,7 +82,7 @@ class ObjectsCollection:
                 private_url = syft_obj.private.get_url()
             else:
                 raw_obj = syft_obj._obj if hasattr(syft_obj, '_obj') else syft_obj
-                private_url = raw_obj.private_url
+                private_url = raw_obj.private
             
             if private_url.startswith("syft://"):
                 parts = private_url.split("/")
@@ -347,8 +347,8 @@ class ObjectsCollection:
             for i, syft_obj in enumerate(self._objects):
                 email = self._get_object_email(syft_obj)
                 name = syft_obj.get_name() if hasattr(syft_obj, 'get_name') else (syft_obj.name if hasattr(syft_obj, 'name') else "Unnamed Object")
-                private_url = syft_obj.get_urls()['private'] if hasattr(syft_obj, 'get_urls') else (syft_obj.private_url if hasattr(syft_obj, 'private_url') else "N/A")
-                mock_url = syft_obj.get_urls()['mock'] if hasattr(syft_obj, 'get_urls') else (syft_obj.mock_url if hasattr(syft_obj, 'mock_url') else "N/A")
+                private_url = syft_obj.get_urls()['private'] if hasattr(syft_obj, 'get_urls') else (syft_obj.private if hasattr(syft_obj, 'private') else "N/A")
+                mock_url = syft_obj.get_urls()['mock'] if hasattr(syft_obj, 'get_urls') else (syft_obj.mock if hasattr(syft_obj, 'mock') else "N/A")
                 table_data.append([i, email, name, private_url, mock_url])
 
             headers = ["Index", "Email", "Object Name", "Private URL", "Mock URL"]
@@ -407,8 +407,8 @@ Example Usage:
   # Access object properties:
   obj = syo.objects[0]
   print(obj.name)           # Object name
-  print(obj.private_url)    # Private syft:// URL
-  print(obj.mock_url)       # Mock syft:// URL
+  print(obj.private)    # Private syft:// URL
+  print(obj.mock)       # Mock syft:// URL
   print(obj.description)    # Object description
   
   # Refresh after creating new objects:
@@ -463,8 +463,8 @@ Example Usage:
                 created_at = getattr(obj, 'created_at', None)
                 description = getattr(obj, 'description', '')
                 metadata = getattr(obj, 'metadata', {})
-                private_url = getattr(obj, 'private_url', '')
-                mock_url = getattr(obj, 'mock_url', '')
+                private_url = getattr(obj, 'private', '')
+                mock_url = getattr(obj, 'mock', '')
             
             obj_data = {
                 'display_index': display_index,  # Store the correct index to display
@@ -474,8 +474,8 @@ Example Usage:
                 'description': description,
                 'mock_data': None,
                 'private_data': None,
-                'private_url': private_url,
-                'mock_url': mock_url,
+                'private': private_url,
+                'mock': mock_url,
                 'metadata': metadata
             }
             
@@ -1055,8 +1055,8 @@ Example Usage:
                 
                 // Extract email from private_url
                 var email = 'unknown@example.com';
-                if (obj.private_url && obj.private_url.startsWith('syft://')) {{
-                    var parts = obj.private_url.split('/');
+                if (obj.private && obj.private.startsWith('syft://')) {{
+                    var parts = obj.private.split('/');
                     if (parts.length >= 3) {{
                         email = parts[2];
                     }}
@@ -1106,7 +1106,7 @@ Example Usage:
                     (obj.uid && obj.uid.toLowerCase().includes(searchTerm));
                 
                 var matchesAdmin = !adminFilter || 
-                    (obj.private_url && obj.private_url.toLowerCase().includes(adminFilter));
+                    (obj.private && obj.private.toLowerCase().includes(adminFilter));
                 
                 return matchesSearch && matchesAdmin;
             }});
@@ -1159,8 +1159,8 @@ Example Usage:
                 
                 // Extract email from private_url
                 var email = 'unknown@example.com';
-                if (obj.private_url && obj.private_url.startsWith('syft://')) {{
-                    var parts = obj.private_url.split('/');
+                if (obj.private && obj.private.startsWith('syft://')) {{
+                    var parts = obj.private.split('/');
                     if (parts.length >= 3) {{
                         email = parts[2];
                     }}
@@ -1825,8 +1825,8 @@ Example Usage:
                         <strong>Description:</strong> ${{desc}}<br><br>
                         ${{metadataHtml}}
                         <br>
-                        <strong>Private URL:</strong> <code style="background: #f3f4f6; padding: 2px 4px; border-radius: 3px; word-break: break-all;">${{obj ? obj.private_url : 'N/A'}}</code><br>
-                        <strong>Mock URL:</strong> <code style="background: #f3f4f6; padding: 2px 4px; border-radius: 3px; word-break: break-all;">${{obj ? obj.mock_url : 'N/A'}}</code>
+                        <strong>Private URL:</strong> <code style="background: #f3f4f6; padding: 2px 4px; border-radius: 3px; word-break: break-all;">${{obj ? obj.private : 'N/A'}}</code><br>
+                        <strong>Mock URL:</strong> <code style="background: #f3f4f6; padding: 2px 4px; border-radius: 3px; word-break: break-all;">${{obj ? obj.mock : 'N/A'}}</code>
                     </div>
                 `;
                 
@@ -2280,8 +2280,8 @@ Example Usage:
                 <td class="syft-objects-index">{i}</td>
                 <td class="syft-objects-email">{email}</td>
                 <td class="syft-objects-name">{name}</td>
-                <td class="syft-objects-url">{syft_obj.get_urls()['private'] if hasattr(syft_obj, 'get_urls') else (syft_obj.private_url if hasattr(syft_obj, 'private_url') else '')}</td>
-                <td class="syft-objects-url">{syft_obj.get_urls()['mock'] if hasattr(syft_obj, 'get_urls') else (syft_obj.mock_url if hasattr(syft_obj, 'mock_url') else '')}</td>
+                <td class="syft-objects-url">{syft_obj.get_urls()['private'] if hasattr(syft_obj, 'get_urls') else (syft_obj.private if hasattr(syft_obj, 'private') else '')}</td>
+                <td class="syft-objects-url">{syft_obj.get_urls()['mock'] if hasattr(syft_obj, 'get_urls') else (syft_obj.mock if hasattr(syft_obj, 'mock') else '')}</td>
                 <td class="syft-objects-date">{created_str}</td>
                 <td class="syft-objects-date">{updated_str}</td>
                 <td class="syft-objects-desc">{desc_str}</td>

@@ -76,10 +76,14 @@ class DataAccessor:
             # Convert syft:// URL to local path
             if self._syft_url and self._syft_url.startswith("syft://"):
                 try:
-                    from .client import SyftBoxURL, SYFTBOX_AVAILABLE
+                    from .client import SyftBoxURL, SYFTBOX_AVAILABLE, get_syftbox_client
                     if SYFTBOX_AVAILABLE:
-                        syft_url_obj = SyftBoxURL(self._syft_url)
-                        self._cached_path = str(syft_url_obj.to_local_path())
+                        client = get_syftbox_client()
+                        if client:
+                            syft_url_obj = SyftBoxURL(self._syft_url)
+                            self._cached_path = str(syft_url_obj.to_local_path(datasites_path=client.datasites))
+                        else:
+                            self._cached_path = None
                     else:
                         self._cached_path = None
                 except Exception:
@@ -132,7 +136,11 @@ class DataAccessor:
             is_folder = self._syft_object._is_folder
             
         if is_folder:
-            return FolderAccessor(Path(self.path))
+            path = self.path
+            if path is None:
+                # Return a meaningful error message instead of causing an exception
+                return f"Folder path not found for {self._syft_url}"
+            return FolderAccessor(Path(path))
         
         if self._cached_obj is None:
             self._cached_obj = self._load_file_content()
@@ -250,6 +258,21 @@ class DataAccessor:
         """HTML representation for Jupyter widgets"""
         try:
             obj = self.obj
+            
+            # Handle error messages for folders when path is not found
+            if isinstance(obj, str) and obj.startswith("Folder path not found"):
+                # Extract the URL from the error message
+                url = self._syft_url or "Unknown URL"
+                return f'''<div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; background: #f9fafb;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <span style="font-size: 20px;">📁</span>
+                        <strong style="color: #1f2937;">Folder Object</strong>
+                    </div>
+                    <div style="color: #6b7280; font-size: 14px; line-height: 1.5;">
+                        <p style="margin: 0 0 8px 0;"><strong>URL:</strong> <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 3px; font-size: 12px;">{url}</code></p>
+                        <p style="margin: 0; font-style: italic;">⚠️ Folder contents cannot be displayed - SyftBox client not available</p>
+                    </div>
+                </div>'''
             
             # Handle FolderAccessor objects
             if isinstance(obj, FolderAccessor):

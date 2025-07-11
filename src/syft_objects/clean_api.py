@@ -241,7 +241,7 @@ class CleanSyftObject:
         if self._CleanSyftObject__obj.is_folder:
             return "folder"
         # Extract extension from private URL
-        parts = self._CleanSyftObject__obj.private_url.split("/")[-1].split(".")
+        parts = self._CleanSyftObject__obj.private.split("/")[-1].split(".")
         if len(parts) > 1:
             return parts[-1]
         return ""
@@ -276,8 +276,8 @@ class CleanSyftObject:
     def get_urls(self) -> dict:
         """Get all URLs for the object"""
         return {
-            "private": self._CleanSyftObject__obj.private_url,
-            "mock": self._CleanSyftObject__obj.mock_url,
+            "private": self._CleanSyftObject__obj.private,
+            "mock": self._CleanSyftObject__obj.mock,
             "syftobject": self._CleanSyftObject__obj.syftobject
         }
     
@@ -292,7 +292,7 @@ class CleanSyftObject:
         
         # Fall back to extracting from URL structure
         # URLs typically look like: syft://user@example.com/path/to/file
-        private_url = self._CleanSyftObject__obj.private_url
+        private_url = self._CleanSyftObject__obj.private
         if private_url and "://" in private_url:
             # Extract the part after :// and before the first /
             url_part = private_url.split("://")[1]
@@ -304,7 +304,7 @@ class CleanSyftObject:
                     return datasite_part
         
         # Try mock URL as fallback
-        mock_url = self._CleanSyftObject__obj.mock_url
+        mock_url = self._CleanSyftObject__obj.mock
         if mock_url and "://" in mock_url:
             url_part = mock_url.split("://")[1]
             if "/" in url_part:

@@ -7,7 +7,8 @@ from uuid import UUID, uuid4
 from unittest.mock import Mock, patch, MagicMock, PropertyMock
 import yaml
 
-from syft_objects.models import SyftObject, utcnow, DataAccessor
+from syft_objects.models import SyftObject, utcnow
+from syft_objects.data_accessor import DataAccessor
 
 
 class TestUtcNow:

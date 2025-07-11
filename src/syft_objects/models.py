@@ -69,10 +69,12 @@ class SyftObject(BaseModel):
         if not self.mock:
             return None
         try:
-            from .client import SyftBoxURL, SYFTBOX_AVAILABLE
+            from .client import SyftBoxURL, SYFTBOX_AVAILABLE, get_syftbox_client
             if SYFTBOX_AVAILABLE:
-                syft_url_obj = SyftBoxURL(self.mock)
-                return str(syft_url_obj.to_local_path())
+                client = get_syftbox_client()
+                if client:
+                    syft_url_obj = SyftBoxURL(self.mock)
+                    return str(syft_url_obj.to_local_path(datasites_path=client.datasites))
         except Exception:
             pass
         return None
@@ -83,10 +85,12 @@ class SyftObject(BaseModel):
         if not self.private:
             return None
         try:
-            from .client import SyftBoxURL, SYFTBOX_AVAILABLE
+            from .client import SyftBoxURL, SYFTBOX_AVAILABLE, get_syftbox_client
             if SYFTBOX_AVAILABLE:
-                syft_url_obj = SyftBoxURL(self.private)
-                return str(syft_url_obj.to_local_path())
+                client = get_syftbox_client()
+                if client:
+                    syft_url_obj = SyftBoxURL(self.private)
+                    return str(syft_url_obj.to_local_path(datasites_path=client.datasites))
         except Exception:
             pass
         return None
@@ -99,10 +103,12 @@ class SyftObject(BaseModel):
         if not self.syftobject:
             return None
         try:
-            from .client import SyftBoxURL, SYFTBOX_AVAILABLE
+            from .client import SyftBoxURL, SYFTBOX_AVAILABLE, get_syftbox_client
             if SYFTBOX_AVAILABLE:
-                syft_url_obj = SyftBoxURL(self.syftobject)
-                return str(syft_url_obj.to_local_path())
+                client = get_syftbox_client()
+                if client:
+                    syft_url_obj = SyftBoxURL(self.syftobject)
+                    return str(syft_url_obj.to_local_path(datasites_path=client.datasites))
         except Exception:
             pass
         return None
