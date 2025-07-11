@@ -14,12 +14,38 @@ def utcnow() -> datetime:
     """Get current UTC datetime"""
     return datetime.utcnow()
 
+def detect_user_email() -> str:
+    """Auto-detect the user's email from various sources"""
+    email = None
+    
+    # Try multiple ways to detect logged-in email
+    email = os.getenv("SYFTBOX_EMAIL")
+    
+    if not email:
+        # Try to get from SyftBox client config
+        config_path = os.path.expanduser("~/.syftbox/config.json")
+        if os.path.exists(config_path):
+            try:
+                import json
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                    email = config.get("email")
+            except:
+                pass
+    
+    # Default fallback
+    if not email:
+        email = "unknown@syftbox.local"
+    
+    return email
+
 class SyftObject(BaseModel):
     """
     Core SyftObject model with file-backed storage and permission management.
     """
     
     # === Core Fields ===
+    uid: str  # Unique identifier
     name: str
     description: Optional[str] = None
     object_type: str = "file"  # "file" or "folder"
@@ -173,7 +199,7 @@ class SyftObject(BaseModel):
             owner_email = self.metadata.get('email') or detect_user_email()
             
             # Set permissions on the syftobject.yaml file
-            sp.set_permissions(
+            sp.set_file_permissions(
                 str(file_path),
                 read_users=self.metadata.get('_original_permissions', {}).get('discovery_read', ['public']),
                 write_users=[owner_email],
@@ -183,7 +209,7 @@ class SyftObject(BaseModel):
             # Set permissions on mock file if it exists
             mock_path = self.mock_path
             if mock_path and Path(mock_path).exists():
-                sp.set_permissions(
+                sp.set_file_permissions(
                     mock_path,
                     read_users=self.metadata.get('_original_permissions', {}).get('mock_read', ['public']),
                     write_users=self.metadata.get('_original_permissions', {}).get('mock_write', [owner_email]),
@@ -193,7 +219,7 @@ class SyftObject(BaseModel):
             # Set permissions on private file if it exists
             private_path = self.private_path
             if private_path and Path(private_path).exists():
-                sp.set_permissions(
+                sp.set_file_permissions(
                     private_path,
                     read_users=self.metadata.get('_original_permissions', {}).get('private_read', [owner_email]),
                     write_users=self.metadata.get('_original_permissions', {}).get('private_write', [owner_email]),

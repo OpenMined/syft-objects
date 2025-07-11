@@ -201,7 +201,7 @@ def syobj(
                         mock_folder_path = syft_url_obj.to_local_path(datasites_path=syftbox_client.datasites)
                         from pathlib import Path
                         if Path(mock_folder_path).exists():
-                            sp.set_permissions(
+                            sp.set_file_permissions(
                                 str(mock_folder_path),
                                 read_users=mock_read or [],
                                 write_users=mock_write or [],
@@ -283,7 +283,7 @@ def syobj(
                                     local_path = syft_url_obj.to_local_path(datasites_path=syftbox_client.datasites)
                                     
                                     # Set permissions on the specific folder syftobject.yaml file
-                                    sp.set_permissions(
+                                    sp.set_file_permissions(
                                         local_path,
                                         read_users=discovery_read or ["public"],
                                         write_users=[email],
@@ -468,7 +468,7 @@ def syobj(
                     local_mock_path = syft_url_obj.to_local_path(datasites_path=syftbox_client.datasites)
                     
                     # Set permissions with owner having write/admin access
-                    sp.set_permissions(
+                    sp.set_file_permissions(
                         str(local_mock_path),
                         read_users=final_mock_read,
                         write_users=final_mock_write,
@@ -607,7 +607,7 @@ def syobj(
                                 owner_email = detect_user_email()
                                 
                                 # Set permissions on the specific syftobject.yaml file
-                                sp.set_permissions(
+                                sp.set_file_permissions(
                                     final_syftobj_path,
                                     read_users=final_discovery_read,
                                     write_users=[owner_email],
@@ -671,7 +671,7 @@ def _set_permissions_with_syft_perm(
             
             # Only set permissions if the file exists and is within SyftBox
             if Path(private_path).exists() and str(Path(private_path).resolve()).startswith(syftbox_path):
-                sp.set_permissions(
+                sp.set_file_permissions(
                     private_path,
                     read_users=private_read,
                     write_users=private_write,
@@ -702,3 +702,6 @@ def _create_mock_folder_structure(source: Path, target: Path):
             else:
                 # Create small binary file
                 mock_file.write_bytes(b"MOCK") 
+
+# Alias for backward compatibility
+create_object = syobj
