@@ -201,6 +201,7 @@ def syobj(
                         mock_folder_path = syft_url_obj.to_local_path(datasites_path=syftbox_client.datasites)
                         from pathlib import Path
                         if Path(mock_folder_path).exists():
+                            import syft_perm as sp
                             sp.set_file_permissions(
                                 str(mock_folder_path),
                                 read_users=mock_read or [],
@@ -541,7 +542,7 @@ def syobj(
     
     # === CREATE SYFT OBJECT DATA ===
     syft_obj_data = {
-        "uid": uid,
+        "uid": str(uid),
         "private_url": final_private_path,
         "mock_url": final_mock_path,
         "syftobject": final_syftobject_url,
