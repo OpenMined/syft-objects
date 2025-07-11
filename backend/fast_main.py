@@ -4,7 +4,7 @@ No Node.js dependencies - serves HTML directly from Python
 """
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 from pathlib import Path as PathLib
 
@@ -160,7 +160,20 @@ async def get_objects(
         # Convert to list and sort by creation date (oldest first for proper indexing)
         all_objects = collection.to_list()
         # Sort by created_at (oldest first) so index 0/1 represents the oldest object
-        all_objects.sort(key=lambda x: (x.get_created_at() if hasattr(x, 'get_created_at') else x.created_at) or datetime.min, reverse=False)
+        def get_sort_datetime(obj):
+            try:
+                dt = obj.get_created_at() if hasattr(obj, 'get_created_at') else obj.created_at
+                if dt is None:
+                    return datetime.min.replace(tzinfo=timezone.utc)
+                # Ensure datetime is timezone-aware
+                if hasattr(dt, 'tzinfo') and dt.tzinfo is None:
+                    return dt.replace(tzinfo=timezone.utc)
+                return dt
+            except Exception as e:
+                logger.warning(f"Error getting datetime for object {obj}: {e}")
+                return datetime.min.replace(tzinfo=timezone.utc)
+        
+        all_objects.sort(key=get_sort_datetime, reverse=False)
         total_count = len(all_objects)
         
         # Apply pagination
@@ -183,7 +196,7 @@ async def get_objects(
                     raw_obj = obj._obj if hasattr(obj, '_obj') else obj
                     private_url = raw_obj.private_url
                 
-                if private_url.startswith("syft://"):
+                if private_url and private_url.startswith("syft://"):
                     parts = private_url.split("/")
                     if len(parts) >= 3:
                         email = parts[2]
@@ -677,7 +690,7 @@ async def get_object_details(object_uid: str) -> Dict[str, Any]:
                     raw_obj = target_obj._CleanSyftObject__obj if hasattr(target_obj, '_CleanSyftObject__obj') else target_obj
                     private_url = raw_obj.private_url
                 
-                if private_url.startswith("syft://"):
+                if private_url and private_url.startswith("syft://"):
                     parts = private_url.split("/")
                     if len(parts) >= 3:
                         email = parts[2]

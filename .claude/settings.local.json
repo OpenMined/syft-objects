@@ -61,7 +61,10 @@
       "Bash(export SYFTBOX_EMAIL=\"liamtrask@gmail.com\")",
       "Bash(git restore:*)",
       "Bash(curl:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git pull:*)",
+      "Bash(./run.sh:*)",
+      "Bash(pkill:*)"
     ],
     "deny": []
   }
