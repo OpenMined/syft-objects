@@ -62,6 +62,11 @@ class SyftObject(BaseModel):
     
     # === Internal Fields ===
     _yaml_path: Optional[Path] = None  # Path to .syftobject.yaml file
+
+    def _repr_html_(self) -> str:
+        """Rich HTML representation for Jupyter notebooks"""
+        from .display import create_html_display
+        return create_html_display(self)
     
     @property
     def mock_path(self) -> Optional[str]:
