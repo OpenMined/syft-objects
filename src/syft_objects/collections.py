@@ -128,7 +128,7 @@ class ObjectsCollection:
                             try:
                                 from .models import SyftObject
                                 from .clean_api import CleanSyftObject
-                                syft_obj = SyftObject._load_yaml(syftobj_file)
+                                syft_obj = SyftObject.from_yaml(syftobj_file)
                                 clean_obj = CleanSyftObject(syft_obj)
                                 self._objects.append(clean_obj)
                             except Exception:
@@ -140,7 +140,7 @@ class ObjectsCollection:
                             try:
                                 from .models import SyftObject
                                 from .clean_api import CleanSyftObject
-                                syft_obj = SyftObject._load_yaml(syftobj_file)
+                                syft_obj = SyftObject.from_yaml(syftobj_file)
                                 clean_obj = CleanSyftObject(syft_obj)
                                 self._objects.append(clean_obj)
                             except Exception:
@@ -164,7 +164,7 @@ class ObjectsCollection:
                             try:
                                 from .models import SyftObject
                                 from .clean_api import CleanSyftObject
-                                syft_obj = SyftObject._load_yaml(syftobj_file)
+                                syft_obj = SyftObject.from_yaml(syftobj_file)
                                 clean_obj = CleanSyftObject(syft_obj)
                                 self._objects.append(clean_obj)
                             except Exception as e:
@@ -180,7 +180,7 @@ class ObjectsCollection:
                             try:
                                 from .models import SyftObject
                                 from .clean_api import CleanSyftObject
-                                syft_obj = SyftObject._load_yaml(syftobj_file)
+                                syft_obj = SyftObject.from_yaml(syftobj_file)
                                 clean_obj = CleanSyftObject(syft_obj)
                                 self._objects.append(clean_obj)
                             except Exception as e:

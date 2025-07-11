@@ -1,9 +1,0 @@
-rules:
-- pattern: tmp
-  access:
-    read:
-    - '*'
-    write:
-    - '*'
-    admin:
-    - '*'

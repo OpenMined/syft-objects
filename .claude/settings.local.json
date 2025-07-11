@@ -60,6 +60,7 @@
       "Bash(kill:*)",
       "Bash(export SYFTBOX_EMAIL=\"liamtrask@gmail.com\")",
       "Bash(git restore:*)",
+      "Bash(curl:*)",
       "Bash(curl:*)"
     ],
     "deny": []
