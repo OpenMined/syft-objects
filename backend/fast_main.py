@@ -1696,12 +1696,17 @@ async def widget_redirect():
 
 @app.get("/widget/")
 async def widget_page():
-    """Serve the Next.js widget page."""
+    """Serve the simple HTML widget page."""
     widget_file = PathLib(__file__).parent.parent / "frontend" / "widget" / "index.html"
     if widget_file.exists():
         return FileResponse(widget_file, media_type="text/html")
     else:
         raise HTTPException(status_code=404, detail="Widget page not found")
+
+@app.get("/widget")
+async def widget_page_redirect():
+    """Redirect /widget to /widget/ for convenience."""
+    return RedirectResponse(url="/widget/", status_code=302)
 
 # Serve the main page explicitly to match original server
 @app.get("/", response_class=HTMLResponse)
