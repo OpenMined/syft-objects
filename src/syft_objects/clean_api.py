@@ -241,9 +241,10 @@ class CleanSyftObject:
         if self._CleanSyftObject__obj.is_folder:
             return "folder"
         # Extract extension from private URL
-        parts = self._CleanSyftObject__obj.private.split("/")[-1].split(".")
-        if len(parts) > 1:
-            return parts[-1]
+        if self._CleanSyftObject__obj.private:
+            parts = self._CleanSyftObject__obj.private.split("/")[-1].split(".")
+            if len(parts) > 1:
+                return parts[-1]
         return ""
     
     def get_info(self) -> dict:

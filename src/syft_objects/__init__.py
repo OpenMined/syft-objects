@@ -4,7 +4,7 @@ SyftObjects - Distributed objects with mock/real pattern for file discovery and 
 
 # syft-objects - Distributed file discovery and addressing system 
 
-__version__ = "0.10.50"
+__version__ = "0.10.51"
 
 # Internal imports (hidden from public API)
 from . import models as _models

@@ -319,7 +319,10 @@ async def get_objects(
         }
     
     except Exception as e:
+        import traceback
+        full_traceback = traceback.format_exc()
         logger.error(f"Error getting objects: {e}")
+        logger.error(f"Full traceback:\n{full_traceback}")
         raise HTTPException(status_code=500, detail=f"Error retrieving objects: {str(e)}")
 
 @app.post("/api/objects")
