@@ -510,6 +510,9 @@
                         }
                     }
                     
+                    // Reverse to show newest to oldest by default
+                    filteredObjects.reverse();
+                    
                     return;
                 }
             }
@@ -565,8 +568,18 @@
                 const created = obj.created_at ? new Date(obj.created_at).toLocaleDateString() : 'Unknown';
                 const fileType = obj.type || '.txt';
                 
-                // Calculate proper index: newest objects get highest indices
-                const displayIndex = totalObjects - i - 1;
+                // Calculate proper index
+                let displayIndex;
+                if (window.INDEX_RANGE_FILTER && (window.INDEX_RANGE_FILTER.startIndex !== null || window.INDEX_RANGE_FILTER.endIndex !== null)) {
+                    // For index range filtered views, since we reversed the order (newest first),
+                    // we need to calculate indices in reverse: highest index (newest) shows first
+                    const filterStart = window.INDEX_RANGE_FILTER.startIndex || 0;
+                    const filterEnd = window.INDEX_RANGE_FILTER.endIndex || totalObjects;
+                    displayIndex = (filterEnd - 1) - i;
+                } else {
+                    // For unfiltered views, newest objects get highest indices
+                    displayIndex = totalObjects - i - 1;
+                }
                 
                 html += `
                     <tr onclick="copyObjectCode('${uid}', this)" style="cursor: pointer;">
@@ -679,6 +692,9 @@
                             baseObjects.push(allObjects[arrayPosition]);
                         }
                     }
+                    
+                    // Reverse to show newest to oldest by default
+                    baseObjects.reverse();
                     isIndexRangeFiltered = true;
                 }
             }
