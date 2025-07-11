@@ -1695,11 +1695,33 @@ async def widget_redirect():
     return RedirectResponse(url="/widget/", status_code=307)
 
 @app.get("/widget/")
-async def widget_page():
-    """Serve the simple HTML widget page."""
+async def widget_page(
+    start_index: Optional[int] = Query(None, description="Start index for filtering (inclusive)"),
+    end_index: Optional[int] = Query(None, description="End index for filtering (exclusive)")
+):
+    """Serve the simple HTML widget page with optional index range filtering."""
     widget_file = PathLib(__file__).parent.parent / "frontend" / "widget" / "index.html"
     if widget_file.exists():
-        return FileResponse(widget_file, media_type="text/html")
+        # Read the HTML content
+        with open(widget_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Inject index range parameters if provided
+        if start_index is not None or end_index is not None:
+            # Create JavaScript to set the filter parameters
+            filter_script = f"""
+    <script>
+        // Index range filter parameters from URL
+        window.INDEX_RANGE_FILTER = {{
+            startIndex: {start_index if start_index is not None else 'null'},
+            endIndex: {end_index if end_index is not None else 'null'}
+        }};
+    </script>
+    """
+            # Insert the script before the closing head tag
+            content = content.replace('</head>', f'{filter_script}</head>')
+        
+        return HTMLResponse(content=content)
     else:
         raise HTTPException(status_code=404, detail="Widget page not found")
 

@@ -425,7 +425,8 @@ def syobj(
     final_private_write = private_write or [email]
     
     # === GENERATE SYFT:// URLS ===
-    mock_is_public = any(x in ("public", "*") for x in final_mock_read)
+    # Mock files should always go to public directory regardless of permissions
+    mock_is_public = True
     final_private_path, final_mock_path = generate_syftbox_urls(
         email, private_filename, syftbox_client, mock_is_public=mock_is_public
     )
@@ -464,10 +465,10 @@ def syobj(
                     
                     # Set permissions with owner having write/admin access
                     sp.set_file_permissions(
-                        local_mock_path,
+                        str(local_mock_path),
                         read_users=final_mock_read,
                         write_users=final_mock_write,
-                        admin_users=final_mock_write  # Admin same as write for mock files
+                        admin_users=[email]  # Owner is always admin
                     )
             except Exception as e:
                 print(f"Warning: Could not set mock file permissions: {e}")

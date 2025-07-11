@@ -2041,11 +2041,23 @@ Example Usage:
         return html
 
     def widget(self, width="100%", height="400px", url=None):
-        """Display the syft-objects widget in an iframe"""
+        """Display the syft-objects widget in an iframe with optional index range filtering"""
         
         self._ensure_server_ready()
         if url is None:
             url = get_syft_objects_url("widget")
+        
+        # Add index range parameters if this is a sliced collection
+        if self._original_indices is not None and len(self._original_indices) > 0:
+            # For sliced collections, use the original indices directly
+            # objects[0:3] should map to start_index=0&end_index=3
+            
+            start_index = min(self._original_indices)
+            end_index = max(self._original_indices) + 1  # Exclusive end
+            
+            # Add query parameters
+            separator = '&' if '?' in url else '?'
+            url = f"{url}{separator}start_index={start_index}&end_index={end_index}"
         
         return f"""
         <iframe 

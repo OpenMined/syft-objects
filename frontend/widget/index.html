@@ -473,8 +473,11 @@
                     const dateB = new Date(b.created_at || 0);
                     return dateB - dateA; // Newest first
                 });
-                filteredObjects = allObjects;
-                showStatus(`Loaded ${allObjects.length} objects`);
+                
+                // Apply index range filtering if specified
+                applyIndexRangeFilter();
+                
+                showStatus(`Loaded ${filteredObjects.length} objects${getFilterStatusText()}`);
                 renderTable();
             } catch (error) {
                 console.error('Error loading objects:', error);
@@ -482,6 +485,50 @@
                 document.getElementById('objects-tbody').innerHTML = 
                     '<tr><td colspan="10" class="error">Failed to load objects. Please check server connection.</td></tr>';
             }
+        }
+
+        // Apply index range filtering based on URL parameters
+        function applyIndexRangeFilter() {
+            if (window.INDEX_RANGE_FILTER) {
+                const { startIndex, endIndex } = window.INDEX_RANGE_FILTER;
+                const totalObjects = allObjects.length;
+                
+                if (startIndex !== null || endIndex !== null) {
+                    // startIndex and endIndex are the display indices we want to show
+                    // allObjects is sorted newest first, so we need to convert display indices to array positions
+                    const start = startIndex !== null ? startIndex : 0;
+                    const end = endIndex !== null ? endIndex : totalObjects;
+                    
+                    // Convert display indices to array positions
+                    // Display index 0 = oldest object = last position in array
+                    // Display index (totalObjects-1) = newest object = first position in array
+                    filteredObjects = [];
+                    for (let i = start; i < end && i < totalObjects; i++) {
+                        const arrayPosition = totalObjects - 1 - i;
+                        if (arrayPosition >= 0 && arrayPosition < allObjects.length) {
+                            filteredObjects.push(allObjects[arrayPosition]);
+                        }
+                    }
+                    
+                    return;
+                }
+            }
+            
+            // No filtering, use all objects
+            filteredObjects = allObjects;
+        }
+
+        // Get filter status text for display
+        function getFilterStatusText() {
+            if (window.INDEX_RANGE_FILTER) {
+                const { startIndex, endIndex } = window.INDEX_RANGE_FILTER;
+                if (startIndex !== null || endIndex !== null) {
+                    const start = startIndex !== null ? startIndex : 0;
+                    const end = endIndex !== null ? endIndex - 1 : allObjects.length - 1;
+                    return ` (filtered to indices ${start}-${end})`;
+                }
+            }
+            return '';
         }
 
         // Render table with current page
@@ -611,7 +658,33 @@
             const searchTerm = document.getElementById('search-input').value.toLowerCase();
             const adminFilter = document.getElementById('admin-filter').value.toLowerCase();
             
-            filteredObjects = allObjects.filter(obj => {
+            // Start with base objects (either all objects or index-range filtered objects)
+            let baseObjects = allObjects;
+            let isIndexRangeFiltered = false;
+            
+            // Apply index range filtering first if specified
+            if (window.INDEX_RANGE_FILTER) {
+                const { startIndex, endIndex } = window.INDEX_RANGE_FILTER;
+                const totalObjects = allObjects.length;
+                
+                if (startIndex !== null || endIndex !== null) {
+                    const start = startIndex !== null ? startIndex : 0;
+                    const end = endIndex !== null ? endIndex : totalObjects;
+                    
+                    // Convert display indices to array positions
+                    baseObjects = [];
+                    for (let i = start; i < end && i < totalObjects; i++) {
+                        const arrayPosition = totalObjects - 1 - i;
+                        if (arrayPosition >= 0 && arrayPosition < allObjects.length) {
+                            baseObjects.push(allObjects[arrayPosition]);
+                        }
+                    }
+                    isIndexRangeFiltered = true;
+                }
+            }
+            
+            // Apply search/admin filters on top of index range filtering
+            filteredObjects = baseObjects.filter(obj => {
                 const nameMatch = (obj.name || '').toLowerCase().includes(searchTerm);
                 const descMatch = (obj.description || '').toLowerCase().includes(searchTerm);
                 const adminMatch = adminFilter === '' || (obj.email || '').toLowerCase().includes(adminFilter);
@@ -619,26 +692,31 @@
                 return (searchTerm === '' || nameMatch || descMatch) && adminMatch;
             });
             
-            // Maintain sort order (newest first) after filtering
-            filteredObjects.sort((a, b) => {
-                const dateA = new Date(a.created_at || 0);
-                const dateB = new Date(b.created_at || 0);
-                return dateB - dateA; // Newest first
-            });
+            // Only sort if not index range filtered (to preserve slice order)
+            if (!isIndexRangeFiltered) {
+                filteredObjects.sort((a, b) => {
+                    const dateA = new Date(a.created_at || 0);
+                    const dateB = new Date(b.created_at || 0);
+                    return dateB - dateA; // Newest first
+                });
+            }
             
             currentPage = 1;
             renderTable();
-            showStatus(`Found ${filteredObjects.length} objects`);
+            showStatus(`Found ${filteredObjects.length} objects${getFilterStatusText()}`);
         }
 
         // Clear search
         function clearSearch() {
             document.getElementById('search-input').value = '';
             document.getElementById('admin-filter').value = '';
-            filteredObjects = allObjects;
+            
+            // Apply index range filtering (if any) instead of showing all objects
+            applyIndexRangeFilter();
+            
             currentPage = 1;
             renderTable();
-            showStatus(`Showing all ${allObjects.length} objects`);
+            showStatus(`Showing ${filteredObjects.length} objects${getFilterStatusText()}`);
         }
 
         // Refresh objects

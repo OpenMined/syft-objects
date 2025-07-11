@@ -161,7 +161,7 @@ def get_syft_objects_url(endpoint=""):
     port = get_syft_objects_port()
     base_url = f"http://localhost:{port}"
     if endpoint:
-        return f"{base_url}/{endpoint.lstrip('/')}"
+        return f"{base_url}/{endpoint.lstrip('/')}/"
     return base_url
 
 
