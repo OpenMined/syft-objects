@@ -467,6 +467,12 @@
                 }
                 const data = await response.json();
                 allObjects = data.objects || [];
+                // Sort by creation date (newest first) so indices work correctly
+                allObjects.sort((a, b) => {
+                    const dateA = new Date(a.created_at || 0);
+                    const dateB = new Date(b.created_at || 0);
+                    return dateB - dateA; // Newest first
+                });
                 filteredObjects = allObjects;
                 showStatus(`Loaded ${allObjects.length} objects`);
                 renderTable();
@@ -512,10 +518,13 @@
                 const created = obj.created_at ? new Date(obj.created_at).toLocaleDateString() : 'Unknown';
                 const fileType = obj.type || '.txt';
                 
+                // Calculate proper index: newest objects get highest indices
+                const displayIndex = totalObjects - i - 1;
+                
                 html += `
                     <tr onclick="copyObjectCode('${uid}', this)" style="cursor: pointer;">
                         <td><input type="checkbox" onclick="event.stopPropagation()"></td>
-                        <td>${i}</td>
+                        <td>${displayIndex}</td>
                         <td><div class="truncate" style="font-weight: 500;" title="${name}">${name}</div></td>
                         <td><div class="truncate" style="color: #6b7280;" title="${description}">${description}</div></td>
                         <td>
@@ -608,6 +617,13 @@
                 const adminMatch = adminFilter === '' || (obj.email || '').toLowerCase().includes(adminFilter);
                 
                 return (searchTerm === '' || nameMatch || descMatch) && adminMatch;
+            });
+            
+            // Maintain sort order (newest first) after filtering
+            filteredObjects.sort((a, b) => {
+                const dateA = new Date(a.created_at || 0);
+                const dateB = new Date(b.created_at || 0);
+                return dateB - dateA; // Newest first
             });
             
             currentPage = 1;
