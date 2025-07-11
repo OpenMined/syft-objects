@@ -73,17 +73,32 @@ class DataAccessor:
     def path(self) -> str:
         """Get the local file path for this data"""
         if self._cached_path is None:
-            self._cached_path = self._syft_object._get_local_file_path(self._syft_url)
+            # Convert syft:// URL to local path
+            if self._syft_url and self._syft_url.startswith("syft://"):
+                try:
+                    from .client import SyftBoxURL, SYFTBOX_AVAILABLE
+                    if SYFTBOX_AVAILABLE:
+                        syft_url_obj = SyftBoxURL(self._syft_url)
+                        self._cached_path = str(syft_url_obj.to_local_path())
+                    else:
+                        self._cached_path = None
+                except Exception:
+                    self._cached_path = None
+            else:
+                # Fallback to direct path methods on the object
+                if hasattr(self._syft_object, 'mock_path') and self._syft_url == getattr(self._syft_object, 'mock', None):
+                    self._cached_path = self._syft_object.mock_path
+                elif hasattr(self._syft_object, 'private_path') and self._syft_url == getattr(self._syft_object, 'private', None):
+                    self._cached_path = self._syft_object.private_path
+                else:
+                    self._cached_path = None
+            
             # For folders, ensure path doesn't have trailing /
-            # Check both is_folder and _is_folder for compatibility
-            is_folder = False
-            if hasattr(self._syft_object, 'is_folder'):
-                is_folder = self._syft_object.is_folder
-            elif hasattr(self._syft_object, '_is_folder'):
-                is_folder = self._syft_object._is_folder
-                
-            if is_folder and self._cached_path.endswith('/'):
-                self._cached_path = self._cached_path.rstrip('/')
+            if self._cached_path:
+                is_folder = getattr(self._syft_object, 'is_folder', False) or getattr(self._syft_object, '_is_folder', False)
+                if is_folder and self._cached_path.endswith('/'):
+                    self._cached_path = self._cached_path.rstrip('/')
+                    
         return self._cached_path
     
     @property
