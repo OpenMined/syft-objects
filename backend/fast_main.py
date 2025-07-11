@@ -217,6 +217,10 @@ async def get_objects(
                 mock_is_folder = obj.mock.is_folder() if hasattr(obj, 'mock') and hasattr(obj.mock, 'is_folder') else False
                 private_is_folder = obj.private.is_folder() if hasattr(obj, 'private') and hasattr(obj.private, 'is_folder') else False
                 
+                # Get actual file paths for editor functionality
+                mock_path = obj.mock.get_path() if hasattr(obj, 'mock') and hasattr(obj.mock, 'get_path') else None
+                private_path = obj.private.get_path() if hasattr(obj, 'private') and hasattr(obj.private, 'get_path') else None
+                
                 obj_data = {
                     "index": actual_index,
                     "uid": obj.get_uid(),
@@ -242,6 +246,10 @@ async def get_objects(
                     "file_exists": {
                         "private": True,  # Skip file existence check for CleanSyftObject
                         "mock": True,
+                    },
+                    "file_paths": {
+                        "private": private_path,
+                        "mock": mock_path,
                     }
                 }
             else:
@@ -280,6 +288,10 @@ async def get_objects(
                     "file_exists": {
                         "private": obj._check_file_exists(obj.private_url),
                         "mock": obj._check_file_exists(obj.mock_url),
+                    },
+                    "file_paths": {
+                        "private": obj.private_path if hasattr(obj, 'private_path') else None,
+                        "mock": obj.mock_path if hasattr(obj, 'mock_path') else None,
                     }
                 }
             objects_data.append(obj_data)

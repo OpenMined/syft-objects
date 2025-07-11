@@ -1,186 +1,68 @@
-"""Tests for syft_objects.permissions module"""
+"""
+Test permission management functionality.
+"""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-import syft_objects.permissions as permissions_module
-from syft_objects.permissions import (
-    _initialize_permissions, set_file_permissions_wrapper
-)
+from pathlib import Path
+import syft_perm as sp
 
+def test_set_get_permissions(tmp_path):
+    """Test setting and getting permissions on files and folders"""
+    # Create test file
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("test content")
+    
+    # Create test folder
+    test_folder = tmp_path / "test_folder"
+    test_folder.mkdir()
+    
+    # Test file permissions
+    sp.set_permissions(str(test_file), read_users=["user1@example.com"], write_users=["user2@example.com"])
+    perms = sp.get_permissions(str(test_file))
+    assert perms["read"] == ["user1@example.com"]
+    assert perms["write"] == ["user2@example.com"]
+    
+    # Test folder permissions without subfolders
+    sp.set_permissions(str(test_folder), read_users=["user3@example.com"], write_users=["user4@example.com"], including_subfolders=False)
+    perms = sp.get_permissions(str(test_folder))
+    assert perms["read"] == ["user3@example.com"]
+    assert perms["write"] == ["user4@example.com"]
+    
+    # Test folder permissions with subfolders
+    sp.set_permissions(str(test_folder), read_users=["user5@example.com"], write_users=["user6@example.com"], including_subfolders=True)
+    perms = sp.get_permissions(str(test_folder))
+    assert perms["read"] == ["user5@example.com"]
+    assert perms["write"] == ["user6@example.com"]
 
-class TestPermissionsModule:
-    """Test permissions module functions"""
+def test_invalid_path_type():
+    """Test that setting permissions on wrong path type raises error"""
+    with pytest.raises(ValueError, match="not a directory"):
+        sp.set_folder_permissions("nonexistent.txt", read_users=["user@example.com"])
     
-    def test_initialize_permissions_success(self):
-        """Test successful permissions initialization"""
-        # Reset globals first
-        permissions_module.set_file_permissions = None
-        permissions_module.get_file_permissions = None
-        permissions_module.remove_file_permissions = None
-        permissions_module.SYFTBOX_AVAILABLE = False
-        
-        mock_set = Mock()
-        mock_get = Mock()
-        mock_remove = Mock()
-        
-        # Mock the syft_perm module
-        mock_syft_perm = Mock()
-        mock_syft_perm.set_file_permissions = mock_set
-        mock_syft_perm.get_file_permissions = mock_get
-        mock_syft_perm.remove_file_permissions = mock_remove
-        mock_syft_perm.SYFTBOX_AVAILABLE = True
-        
-        # Mock the import by patching sys.modules
-        import sys
-        with patch.dict(sys.modules, {'syft_perm': mock_syft_perm}):
-            _initialize_permissions()
-            
-            assert permissions_module.set_file_permissions == mock_set
-            assert permissions_module.get_file_permissions == mock_get
-            assert permissions_module.remove_file_permissions == mock_remove
-            assert permissions_module.SYFTBOX_AVAILABLE is True
+    with pytest.raises(ValueError, match="not a file"):
+        sp.set_file_permissions("nonexistent/", read_users=["user@example.com"])
+
+def test_public_permissions(tmp_path):
+    """Test setting public permissions"""
+    test_file = tmp_path / "public.txt"
+    test_file.write_text("public content")
     
-    def test_initialize_permissions_import_error(self):
-        """Test permissions initialization with import error"""
-        # Reset globals
-        permissions_module.set_file_permissions = None
-        permissions_module.get_file_permissions = None
-        permissions_module.remove_file_permissions = None
-        permissions_module.SYFTBOX_AVAILABLE = False
-        
-        with patch('builtins.print') as mock_print:
-            with patch('builtins.__import__', side_effect=ImportError("No syft_perm")):
-                _initialize_permissions()
-                
-                # Check warning was printed
-                mock_print.assert_called_with("Warning: syft-perm not available. Install with: pip install syft-perm")
-                
-                # Check fallback functions were created
-                assert permissions_module.SYFTBOX_AVAILABLE is False
-                assert callable(permissions_module.set_file_permissions)
-                assert callable(permissions_module.get_file_permissions)
-                assert callable(permissions_module.remove_file_permissions)
-                
-                # Test the fallback functions to cover lines 35 and 41
-                permissions_module.set_file_permissions("test.txt", ["public"])
-                permissions_module.remove_file_permissions("test.txt")
-                
-                # Check that the specific fallback warnings were printed
-                print_calls = [str(call) for call in mock_print.call_args_list]
-                assert any("File permissions not set" in call for call in print_calls)
-                assert any("File permissions not removed" in call for call in print_calls)
+    sp.set_permissions(str(test_file), read_users=["*"], write_users=["admin@example.com"])
+    perms = sp.get_permissions(str(test_file))
+    assert perms["read"] == ["*"]
+    assert perms["write"] == ["admin@example.com"]
+
+def test_remove_permissions(tmp_path):
+    """Test removing permissions"""
+    test_file = tmp_path / "removable.txt"
+    test_file.write_text("test content")
     
-    def test_fallback_set_file_permissions(self):
-        """Test fallback set_file_permissions function"""
-        # Directly test the fallback by creating a fresh module state
-        original_set = permissions_module.set_file_permissions
-        
-        try:
-            # Create fallback function manually
-            def fallback_set_file_permissions(*args, **kwargs):
-                print("Warning: syft-perm not available. File permissions not set.")
-            
-            permissions_module.set_file_permissions = fallback_set_file_permissions
-            
-            with patch('builtins.print') as mock_print:
-                # Call the fallback function directly
-                permissions_module.set_file_permissions("test.txt", ["public"])
-                
-                # Check that the fallback print was called
-                mock_print.assert_called_with("Warning: syft-perm not available. File permissions not set.")
-                
-        finally:
-            permissions_module.set_file_permissions = original_set
+    # Set initial permissions
+    sp.set_permissions(str(test_file), read_users=["user@example.com"], write_users=["admin@example.com"])
     
-    def test_fallback_get_file_permissions(self):
-        """Test fallback get_file_permissions function"""
-        # Force fallback initialization
-        permissions_module.get_file_permissions = None
-        
-        with patch('builtins.__import__', side_effect=ImportError("No syft_perm")):
-            _initialize_permissions()
-            
-            # Call the fallback function
-            result = permissions_module.get_file_permissions("test.txt")
-            assert result is None
+    # Remove permissions
+    sp.remove_file_permissions(str(test_file))
     
-    def test_fallback_remove_file_permissions(self):
-        """Test fallback remove_file_permissions function"""
-        # Directly test the fallback by creating a fresh module state
-        original_remove = permissions_module.remove_file_permissions
-        
-        try:
-            # Create fallback function manually
-            def fallback_remove_file_permissions(*args, **kwargs):
-                print("Warning: syft-perm not available. File permissions not removed.")
-            
-            permissions_module.remove_file_permissions = fallback_remove_file_permissions
-            
-            with patch('builtins.print') as mock_print:
-                # Call the fallback function directly
-                permissions_module.remove_file_permissions("test.txt")
-                
-                # Check that the fallback print was called
-                mock_print.assert_called_with("Warning: syft-perm not available. File permissions not removed.")
-                
-        finally:
-            permissions_module.remove_file_permissions = original_remove
-    
-    def test_set_file_permissions_wrapper_success(self):
-        """Test set_file_permissions_wrapper successful call"""
-        mock_set_perms = Mock()
-        
-        with patch.object(permissions_module, 'set_file_permissions', mock_set_perms):
-            set_file_permissions_wrapper("test.txt", ["public"], ["admin"])
-            
-            mock_set_perms.assert_called_once_with("test.txt", ["public"], ["admin"])
-    
-    def test_set_file_permissions_wrapper_no_write_perms(self):
-        """Test set_file_permissions_wrapper without write permissions"""
-        mock_set_perms = Mock()
-        
-        with patch.object(permissions_module, 'set_file_permissions', mock_set_perms):
-            set_file_permissions_wrapper("test.txt", ["public"])
-            
-            mock_set_perms.assert_called_once_with("test.txt", ["public"], None)
-    
-    def test_set_file_permissions_wrapper_syftbox_not_available(self):
-        """Test set_file_permissions_wrapper when SyftBox not available"""
-        mock_set_perms = Mock()
-        mock_set_perms.side_effect = ValueError("Could not resolve file path")
-        
-        with patch.object(permissions_module, 'set_file_permissions', mock_set_perms):
-            # Should not raise exception
-            set_file_permissions_wrapper("test.txt", ["public"])
-            
-            mock_set_perms.assert_called_once()
-    
-    def test_set_file_permissions_wrapper_other_value_error(self):
-        """Test set_file_permissions_wrapper with other ValueError"""
-        mock_set_perms = Mock()
-        mock_set_perms.side_effect = ValueError("Different error")
-        
-        with patch.object(permissions_module, 'set_file_permissions', mock_set_perms):
-            # Should raise exception
-            with pytest.raises(ValueError, match="Different error"):
-                set_file_permissions_wrapper("test.txt", ["public"])
-    
-    def test_set_file_permissions_wrapper_generic_exception(self):
-        """Test set_file_permissions_wrapper with generic exception"""
-        mock_set_perms = Mock()
-        mock_set_perms.side_effect = Exception("Generic error")
-        
-        with patch.object(permissions_module, 'set_file_permissions', mock_set_perms):
-            # Should not raise exception (silently handled)
-            set_file_permissions_wrapper("test.txt", ["public"])
-            
-            mock_set_perms.assert_called_once()
-    
-    def test_module_initialization(self):
-        """Test that _initialize_permissions is called on module import"""
-        # This is implicitly tested by importing the module
-        # We can verify by checking if the globals were set
-        assert hasattr(permissions_module, 'set_file_permissions')
-        assert hasattr(permissions_module, 'get_file_permissions')
-        assert hasattr(permissions_module, 'remove_file_permissions')
-        assert hasattr(permissions_module, 'SYFTBOX_AVAILABLE')
+    # Verify permissions are gone
+    perms = sp.get_permissions(str(test_file))
+    assert perms is None

@@ -772,15 +772,21 @@
         function editFile(uid, fileType) {
             const obj = allObjects.find(o => o.uid === uid);
             if (obj) {
-                let url;
-                if (fileType === 'private' && obj.private_url) {
-                    url = `/editor?path=${encodeURIComponent(obj.private_url)}`;
-                } else if (fileType === 'mock' && obj.mock_url) {
-                    url = `/editor?path=${encodeURIComponent(obj.mock_url)}`;
-                } else {
+                let filePath;
+                
+                // Use actual file paths if available, otherwise fall back to URLs
+                if (fileType === 'private') {
+                    filePath = obj.file_paths?.private || obj.private_url;
+                } else if (fileType === 'mock') {
+                    filePath = obj.file_paths?.mock || obj.mock_url;
+                }
+                
+                if (!filePath) {
                     showStatus('File path not found', true);
                     return;
                 }
+                
+                const url = `/editor?path=${encodeURIComponent(filePath)}`;
                 window.open(url, '_blank');
             }
         }

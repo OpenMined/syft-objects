@@ -1016,6 +1016,32 @@ def generate_editor_html(initial_path: str = None) -> str:
                     const data = await response.json();
                     
                     if (!response.ok) {{
+                        // Handle permission denied or directory not found gracefully
+                        if (response.status === 403 || response.status === 404) {{
+                            // Show permission denied message instead of error alert
+                            const title = response.status === 403 ? 'Permission Denied' : 'Directory Not Found';
+                            const message = response.status === 403 ? 
+                                'You do not have permission to access this directory. It may not exist locally or you may need to request access.' : 
+                                'The requested directory could not be found. It may have been moved or deleted.';
+                            
+                            this.fileList.innerHTML = `
+                                <div class="empty-state" style="text-align: center; padding: 40px;">
+                                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5" style="margin: 0 auto 16px;">
+                                        <path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <h3 style="color: #374151; font-size: 18px; margin: 0 0 8px 0; font-weight: 600;">
+                                        ${{title}}
+                                    </h3>
+                                    <p style="color: #6b7280; font-size: 14px; margin: 0; max-width: 400px;">
+                                        ${{message}}
+                                    </p>
+                                </div>
+                            `;
+                            
+                            // Clear breadcrumb navigation for permission denied directories
+                            this.breadcrumb.innerHTML = `<div class="breadcrumb-current">${{title}}</div>`;
+                            return;
+                        }}
                         throw new Error(data.detail || 'Failed to load directory');
                     }}
                     

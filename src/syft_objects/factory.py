@@ -23,6 +23,7 @@ from .file_ops import (
 from ._validation import validate_mock_real_compatibility, MockRealValidationError
 from .config import config
 from .mock_analyzer import suggest_mock_note
+import syft_perm as sp
 
 
 def detect_user_email():
@@ -194,15 +195,18 @@ def syobj(
             # Set permissions on the mock folder itself
             if create_syftbox_permissions:
                 try:
-                    import syft_perm as sp
-                    mock_folder_path = parse_syft_url(mock_url)
-                    if mock_folder_path.exists():
-                        sp.set_file_permissions(
-                            str(mock_folder_path),
-                            read=mock_read or [],
-                            write=mock_write or [],
-                            admin=[email]
-                        )
+                    from .client import SyftBoxURL, SYFTBOX_AVAILABLE
+                    if SYFTBOX_AVAILABLE:
+                        syft_url_obj = SyftBoxURL(mock_url)
+                        mock_folder_path = syft_url_obj.to_local_path(datasites_path=syftbox_client.datasites)
+                        from pathlib import Path
+                        if Path(mock_folder_path).exists():
+                            sp.set_permissions(
+                                str(mock_folder_path),
+                                read_users=mock_read or [],
+                                write_users=mock_write or [],
+                                admin_users=[email]
+                            )
                 except Exception as e:
                     print(f"Warning: Could not set permissions on mock folder {mock_url}: {e}")
             
@@ -273,20 +277,20 @@ def syobj(
                             import syft_perm as sp
                             # Convert syft:// URL to local path for permission setting
                             from .client import SyftBoxURL, SYFTBOX_AVAILABLE
-                            if SYFTBOX_AVAILABLE and final_syftobject_path.startswith("syft://"):
+                            if SYFTBOX_AVAILABLE and final_syftobject_url.startswith("syft://"):
                                 try:
-                                    syft_url_obj = SyftBoxURL(final_syftobject_path)
+                                    syft_url_obj = SyftBoxURL(final_syftobject_url)
                                     local_path = syft_url_obj.to_local_path(datasites_path=syftbox_client.datasites)
                                     
                                     # Set permissions on the specific folder syftobject.yaml file
-                                    sp.set_file_permissions(
+                                    sp.set_permissions(
                                         local_path,
                                         read_users=discovery_read or ["public"],
                                         write_users=[email],
                                         admin_users=[email]
                                     )
                                 except Exception as e:
-                                    print(f"Warning: Could not set folder discovery permissions on {final_syftobject_path}: {e}")
+                                    print(f"Warning: Could not set folder discovery permissions on {final_syftobject_url}: {e}")
                         except Exception as e:
                             print(f"Warning: Could not set folder discovery permissions: {e}")
             
@@ -464,7 +468,7 @@ def syobj(
                     local_mock_path = syft_url_obj.to_local_path(datasites_path=syftbox_client.datasites)
                     
                     # Set permissions with owner having write/admin access
-                    sp.set_file_permissions(
+                    sp.set_permissions(
                         str(local_mock_path),
                         read_users=final_mock_read,
                         write_users=final_mock_write,
@@ -603,7 +607,7 @@ def syobj(
                                 owner_email = detect_user_email()
                                 
                                 # Set permissions on the specific syftobject.yaml file
-                                sp.set_file_permissions(
+                                sp.set_permissions(
                                     final_syftobj_path,
                                     read_users=final_discovery_read,
                                     write_users=[owner_email],
@@ -651,8 +655,6 @@ def _set_permissions_with_syft_perm(
 ) -> None:
     """Set permissions on the files using syft-perm."""
     try:
-        import syft_perm as sp
-        
         # Note: Permissions for the syftobject.yaml and mock files are already set
         # in the main syobj function after moving the files to SyftBox.
         # We only need to set permissions on private files here.
@@ -669,7 +671,7 @@ def _set_permissions_with_syft_perm(
             
             # Only set permissions if the file exists and is within SyftBox
             if Path(private_path).exists() and str(Path(private_path).resolve()).startswith(syftbox_path):
-                sp.set_file_permissions(
+                sp.set_permissions(
                     private_path,
                     read_users=private_read,
                     write_users=private_write,

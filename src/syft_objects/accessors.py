@@ -5,6 +5,7 @@ Enhanced accessor classes for syft objects - provides structured access to mock,
 from pathlib import Path
 from typing import Any, Union, BinaryIO, TextIO, List
 from .data_accessor import DataAccessor
+import syft_perm as sp
 
 
 class MockAccessor(DataAccessor):
@@ -24,10 +25,9 @@ class MockAccessor(DataAccessor):
     def get_read_permissions(self) -> List[str]:
         """Get read permissions for mock data"""
         try:
-            import syft_perm as sp
             path = self.get_path()
             if path:
-                perms = sp.get_file_permissions(path)
+                perms = sp.get_permissions(path)
                 return perms.get('read', [])
         except Exception:
             pass
@@ -37,10 +37,9 @@ class MockAccessor(DataAccessor):
     def get_write_permissions(self) -> List[str]:
         """Get write permissions for mock data"""
         try:
-            import syft_perm as sp
             path = self.get_path()
             if path:
-                perms = sp.get_file_permissions(path)
+                perms = sp.get_permissions(path)
                 return perms.get('write', [])
         except Exception:
             pass
@@ -50,10 +49,9 @@ class MockAccessor(DataAccessor):
     def get_admin_permissions(self) -> List[str]:
         """Get admin permissions for mock data"""
         try:
-            import syft_perm as sp
             path = self.get_path()
             if path:
-                perms = sp.get_file_permissions(path)
+                perms = sp.get_permissions(path)
                 return perms.get('admin', [])
         except Exception:
             pass
@@ -63,11 +61,10 @@ class MockAccessor(DataAccessor):
     def set_read_permissions(self, read: List[str]) -> None:
         """Set read permissions for mock data"""
         try:
-            import syft_perm as sp
             path = self.get_path()
             if path:
-                current = sp.get_file_permissions(path)
-                sp.set_file_permissions(
+                current = sp.get_permissions(path)
+                sp.set_permissions(
                     path,
                     read_users=read,
                     write_users=current.get('write', []),
@@ -81,11 +78,10 @@ class MockAccessor(DataAccessor):
     def set_write_permissions(self, write: List[str]) -> None:
         """Set write permissions for mock data"""
         try:
-            import syft_perm as sp
             path = self.get_path()
             if path:
-                current = sp.get_file_permissions(path)
-                sp.set_file_permissions(
+                current = sp.get_permissions(path)
+                sp.set_permissions(
                     path,
                     read_users=current.get('read', []),
                     write_users=write,
@@ -99,11 +95,10 @@ class MockAccessor(DataAccessor):
     def set_admin_permissions(self, admin: List[str]) -> None:
         """Set admin permissions for mock data"""
         try:
-            import syft_perm as sp
             path = self.get_path()
             if path:
-                current = sp.get_file_permissions(path)
-                sp.set_file_permissions(
+                current = sp.get_permissions(path)
+                sp.set_permissions(
                     path,
                     read_users=current.get('read', []),
                     write_users=current.get('write', []),
@@ -146,10 +141,9 @@ class PrivateAccessor(DataAccessor):
     def get_read_permissions(self) -> List[str]:
         """Get read permissions for private data"""
         try:
-            import syft_perm as sp
             path = self.get_path()
             if path:
-                perms = sp.get_file_permissions(path)
+                perms = sp.get_permissions(path)
                 return perms.get('read', [])
         except Exception:
             pass
@@ -159,10 +153,9 @@ class PrivateAccessor(DataAccessor):
     def get_write_permissions(self) -> List[str]:
         """Get write permissions for private data"""
         try:
-            import syft_perm as sp
             path = self.get_path()
             if path:
-                perms = sp.get_file_permissions(path)
+                perms = sp.get_permissions(path)
                 return perms.get('write', [])
         except Exception:
             pass
@@ -172,10 +165,9 @@ class PrivateAccessor(DataAccessor):
     def get_admin_permissions(self) -> List[str]:
         """Get admin permissions for private data"""
         try:
-            import syft_perm as sp
             path = self.get_path()
             if path:
-                perms = sp.get_file_permissions(path)
+                perms = sp.get_permissions(path)
                 return perms.get('admin', [])
         except Exception:
             pass
@@ -185,11 +177,10 @@ class PrivateAccessor(DataAccessor):
     def set_read_permissions(self, read: List[str]) -> None:
         """Set read permissions for private data"""
         try:
-            import syft_perm as sp
             path = self.get_path()
             if path:
-                current = sp.get_file_permissions(path)
-                sp.set_file_permissions(
+                current = sp.get_permissions(path)
+                sp.set_permissions(
                     path,
                     read_users=read,
                     write_users=current.get('write', []),
@@ -203,11 +194,10 @@ class PrivateAccessor(DataAccessor):
     def set_write_permissions(self, write: List[str]) -> None:
         """Set write permissions for private data"""
         try:
-            import syft_perm as sp
             path = self.get_path()
             if path:
-                current = sp.get_file_permissions(path)
-                sp.set_file_permissions(
+                current = sp.get_permissions(path)
+                sp.set_permissions(
                     path,
                     read_users=current.get('read', []),
                     write_users=write,
@@ -221,11 +211,10 @@ class PrivateAccessor(DataAccessor):
     def set_admin_permissions(self, admin: List[str]) -> None:
         """Set admin permissions for private data"""
         try:
-            import syft_perm as sp
             path = self.get_path()
             if path:
-                current = sp.get_file_permissions(path)
-                sp.set_file_permissions(
+                current = sp.get_permissions(path)
+                sp.set_permissions(
                     path,
                     read_users=current.get('read', []),
                     write_users=current.get('write', []),
@@ -249,7 +238,6 @@ class PrivateAccessor(DataAccessor):
             if path:
                 return f"{base_url}/editor?path={path}"
         return None
-    
 
 
 class SyftObjectConfigAccessor:
@@ -269,11 +257,10 @@ class SyftObjectConfigAccessor:
     def get_read_permissions(self) -> List[str]:
         """Get read permissions for the syftobject file (discovery permissions)"""
         try:
-            import syft_perm as sp
             path = self.get_path()
             if path:
                 # Get permissions for the specific syftobject.yaml file
-                perms = sp.get_file_permissions(path)
+                perms = sp.get_permissions(path)
                 if perms is None:
                     # Check metadata for original permissions first
                     if hasattr(self._syft_object, 'metadata') and self._syft_object.metadata:
@@ -287,7 +274,7 @@ class SyftObjectConfigAccessor:
                     else:
                         # Create permissions for this specific file with default permissions
                         owner_email = self._syft_object.get_owner_email() if hasattr(self._syft_object, 'get_owner_email') else 'unknown'
-                        sp.set_file_permissions(path, read_users=[owner_email], write_users=[owner_email], admin_users=[owner_email])
+                        sp.set_permissions(path, read_users=[owner_email], write_users=[owner_email], admin_users=[owner_email])
                         return [owner_email]
                 return perms.get('read', [])
         except Exception:
@@ -305,11 +292,10 @@ class SyftObjectConfigAccessor:
     def get_write_permissions(self) -> List[str]:
         """Get write permissions for the syftobject file (admin only)"""
         try:
-            import syft_perm as sp
             path = self.get_path()
             if path:
                 # Get permissions for the specific syftobject.yaml file
-                perms = sp.get_file_permissions(path)
+                perms = sp.get_permissions(path)
                 return perms.get('write', [])
         except Exception:
             pass
@@ -319,11 +305,10 @@ class SyftObjectConfigAccessor:
     def get_admin_permissions(self) -> List[str]:
         """Get admin permissions for the syftobject file"""
         try:
-            import syft_perm as sp
             path = self.get_path()
             if path:
                 # Get permissions for the specific syftobject.yaml file
-                perms = sp.get_file_permissions(path)
+                perms = sp.get_permissions(path)
                 return perms.get('admin', [])
         except Exception:
             pass
@@ -337,22 +322,21 @@ class SyftObjectConfigAccessor:
     def set_read_permissions(self, read: List[str]) -> None:
         """Set discovery permissions for the syftobject file"""
         try:
-            import syft_perm as sp
             path = self.get_path()
             if path:
                 # Set permissions on the specific syftobject.yaml file
-                current = sp.get_file_permissions(path)
+                current = sp.get_permissions(path)
                 if current is None:
                     # No permissions for this file exist - create with sensible defaults
                     owner_email = self._syft_object.get_owner_email() if hasattr(self._syft_object, 'get_owner_email') else 'unknown'
-                    sp.set_file_permissions(
+                    sp.set_permissions(
                         path,
                         read_users=read,
                         write_users=[owner_email],
                         admin_users=[owner_email]
                     )
                 else:
-                    sp.set_file_permissions(
+                    sp.set_permissions(
                         path,
                         read_users=read,
                         write_users=current.get('write', []),
@@ -366,12 +350,11 @@ class SyftObjectConfigAccessor:
     def set_write_permissions(self, write: List[str]) -> None:
         """Set write permissions for the syftobject file"""
         try:
-            import syft_perm as sp
             path = self.get_path()
             if path:
                 # Set permissions on the specific syftobject.yaml file
-                current = sp.get_file_permissions(path)
-                sp.set_file_permissions(
+                current = sp.get_permissions(path)
+                sp.set_permissions(
                     path,
                     read_users=current.get('read', []),
                     write_users=write,
@@ -385,12 +368,11 @@ class SyftObjectConfigAccessor:
     def set_admin_permissions(self, admin: List[str]) -> None:
         """Set admin permissions for the syftobject file"""
         try:
-            import syft_perm as sp
             path = self.get_path()
             if path:
                 # Set permissions on the specific syftobject.yaml file
-                current = sp.get_file_permissions(path)
-                sp.set_file_permissions(
+                current = sp.get_permissions(path)
+                sp.set_permissions(
                     path,
                     read_users=current.get('read', []),
                     write_users=current.get('write', []),
