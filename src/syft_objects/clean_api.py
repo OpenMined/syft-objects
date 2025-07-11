@@ -271,7 +271,7 @@ class CleanSyftObject:
         # Use the syftobject_config accessor from accessors.py
         from .accessors import SyftObjectConfigAccessor
         accessor = SyftObjectConfigAccessor(self._CleanSyftObject__obj)
-        return accessor.get_read_permissions()
+        return accessor.get_discovery_permissions()
     
     def get_urls(self) -> dict:
         """Get all URLs for the object"""

@@ -181,7 +181,8 @@ def syobj(
         
         # Generate folder URLs (with trailing /)
         private_url = f"syft://{email}/private/objects/{folder_name}/"
-        mock_url = f"syft://{email}/public/objects/{folder_name}/" if any(x in ("public", "*") for x in (mock_read or ["public"])) else f"syft://{email}/private/objects/{folder_name}/"
+        # Mock should default to public directory
+        mock_url = f"syft://{email}/public/objects/{folder_name}/"
         
         # Move folders to SyftBox locations
         # Mock folders are ALWAYS moved to SyftBox
@@ -189,6 +190,21 @@ def syobj(
         if syftbox_client:
             # Always move mock folder to SyftBox
             move_object_to_syftbox_location(mock_source_path, mock_url, syftbox_client)
+            
+            # Set permissions on the mock folder itself
+            if create_syftbox_permissions:
+                try:
+                    import syft_perm as sp
+                    mock_folder_path = parse_syft_url(mock_url)
+                    if mock_folder_path.exists():
+                        sp.set_file_permissions(
+                            str(mock_folder_path),
+                            read=mock_read or [],
+                            write=mock_write or [],
+                            admin=[email]
+                        )
+                except Exception as e:
+                    print(f"Warning: Could not set permissions on mock folder {mock_url}: {e}")
             
             # Only move private folder if move_files_to_syftbox=True
             if move_files_to_syftbox:
@@ -198,6 +214,15 @@ def syobj(
                 clean_metadata["_folder_paths"] = {
                     "private": str(private_source_path)
                 }
+        
+        # Store original permissions in metadata
+        clean_metadata['_original_permissions'] = {
+            'discovery_read': discovery_read,
+            'mock_read': mock_read,
+            'mock_write': mock_write,
+            'private_read': private_read,
+            'private_write': private_write
+        }
         
         # Create SyftObject with folder type
         syftobj_filename = f"{folder_name}.syftobject.yaml"
@@ -234,11 +259,11 @@ def syobj(
             # Move yaml to SyftBox - ALWAYS move to SyftBox
             final_folder_syftobj_path = save_path
             if syftbox_client:
-                if move_file_to_syftbox_location(save_path, final_syftobject_path, syftbox_client):
-                    final_folder_syftobj_path = final_syftobject_path
+                if move_file_to_syftbox_location(save_path, final_syftobject_url, syftbox_client):
+                    final_folder_syftobj_path = final_syftobject_url
                     clean_metadata["_file_operations"] = {
                         "syftobject_yaml_path": str(final_folder_syftobj_path),
-                        "files_moved_to_syftbox": [f"{save_path} → {final_syftobject_path}"]
+                        "files_moved_to_syftbox": [f"{save_path} → {final_syftobject_url}"]
                     }
                     folder_obj.metadata.update(clean_metadata)
                     

@@ -275,6 +275,12 @@ class SyftObjectConfigAccessor:
                 # Get permissions for the specific syftobject.yaml file
                 perms = sp.get_file_permissions(path)
                 if perms is None:
+                    # Check metadata for original permissions first
+                    if hasattr(self._syft_object, 'metadata') and self._syft_object.metadata:
+                        original_perms = self._syft_object.metadata.get('_original_permissions', {})
+                        if 'discovery_read' in original_perms:
+                            return original_perms['discovery_read'] or []
+                    
                     # No permissions for this specific file - check if it's in a public directory
                     if '/public/' in path:
                         return ['*']  # Public directories are readable by everyone
@@ -286,7 +292,14 @@ class SyftObjectConfigAccessor:
                 return perms.get('read', [])
         except Exception:
             pass
-        # Fallback to old attribute-based permissions
+        
+        # Fallback to metadata if available
+        if hasattr(self._syft_object, 'metadata') and self._syft_object.metadata:
+            original_perms = self._syft_object.metadata.get('_original_permissions', {})
+            if 'discovery_read' in original_perms:
+                return original_perms['discovery_read'] or []
+        
+        # Final fallback to old attribute-based permissions
         return getattr(self._syft_object, 'syftobject_permissions', [])
     
     def get_write_permissions(self) -> List[str]:
@@ -316,6 +329,10 @@ class SyftObjectConfigAccessor:
             pass
         # Fallback to metadata
         return self._syft_object.metadata.get("admin_permissions", [])
+    
+    def get_discovery_permissions(self) -> List[str]:
+        """Get discovery permissions (alias for get_read_permissions)"""
+        return self.get_read_permissions()
     
     def set_read_permissions(self, read: List[str]) -> None:
         """Set discovery permissions for the syftobject file"""
