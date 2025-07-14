@@ -76,9 +76,10 @@ def check_syftbox_status():
 
         # Check 1: Verify SyftBox filesystem is accessible
         try:
+            # Try to access email first to check if client properties are accessible
+            _syftbox_status['user_email'] = syftbox_client.email
             datasites = list(map(lambda x: x.name, syftbox_client.datasites.iterdir()))
             _syftbox_status['client_connected'] = True
-            _syftbox_status['user_email'] = syftbox_client.email
         except Exception as e:
             _syftbox_status['error'] = f"SyftBox filesystem not accessible: {e}"
             return
@@ -160,7 +161,7 @@ def get_syft_objects_url(endpoint=""):
     port = get_syft_objects_port()
     base_url = f"http://localhost:{port}"
     if endpoint:
-        return f"{base_url}/{endpoint.lstrip('/')}"
+        return f"{base_url}/{endpoint.lstrip('/')}/"
     return base_url
 
 

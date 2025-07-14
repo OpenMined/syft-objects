@@ -1,271 +1,167 @@
-# syft-objects models - Core SyftObject class and related models
+"""
+Core models for SyftObjects.
+"""
 
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Dict, Optional
-from uuid import UUID, uuid4
+import os
 import yaml
+from pathlib import Path
+from typing import Optional, List, Dict, Any, Union
+from datetime import datetime
+from pydantic import BaseModel, Field
+import syft_perm as sp
 
-from pydantic import BaseModel, Field, model_validator
+def utcnow() -> datetime:
+    """Get current UTC datetime"""
+    return datetime.utcnow()
 
-from .client import get_syftbox_client, extract_local_path_from_syft_url
-from .permissions import set_file_permissions_wrapper
-from .display import create_html_display
-from .data_accessor import DataAccessor
-
-
-def utcnow():
-    """Get current UTC timestamp"""
-    return datetime.now(tz=timezone.utc)
-
+def detect_user_email() -> str:
+    """Auto-detect the user's email from various sources"""
+    email = None
+    
+    # Try multiple ways to detect logged-in email
+    email = os.getenv("SYFTBOX_EMAIL")
+    
+    if not email:
+        # Try to get from SyftBox client config
+        config_path = os.path.expanduser("~/.syftbox/config.json")
+        if os.path.exists(config_path):
+            try:
+                import json
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                    email = config.get("email")
+            except:
+                pass
+    
+    # Default fallback
+    if not email:
+        email = "unknown@syftbox.local"
+    
+    return email
 
 class SyftObject(BaseModel):
     """
-    A distributed object with mock/real pattern for file discovery and addressing
+    Core SyftObject model with file-backed storage and permission management.
     """
-    # Mandatory metadata
-    uid: UUID = Field(default_factory=uuid4, description="Unique identifier for the object")
-    private_url: str = Field(description="Syft:// path to the private object", alias="private")
-    mock_url: str = Field(description="Syft:// path to the public/mock object", alias="mock")
-    syftobject: str = Field(description="Syft:// path to the .syftobject.yaml metadata file")
-    created_at: datetime = Field(default_factory=utcnow, description="Creation timestamp")
     
-    # Permission metadata - who can access what (read/write granularity)
-    syftobject_permissions: list[str] = Field(
-        default_factory=lambda: ["public"], 
-        description="Who can read the .syftobject.yaml file (know the object exists)"
-    )
-    mock_permissions: list[str] = Field(
-        default_factory=lambda: ["public"], 
-        description="Who can read the mock/fake version of the object"
-    )
-    mock_write_permissions: list[str] = Field(
-        default_factory=list,
-        description="Who can write/update the mock/fake version of the object"
-    )
-    private_permissions: list[str] = Field(
-        default_factory=list, 
-        description="Who can read the private/real data"
-    )
-    private_write_permissions: list[str] = Field(
-        default_factory=list,
-        description="Who can write/update the private/real data"
-    )
+    # === Core Fields ===
+    uid: str  # Unique identifier
+    name: str
+    description: Optional[str] = None
+    object_type: str = "file"  # "file" or "folder"
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
     
-    # Recommended metadata
-    name: Optional[str] = Field(None, description="Human-readable name for the object")
-    description: Optional[str] = Field(None, description="Description of the object")
-    updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
+    # === URLs ===
+    mock: Optional[str] = None  # syft:// URL for mock data
+    private: Optional[str] = None  # syft:// URL for private data
+    syftobject: Optional[str] = None  # syft:// URL for .syftobject.yaml
     
-    # Arbitrary metadata
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Arbitrary metadata")
+    # === Metadata ===
+    metadata: Dict[str, Any] = Field(default_factory=dict)
     
-    # Data accessor properties
-    @property
-    def private(self) -> DataAccessor:
-        """Get data accessor for private data with .obj, .file, .path, .url properties"""
-        return DataAccessor(self.private_url, self)
-    
-    @property
-    def mock(self) -> DataAccessor:
-        """Get data accessor for mock data with .obj, .file, .path, .url properties"""
-        return DataAccessor(self.mock_url, self)
-    
-    # Convenience properties for backward compatibility
-    @property
-    def private_path(self) -> str:
-        """Get the full local file path for the private object"""
-        return self._get_local_file_path(self.private_url)
-    
-    @property
-    def mock_path(self) -> str:
-        """Get the full local file path for the mock object"""
-        return self._get_local_file_path(self.mock_url)
-    
-    @property
-    def syftobject_path(self) -> str:
-        """Get the full local file path for the .syftobject.yaml file"""
-        # First try to get path from the syftobject field
-        if hasattr(self, 'syftobject') and self.syftobject:
-            return self._get_local_file_path(self.syftobject)
-        
-        # Fall back to metadata if available
-        file_ops = self.metadata.get("_file_operations", {})
-        syftobject_yaml_path = file_ops.get("syftobject_yaml_path")
-        if syftobject_yaml_path:
-            return syftobject_yaml_path
-        return ""
-    
-    @property
-    def file_type(self) -> str:
-        """Get the file extension from mock/private URLs"""
-        try:
-            # Try to extract file extension from private URL first, then mock URL
-            for url in [self.private_url, self.mock_url]:
-                if not url:
-                    continue
-                
-                # Get just the filename from the URL
-                filename = url.split("/")[-1]
-                
-                # Check if filename has an extension (dot not at start)
-                if "." in filename and not filename.startswith("."):
-                    parts = filename.split(".")
-                    if len(parts) > 1 and parts[-1]:  # Ensure there's an actual extension
-                        return f".{parts[-1].lower()}"
-            return ""
-        except:
-            return ""
-    
-    @model_validator(mode='after')
-    def validate_file_extensions(self):
-        """Validate that mock and private files have matching extensions"""
-        def extract_extension(url: str) -> str:
-            """Extract file extension from a URL filename"""
-            if not url:
-                return ""
-            
-            # Get just the filename from the URL
-            filename = url.split("/")[-1]
-            
-            # Check if filename has an extension (dot not at start)
-            if "." in filename and not filename.startswith("."):
-                parts = filename.split(".")
-                if len(parts) > 1 and parts[-1]:  # Ensure there's an actual extension
-                    return parts[-1].lower()
-            return ""
-        
-        mock_ext = extract_extension(self.mock_url)
-        private_ext = extract_extension(self.private_url)
-        
-        # Only validate if BOTH files have extensions - they must match
-        if mock_ext and private_ext and mock_ext != private_ext:
-            raise ValueError(
-                f"Mock and private files must have matching extensions. "
-                f"Mock file has '.{mock_ext}' but private file has '.{private_ext}'. "
-                f"Mock: {self.mock_url}, Private: {self.private_url}"
-            )
-        
-        return self
-    
-    class Config:
-        arbitrary_types_allowed = True
-        populate_by_name = True  # Allow using both field name and alias
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            UUID: lambda v: str(v)
-        }
-    
+    # === Internal Fields ===
+    _yaml_path: Optional[Path] = None  # Path to .syftobject.yaml file
+
     def _repr_html_(self) -> str:
         """Rich HTML representation for Jupyter notebooks"""
+        from .display import create_html_display
         return create_html_display(self)
     
-    def _check_file_exists(self, syft_url: str) -> bool:
-        """Check if a file exists locally (for display purposes)"""
+    @property
+    def mock_path(self) -> Optional[str]:
+        """Get local file path for mock data"""
+        if not self.mock:
+            return None
         try:
-            # Check if this is a "keep_files_in_place" object
-            if self.metadata.get("_keep_files_in_place", False):
-                original_paths = self.metadata.get("_original_file_paths", {})
-                
-                # For URLs like syft://email/original/filename, check if we have original path stored
-                if "/original/" in syft_url:
-                    filename = syft_url.split("/")[-1]
-                    
-                    # Check if this matches a stored original path
-                    for file_type, original_path in original_paths.items():
-                        if Path(original_path).name == filename:
-                            return Path(original_path).exists()
-                    
-                    # Fallback: check if the URL matches our object's private/mock URLs
-                    if syft_url == self.private_url and "private" in original_paths:
-                        return Path(original_paths["private"]).exists()
-                    elif syft_url == self.mock_url and "mock" in original_paths:
-                        return Path(original_paths["mock"]).exists()
-            
-            # Standard SyftBox URL resolution
-            syftbox_client = get_syftbox_client()
-            if syftbox_client:
-                local_path = extract_local_path_from_syft_url(syft_url)
-                if local_path:
-                    return local_path.exists()
-            
-            # Fallback: check if it's in tmp directory
-            from pathlib import Path
-            filename = syft_url.split("/")[-1]
-            tmp_path = Path("tmp") / filename
-            return tmp_path.exists()
+            from .client import SyftBoxURL, SYFTBOX_AVAILABLE, get_syftbox_client
+            if SYFTBOX_AVAILABLE:
+                client = get_syftbox_client()
+                if client:
+                    syft_url_obj = SyftBoxURL(self.mock)
+                    return str(syft_url_obj.to_local_path(datasites_path=client.datasites))
         except Exception:
-            return False
+            pass
+        return None
     
-    def _get_local_file_path(self, syft_url: str) -> str:
-        """Get the local file path for a syft:// URL"""
+    @property
+    def private_path(self) -> Optional[str]:
+        """Get local file path for private data"""
+        if not self.private:
+            return None
         try:
-            # Check if this is a "keep_files_in_place" object
-            if self.metadata.get("_keep_files_in_place", False):
-                original_paths = self.metadata.get("_original_file_paths", {})
-                
-                # For URLs like syft://email/original/filename, check if we have original path stored
-                if "/original/" in syft_url:
-                    filename = syft_url.split("/")[-1]
-                    
-                    # Check if this matches a stored original path
-                    for file_type, original_path in original_paths.items():
-                        if Path(original_path).name == filename:
-                            if Path(original_path).exists():
-                                return str(Path(original_path).absolute())
-                    
-                    # Fallback: check if the URL matches our object's private/mock URLs
-                    if syft_url == self.private_url and "private" in original_paths:
-                        original_path = original_paths["private"]
-                        if Path(original_path).exists():
-                            return str(Path(original_path).absolute())
-                    elif syft_url == self.mock_url and "mock" in original_paths:
-                        original_path = original_paths["mock"]
-                        if Path(original_path).exists():
-                            return str(Path(original_path).absolute())
-            
-            # Standard SyftBox URL resolution
-            syftbox_client = get_syftbox_client()
-            if syftbox_client:
-                local_path = extract_local_path_from_syft_url(syft_url)
-                if local_path and local_path.exists():
-                    return str(local_path.absolute())
-            
-            # Fallback: check if it's in tmp directory
-            from pathlib import Path
-            filename = syft_url.split("/")[-1]
-            tmp_path = Path("tmp") / filename
-            if tmp_path.exists():
-                return str(tmp_path.absolute())
-            
-            return ""
+            from .client import SyftBoxURL, SYFTBOX_AVAILABLE, get_syftbox_client
+            if SYFTBOX_AVAILABLE:
+                client = get_syftbox_client()
+                if client:
+                    syft_url_obj = SyftBoxURL(self.private)
+                    return str(syft_url_obj.to_local_path(datasites_path=client.datasites))
         except Exception:
-            return ""
+            pass
+        return None
     
-    def _get_file_preview(self, file_path: str, max_chars: int = 1000) -> str:
-        """Get a preview of file content (first N characters)"""
+    @property
+    def syftobject_path(self) -> Optional[str]:
+        """Get local file path for .syftobject.yaml"""
+        if self._yaml_path:
+            return str(self._yaml_path)
+        if not self.syftobject:
+            return None
         try:
-            from pathlib import Path
-            path = Path(file_path)
-            
-            if not path.exists():
-                return f"File not found: {file_path}"
-            
-            # Try to read as text
-            try:
-                content = path.read_text(encoding='utf-8')
-                if len(content) <= max_chars:
-                    return content
-                else:
-                    return content[:max_chars] + f"\n\n... (truncated, showing first {max_chars} characters of {len(content)} total)"
-            except UnicodeDecodeError:
-                # If it's a binary file, show file info instead
-                size = path.stat().st_size
-                return f"Binary file: {path.name}\nSize: {size} bytes\nPath: {file_path}\n\n(Binary files cannot be previewed as text)"
-        except Exception as e:
-            return f"Error reading file: {str(e)}"
-
-
+            from .client import SyftBoxURL, SYFTBOX_AVAILABLE, get_syftbox_client
+            if SYFTBOX_AVAILABLE:
+                client = get_syftbox_client()
+                if client:
+                    syft_url_obj = SyftBoxURL(self.syftobject)
+                    return str(syft_url_obj.to_local_path(datasites_path=client.datasites))
+        except Exception:
+            pass
+        return None
+    
+    @classmethod
+    def from_yaml(cls, file_path: str | Path) -> 'SyftObject':
+        """Load a SyftObject from a yaml file with file-backed storage"""
+        file_path = Path(file_path)
+        
+        # Validate that the file has the correct extension
+        if not file_path.name.endswith('.syftobject.yaml'):
+            raise ValueError(f"File must have .syftobject.yaml extension, got: {file_path.name}")
+        
+        with open(file_path, 'r') as f:
+            data = yaml.safe_load(f)
+        
+        # Remove old permission fields for backward compatibility
+        permission_fields = [
+            'syftobject_permissions', 'mock_permissions', 'mock_write_permissions',
+            'private_permissions', 'private_write_permissions'
+        ]
+        for field in permission_fields:
+            data.pop(field, None)
+        
+        # Add the yaml path to the data
+        data['_yaml_path'] = file_path
+        
+        return cls(**data)
+    
+    def refresh(self) -> None:
+        """Refresh attributes from disk"""
+        if not self._yaml_path or not self._yaml_path.exists():
+            return
+        
+        with open(self._yaml_path, 'r') as f:
+            data = yaml.safe_load(f)
+        
+        # Update all attributes
+        for key, value in data.items():
+            if hasattr(self, key) and not key.startswith('_'):
+                # Use object.__setattr__ to avoid triggering sync
+                object.__setattr__(self, key, value)
+    
+    @property
+    def is_folder(self) -> bool:
+        """Check if this object represents a folder."""
+        return self.object_type == "folder"
+    
     def save_yaml(self, file_path: str | Path, create_syftbox_permissions: bool = True) -> None:
         """Save the syft object to a YAML file with .syftobject.yaml extension and create SyftBox permission files"""
         file_path = Path(file_path)
@@ -282,68 +178,86 @@ class SyftObject(BaseModel):
                 # Add .syftobject.yaml to existing extension
                 file_path = Path(str(file_path) + '.syftobject.yaml')
         
-        # Ensure directory exists
-        file_path.parent.mkdir(parents=True, exist_ok=True)
+        # Update the yaml path
+        self._yaml_path = file_path
         
-        # Convert to dict and handle datetime/UUID serialization
-        data = self.model_dump(mode='json')
-        
-        # Write to YAML file
-        with open(file_path, 'w') as f:
-            yaml.dump(data, f, default_flow_style=False, sort_keys=True, indent=2)
+        # Sync to disk
+        self._sync_to_disk()
         
         # Create SyftBox permission files if requested
         if create_syftbox_permissions:
             self._create_syftbox_permissions(file_path)
-
-    @classmethod
-    def load_yaml(cls, file_path: str | Path) -> 'SyftObject':
-        """Load a syft object from a .syftobject.yaml file"""
-        file_path = Path(file_path)
+    
+    def _sync_to_disk(self) -> None:
+        """Sync object to disk"""
+        if not self._yaml_path:
+            return
         
-        # Validate that the file has the correct extension
-        if not file_path.name.endswith('.syftobject.yaml'):
-            raise ValueError(f"File must have .syftobject.yaml extension, got: {file_path.name}")
+        # Create parent directory if it doesn't exist
+        self._yaml_path.parent.mkdir(parents=True, exist_ok=True)
         
-        with open(file_path, 'r') as f:
-            data = yaml.safe_load(f)
-        return cls(**data)
-
-    def _create_syftbox_permissions(self, syftobject_file_path: Path) -> None:
-        """Create SyftBox permission files for the syft object"""
-        # Create permissions for the .syftobject.yaml file itself (discovery)
-        set_file_permissions_wrapper(str(syftobject_file_path), self.syftobject_permissions)
+        # Get dict representation excluding private fields
+        data = self.dict(exclude={'_yaml_path'})
         
-        # Create permissions for mock and private files
-        set_file_permissions_wrapper(self.mock_url, self.mock_permissions, self.mock_write_permissions)
-        set_file_permissions_wrapper(self.private_url, self.private_permissions, self.private_write_permissions)
-
-    def set_permissions(self, file_type: str, read: list[str] = None, write: list[str] = None, syftobject_file_path: str | Path = None) -> None:
-        """
-        Update permissions for a file in this object (mock, private, or syftobject).
-        Uses the minimal permission utilities from permissions.py.
-        """
-        if file_type == "mock":
-            if read is not None:
-                self.mock_permissions = read
-            if write is not None:
-                self.mock_write_permissions = write
-            # Update syft.pub.yaml if possible
-            set_file_permissions_wrapper(self.mock_url, self.mock_permissions, self.mock_write_permissions)
-        elif file_type == "private":
-            if read is not None:
-                self.private_permissions = read
-            if write is not None:
-                self.private_write_permissions = write
-            # Update syft.pub.yaml if possible
-            set_file_permissions_wrapper(self.private_url, self.private_permissions, self.private_write_permissions)
-        elif file_type == "syftobject":
-            if read is not None:
-                self.syftobject_permissions = read
-            # Discovery files are read-only, so use syftobject_path or provided path
-            if syftobject_file_path:
-                set_file_permissions_wrapper(str(syftobject_file_path), self.syftobject_permissions)
-            elif self.syftobject:
-                set_file_permissions_wrapper(self.syftobject, self.syftobject_permissions)
-        else:
-            raise ValueError(f"Invalid file_type: {file_type}. Must be 'mock', 'private', or 'syftobject'.") 
+        # Write to file
+        with open(self._yaml_path, 'w') as f:
+            yaml.dump(data, f, default_flow_style=False, sort_keys=False, indent=2)
+    
+    def _create_syftbox_permissions(self, file_path: Path) -> None:
+        """Create SyftBox permission files for this object"""
+        try:
+            # Get owner email from metadata or detect from environment
+            owner_email = self.metadata.get('email') or detect_user_email()
+            
+            # Set permissions on the syftobject.yaml file
+            sp.set_file_permissions(
+                str(file_path),
+                read_users=self.metadata.get('_original_permissions', {}).get('discovery_read', ['public']),
+                write_users=[owner_email],
+                admin_users=[owner_email]
+            )
+            
+            # Set permissions on mock file if it exists
+            mock_path = self.mock_path
+            if mock_path and Path(mock_path).exists():
+                sp.set_file_permissions(
+                    mock_path,
+                    read_users=self.metadata.get('_original_permissions', {}).get('mock_read', ['public']),
+                    write_users=self.metadata.get('_original_permissions', {}).get('mock_write', [owner_email]),
+                    admin_users=[owner_email]
+                )
+            
+            # Set permissions on private file if it exists
+            private_path = self.private_path
+            if private_path and Path(private_path).exists():
+                sp.set_file_permissions(
+                    private_path,
+                    read_users=self.metadata.get('_original_permissions', {}).get('private_read', [owner_email]),
+                    write_users=self.metadata.get('_original_permissions', {}).get('private_write', [owner_email]),
+                    admin_users=[owner_email]
+                )
+        except Exception as e:
+            print(f"Warning: Could not create SyftBox permission files: {e}")
+    
+    def delete(self) -> bool:
+        """Delete this object and its associated files"""
+        try:
+            # Delete mock file
+            mock_path = self.mock_path
+            if mock_path and Path(mock_path).exists():
+                Path(mock_path).unlink()
+            
+            # Delete private file
+            private_path = self.private_path
+            if private_path and Path(private_path).exists():
+                Path(private_path).unlink()
+            
+            # Delete syftobject.yaml file
+            syftobj_path = self.syftobject_path
+            if syftobj_path and Path(syftobj_path).exists():
+                Path(syftobj_path).unlink()
+            
+            return True
+        except Exception as e:
+            print(f"Warning: Error deleting object: {e}")
+            return False

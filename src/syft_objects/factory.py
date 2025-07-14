@@ -3,6 +3,8 @@
 import os
 import hashlib
 import time
+import shutil
+import yaml
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, List
@@ -11,11 +13,17 @@ from uuid import uuid4
 from .models import SyftObject, utcnow
 from .client import get_syftbox_client
 from .file_ops import (
+    move_object_to_syftbox_location,
+    copy_object_to_syftbox_location,
     move_file_to_syftbox_location, 
     copy_file_to_syftbox_location,
     generate_syftbox_urls,
     generate_syftobject_url
 )
+from ._validation import validate_mock_real_compatibility, MockRealValidationError
+from .config import config
+from .mock_analyzer import suggest_mock_note
+import syft_perm as sp
 
 
 def detect_user_email():
@@ -69,24 +77,26 @@ def syobj(
     private_contents: Optional[str] = None,
     mock_file: Optional[str] = None,
     private_file: Optional[str] = None,
+    mock_folder: Optional[str] = None,
+    private_folder: Optional[str] = None,
     discovery_read: Optional[List[str]] = None,
     mock_read: Optional[List[str]] = None,
     mock_write: Optional[List[str]] = None,
     private_read: Optional[List[str]] = None,
     private_write: Optional[List[str]] = None,
-    keep_files_in_place: bool = False,  # NEW: Don't copy files to SyftBox
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None,
+    skip_validation: bool = False,
+    mock_note: Optional[str] = None,
+    suggest_mock_notes: Optional[bool] = None
 ) -> SyftObject:
     """
     🔐 **Share files with explicit mock vs private control** 
     
     Create SyftObjects with fine-grained permission control.
-    
-    Args:
-        keep_files_in_place: If True, files stay in original locations instead of being copied to SyftBox.
-                           Note: This limits cross-user sharing and full permission system functionality.
     """
     # === SETUP ===
+    from pathlib import Path
+    
     if metadata is None:
         metadata = {}
     
@@ -96,21 +106,17 @@ def syobj(
     email = metadata.get("email")
     create_syftbox_permissions = metadata.get("create_syftbox_permissions", True)
     auto_save = metadata.get("auto_save", True)
-    move_files_to_syftbox = metadata.get("move_files_to_syftbox", True)
-    
-    # Override move_files_to_syftbox if keep_files_in_place is True
-    if keep_files_in_place:
-        move_files_to_syftbox = False
-        create_syftbox_permissions = False  # Can't create SyftBox permissions for files not in SyftBox
+    move_files_to_syftbox = metadata.get("move_files_to_syftbox", False)
     
     # Create clean metadata dict for the SyftObject (exclude system settings)
     system_keys = {"description", "save_to", "email", "create_syftbox_permissions", "auto_save", "move_files_to_syftbox"}
     clean_metadata = {k: v for k, v in metadata.items() if k not in system_keys}
     
-    # Store original file paths if keeping files in place (will be set by inference logic if needed)
-    if keep_files_in_place and "_keep_files_in_place" not in clean_metadata:
-        clean_metadata["_keep_files_in_place"] = True
-        clean_metadata["_original_file_paths"] = {}
+    # === DETECT FOLDER OBJECT ===
+    is_folder = bool(mock_folder or private_folder)
+    
+    if is_folder and (mock_contents or private_contents or mock_file or private_file):
+        raise ValueError("Cannot mix folder and file parameters")
     
     # === CREATE TEMP DIRECTORY ===
     tmp_dir = Path("tmp")
@@ -123,23 +129,190 @@ def syobj(
     if email is None:
         email = detect_user_email()
     
-    # === INFER keep_files_in_place IF NOT EXPLICITLY SET ===
-    # If keep_files_in_place is still False (default), infer from private permissions
-    if not keep_files_in_place:
-        # Check if both private_read and private_write are exactly [email] or []
-        # This indicates single-user usage, so keeping files in place makes sense
-        private_read_is_simple = private_read in ([email], []) if private_read is not None else True
-        private_write_is_simple = private_write in ([email], []) if private_write is not None else True
+    # === HANDLE FOLDER OBJECTS ===
+    if is_folder:
+        # Validate folders exist
+        if private_folder and not Path(private_folder).is_dir():
+            raise ValueError(f"Private folder not found: {private_folder}")
+        if mock_folder and not Path(mock_folder).is_dir():
+            raise ValueError(f"Mock folder not found: {mock_folder}")
         
-        # If both are simple (user-only or empty), keep files in place
-        if private_read_is_simple and private_write_is_simple:
-            keep_files_in_place = True
-            move_files_to_syftbox = False
-            create_syftbox_permissions = False
+        # Generate folder names
+        uid = uuid4()
+        uid_short = str(uid)[:8]
+        if name is None:
+            name = Path(private_folder or mock_folder).name
+        
+        # Validate folder name
+        invalid_chars = ['/', '\\', '?', '*', ':', '|', '"', '<', '>', '\0']
+        found_invalid = [char for char in invalid_chars if char in name]
+        if found_invalid:
+            raise ValueError(
+                f"Object name contains invalid characters: {', '.join(repr(char) for char in found_invalid)}. "
+                f"Please remove these characters from the name: '{name}'"
+            )
+        
+        folder_name = f"{name.lower().replace(' ', '_')}_{uid_short}"
+        
+        # Copy folders to tmp location
+        if private_folder:
+            private_tmp = tmp_dir / f"{folder_name}_private"
+            if private_tmp.exists():
+                shutil.rmtree(private_tmp)
+            shutil.copytree(private_folder, private_tmp)
+            private_source_path = private_tmp
+        else:
+            # Create empty private folder
+            private_tmp = tmp_dir / f"{folder_name}_private"
+            private_tmp.mkdir(exist_ok=True)
+            private_source_path = private_tmp
+        
+        if mock_folder:
+            mock_tmp = tmp_dir / f"{folder_name}_mock"
+            if mock_tmp.exists():
+                shutil.rmtree(mock_tmp)
+            shutil.copytree(mock_folder, mock_tmp)
+            mock_source_path = mock_tmp
+        else:
+            # Auto-generate mock from private
+            mock_tmp = tmp_dir / f"{folder_name}_mock"
+            mock_tmp.mkdir(exist_ok=True)
+            _create_mock_folder_structure(private_source_path, mock_tmp)
+            mock_source_path = mock_tmp
+        
+        # Generate folder URLs (with trailing /)
+        private_url = f"syft://{email}/private/objects/{folder_name}/"
+        # Mock should default to public directory
+        mock_url = f"syft://{email}/public/objects/{folder_name}/"
+        
+        # Move folders to SyftBox locations
+        # Mock folders are ALWAYS moved to SyftBox
+        # Private folders are only moved if move_files_to_syftbox=True
+        if syftbox_client:
+            # Always move mock folder to SyftBox
+            move_object_to_syftbox_location(mock_source_path, mock_url, syftbox_client)
             
-            # Update metadata to reflect inferred keep_files_in_place
-            clean_metadata["_keep_files_in_place"] = True
-            clean_metadata["_original_file_paths"] = {}
+            # Set permissions on the mock folder itself
+            if create_syftbox_permissions:
+                try:
+                    from .client import SyftBoxURL, SYFTBOX_AVAILABLE
+                    if SYFTBOX_AVAILABLE:
+                        syft_url_obj = SyftBoxURL(mock_url)
+                        mock_folder_path = syft_url_obj.to_local_path(datasites_path=syftbox_client.datasites)
+                        from pathlib import Path
+                        if Path(mock_folder_path).exists():
+                            import syft_perm as sp
+                            sp.set_file_permissions(
+                                str(mock_folder_path),
+                                read_users=mock_read or [],
+                                write_users=mock_write or [],
+                                admin_users=[email]
+                            )
+                except Exception as e:
+                    print(f"Warning: Could not set permissions on mock folder {mock_url}: {e}")
+            
+            # Only move private folder if move_files_to_syftbox=True
+            if move_files_to_syftbox:
+                move_object_to_syftbox_location(private_source_path, private_url, syftbox_client)
+            else:
+                # Store private folder path in metadata when not moving
+                clean_metadata["_folder_paths"] = {
+                    "private": str(private_source_path)
+                }
+        
+        # Store original permissions in metadata
+        clean_metadata['_original_permissions'] = {
+            'discovery_read': discovery_read,
+            'mock_read': mock_read,
+            'mock_write': mock_write,
+            'private_read': private_read,
+            'private_write': private_write
+        }
+        
+        # Create SyftObject with folder type
+        syftobj_filename = f"{folder_name}.syftobject.yaml"
+        final_syftobject_url = generate_syftobject_url(email, syftobj_filename, syftbox_client)
+        
+        # Create folder SyftObject data
+        folder_obj_data = {
+            "uid": str(uid),
+            "private": private_url,
+            "mock": mock_url,
+            "syftobject": final_syftobject_url,
+            "name": name,
+            "object_type": "folder",  # KEY: Mark as folder
+            "description": description or f"Folder object: {name}",
+            "created_at": utcnow(),
+            "updated_at": utcnow(),
+            "metadata": clean_metadata
+        }
+        
+        # Save folder yaml for file-backed storage
+        if auto_save:
+            save_path = tmp_dir / syftobj_filename
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+            import yaml
+            # Convert data to JSON-serializable format (handle UUID, datetime)
+            temp_obj = SyftObject(**folder_obj_data)
+            json_data = temp_obj.model_dump(mode='json')
+            with open(save_path, 'w') as f:
+                yaml.dump(json_data, f, default_flow_style=False, sort_keys=True, indent=2)
+            
+            # Create file-backed object
+            folder_obj = SyftObject.from_yaml(save_path)
+            
+            # Move yaml to SyftBox - ALWAYS move to SyftBox
+            final_folder_syftobj_path = save_path
+            if syftbox_client:
+                if move_file_to_syftbox_location(save_path, final_syftobject_url, syftbox_client):
+                    final_folder_syftobj_path = final_syftobject_url
+                    clean_metadata["_file_operations"] = {
+                        "syftobject_yaml_path": str(final_folder_syftobj_path),
+                        "files_moved_to_syftbox": [f"{save_path} → {final_syftobject_url}"]
+                    }
+                    folder_obj.metadata.update(clean_metadata)
+                    
+                    # Set permissions on the moved folder syftobject.yaml file using syft-perm
+                    if create_syftbox_permissions:
+                        try:
+                            import syft_perm as sp
+                            # Convert syft:// URL to local path for permission setting
+                            from .client import SyftBoxURL, SYFTBOX_AVAILABLE
+                            if SYFTBOX_AVAILABLE and final_syftobject_url.startswith("syft://"):
+                                try:
+                                    syft_url_obj = SyftBoxURL(final_syftobject_url)
+                                    local_path = syft_url_obj.to_local_path(datasites_path=syftbox_client.datasites)
+                                    
+                                    # Set permissions on the specific folder syftobject.yaml file
+                                    sp.set_file_permissions(
+                                        local_path,
+                                        read_users=discovery_read or ["public"],
+                                        write_users=[email],
+                                        admin_users=[email]
+                                    )
+                                except Exception as e:
+                                    print(f"Warning: Could not set folder discovery permissions on {final_syftobject_url}: {e}")
+                        except Exception as e:
+                            print(f"Warning: Could not set folder discovery permissions: {e}")
+            
+            # Create permissions using syft-perm
+            if create_syftbox_permissions:
+                _set_permissions_with_syft_perm(
+                    folder_obj,
+                    discovery_read or ["public"],
+                    mock_read or ["public"],
+                    mock_write or [],
+                    private_read or [email],
+                    private_write or [email],
+                    final_syftobj_path=str(final_folder_syftobj_path)
+                )
+        else:
+            # Create in-memory object
+            folder_obj = SyftObject(**folder_obj_data)
+        
+        # Wrap in clean API
+        from .clean_api import wrap_syft_object
+        return wrap_syft_object(folder_obj)
     
     # === VALIDATE INPUT ===
     has_mock_content = mock_contents is not None or mock_file is not None
@@ -166,6 +339,16 @@ def syobj(
         else:
             name = "Syft Object"
     
+    # === VALIDATE NAME ===
+    # Check for problematic characters that can't be used in filenames
+    invalid_chars = ['/', '\\', '?', '*', ':', '|', '"', '<', '>', '\0']
+    found_invalid = [char for char in invalid_chars if char in name]
+    if found_invalid:
+        raise ValueError(
+            f"Object name contains invalid characters: {', '.join(repr(char) for char in found_invalid)}. "
+            f"Please remove these characters from the name: '{name}'"
+        )
+    
     # === GENERATE UID FOR UNIQUE FILENAMES ===
     uid = uuid4()
     uid_short = str(uid)[:8]  # Use first 8 characters for readability
@@ -174,7 +357,7 @@ def syobj(
     base_filename = f"{name.lower().replace(' ', '_')}_{uid_short}.txt"
     
     created_files = []  # Track files we create for cleanup/reference
-    files_moved_to_syftbox = []
+    files_moved_to_syftbox = []  # Track files moved to SyftBox
     
     # === HANDLE PRIVATE CONTENT/FILE ===
     if private_contents is not None:
@@ -190,10 +373,6 @@ def syobj(
         if not private_source_path.exists():
             raise FileNotFoundError(f"Private file not found: {private_file}")
         private_filename = private_source_path.name
-        
-        # Store original path if keeping files in place
-        if keep_files_in_place:
-            clean_metadata["_original_file_paths"]["private"] = str(private_source_path.absolute())
     else:
         # No private data specified - create auto-generated content
         private_filename = base_filename
@@ -216,10 +395,6 @@ def syobj(
         if not mock_source_path.exists():
             raise FileNotFoundError(f"Mock file not found: {mock_file}")
         mock_filename = mock_source_path.name
-        
-        # Store original path if keeping files in place
-        if keep_files_in_place:
-            clean_metadata["_original_file_paths"]["mock"] = str(mock_source_path.absolute())
     else:
         # Auto-generate mock
         mock_filename = f"{Path(base_filename).stem}_mock{Path(base_filename).suffix}"
@@ -236,55 +411,118 @@ def syobj(
         created_files.append(mock_file_path)
         mock_source_path = mock_file_path
     
+    # === VALIDATE MOCK/REAL COMPATIBILITY ===
+    if not skip_validation and not is_folder:
+        try:
+            validate_mock_real_compatibility(mock_source_path, private_source_path, skip_validation=False)
+        except MockRealValidationError as e:
+            # Clean up any files we created before raising
+            for file_path in created_files:
+                if file_path.exists():
+                    file_path.unlink()
+            raise
+    
     # === PERMISSION HANDLING ===
     final_discovery_read = discovery_read or ["public"]
     final_mock_read = mock_read or ["public"]
-    final_mock_write = mock_write or [email]  # Changed: now defaults to [email] instead of []
+    final_mock_write = mock_write or [email]  # Default to owner having write access
     final_private_read = private_read or [email]
     final_private_write = private_write or [email]
     
     # === GENERATE SYFT:// URLS ===
-    if keep_files_in_place:
-        # Generate URLs that encode original file paths
-        final_private_path = f"syft://{email}/original/{private_source_path.name}"
-        final_mock_path = f"syft://{email}/original/{mock_source_path.name}"
-    else:
-        # Standard SyftBox URLs
-        mock_is_public = any(x in ("public", "*") for x in final_mock_read)
-        final_private_path, final_mock_path = generate_syftbox_urls(
-            email, private_filename, syftbox_client, mock_is_public=mock_is_public
-        )
+    # Mock files should always go to public directory regardless of permissions
+    mock_is_public = True
+    final_private_path, final_mock_path = generate_syftbox_urls(
+        email, private_filename, syftbox_client, mock_is_public=mock_is_public
+    )
     
     # Generate syftobject URL
     syftobj_filename = f"{name.lower().replace(' ', '_').replace('-', '_')}_{uid_short}.syftobject.yaml"
-    if keep_files_in_place:
-        final_syftobject_path = f"syft://{email}/original/{syftobj_filename}"
-    else:
-        final_syftobject_path = generate_syftobject_url(email, syftobj_filename, syftbox_client)
+    final_syftobject_url = generate_syftobject_url(email, syftobj_filename, syftbox_client)
     
     # === MOVE FILES TO SYFTBOX LOCATIONS ===
-    if move_files_to_syftbox and syftbox_client and not keep_files_in_place:
-        # Handle private file
-        if private_file and private_source_path != Path(private_file):
-            if move_file_to_syftbox_location(private_source_path, final_private_path, syftbox_client):
-                files_moved_to_syftbox.append(f"{private_source_path} → {final_private_path}")
-        elif private_file:
-            if copy_file_to_syftbox_location(private_source_path, final_private_path, syftbox_client):
-                files_moved_to_syftbox.append(f"{private_source_path} → {final_private_path}")
-        else:
-            if move_file_to_syftbox_location(private_source_path, final_private_path, syftbox_client):
-                files_moved_to_syftbox.append(f"{private_source_path} → {final_private_path}")
-        
-        # Handle mock file
-        if mock_file and mock_source_path != Path(mock_file):
-            if move_file_to_syftbox_location(mock_source_path, final_mock_path, syftbox_client):
-                files_moved_to_syftbox.append(f"{mock_source_path} → {final_mock_path}")
-        elif mock_file:
+    # Mock files and syftobject.yaml are ALWAYS moved to SyftBox
+    # Only private files are controlled by move_files_to_syftbox parameter
+    
+    if syftbox_client:
+        # Handle mock file - ALWAYS move to SyftBox
+        moved_mock = False
+        if mock_file:
+            # When mock_file is provided, we copy (not move) to preserve the original
             if copy_file_to_syftbox_location(mock_source_path, final_mock_path, syftbox_client):
                 files_moved_to_syftbox.append(f"{mock_source_path} → {final_mock_path}")
+                moved_mock = True
         else:
+            # When we created the file, we can move it
             if move_file_to_syftbox_location(mock_source_path, final_mock_path, syftbox_client):
                 files_moved_to_syftbox.append(f"{mock_source_path} → {final_mock_path}")
+                moved_mock = True
+        
+        # Set permissions on the moved mock file using syft-perm
+        if moved_mock and create_syftbox_permissions:
+            try:
+                import syft_perm as sp
+                from .client import SyftBoxURL, SYFTBOX_AVAILABLE
+                if SYFTBOX_AVAILABLE:
+                    # Convert syft:// URL to local path
+                    syft_url_obj = SyftBoxURL(final_mock_path)
+                    local_mock_path = syft_url_obj.to_local_path(datasites_path=syftbox_client.datasites)
+                    
+                    # Set permissions with owner having write/admin access
+                    sp.set_file_permissions(
+                        str(local_mock_path),
+                        read_users=final_mock_read,
+                        write_users=final_mock_write,
+                        admin_users=[email]  # Owner is always admin
+                    )
+            except Exception as e:
+                print(f"Warning: Could not set mock file permissions: {e}")
+        
+        # Handle private file - only move if move_files_to_syftbox=True
+        if move_files_to_syftbox:
+            if private_file:
+                # When private_file is provided, we copy (not move) to preserve the original
+                if copy_file_to_syftbox_location(private_source_path, final_private_path, syftbox_client):
+                    files_moved_to_syftbox.append(f"{private_source_path} → {final_private_path}")
+            else:
+                # When we created the file, we can move it
+                if move_file_to_syftbox_location(private_source_path, final_private_path, syftbox_client):
+                    files_moved_to_syftbox.append(f"{private_source_path} → {final_private_path}")
+    
+    # === HANDLE MOCK NOTES ===
+    # Check if we should suggest mock notes
+    if suggest_mock_notes is None:
+        suggest_mock_notes = config.suggest_mock_notes
+    
+    # If no mock note provided and suggestions are enabled
+    if not mock_note and suggest_mock_notes and not is_folder:
+        # Get suggestion from analyzer
+        suggestion = suggest_mock_note(
+            mock_path=mock_source_path if isinstance(mock_source_path, Path) else Path(mock_source_path) if mock_source_path else None,
+            private_path=private_source_path if isinstance(private_source_path, Path) else Path(private_source_path) if private_source_path else None,
+            mock_contents=mock_contents,
+            private_contents=private_contents,
+            sensitivity=config.mock_note_sensitivity
+        )
+        
+        # If we have a suggestion
+        if suggestion:
+            if config.mock_note_sensitivity == "always":
+                # Auto-accept suggestions
+                mock_note = suggestion
+                print(f"✓ Auto-added mock note: {mock_note}")
+            elif config.mock_note_sensitivity in ("suggest", "ask"):
+                # Just show the suggestion with code to add it (support both "suggest" and legacy "ask")
+                print(f"\n💡 Mock note suggestion: '{suggestion}'")
+                print(f"   To add this note, run: so.objects['{str(uid)}'].mock.set_note('{suggestion}')")
+                print(f"   Or set config.mock_note_sensitivity = 'always' to auto-add suggestions\n")
+            elif config.mock_note_sensitivity == "never":
+                # Don't add or suggest
+                pass
+    
+    # Add mock note to metadata if provided
+    if mock_note:
+        clean_metadata["mock_note"] = mock_note
     
     # === AUTO-GENERATE DESCRIPTION ===
     if description is None:
@@ -295,52 +533,61 @@ def syobj(
         else:
             description = f"Auto-generated object: {name}"
     
-    # Add note about file location mode
-    if keep_files_in_place:
-        description += " (files kept in original locations)"
+    # === DETERMINE SAVE LOCATION ===
+    if save_to:
+        save_path = Path(save_to)
+    else:
+        safe_name = name.lower().replace(" ", "_").replace("-", "_")
+        save_path = tmp_dir / f"{safe_name}_{uid_short}.syftobject.yaml"
     
-    # === CREATE SYFT OBJECT ===
-    syft_obj = SyftObject(
-        uid=uid,
-        private_url=final_private_path,
-        mock_url=final_mock_path,
-        syftobject=final_syftobject_path,
-        name=name,
-        description=description,
-        updated_at=utcnow(),
-        metadata=clean_metadata,
-        syftobject_permissions=final_discovery_read,
-        mock_permissions=final_mock_read,
-        mock_write_permissions=final_mock_write,
-        private_permissions=final_private_read,
-        private_write_permissions=final_private_write
-    )
+    # === CREATE SYFT OBJECT DATA ===
+    syft_obj_data = {
+        "uid": str(uid),
+        "private": final_private_path,
+        "mock": final_mock_path,
+        "syftobject": final_syftobject_url,
+        "name": name,
+        "description": description,
+        "created_at": utcnow(),
+        "updated_at": utcnow(),
+        "metadata": clean_metadata
+    }
     
     # === TRACK FILE OPERATIONS ===
     file_operations = {
         "files_moved_to_syftbox": files_moved_to_syftbox,
         "created_files": [str(f) for f in created_files],
         "syftbox_available": bool(syftbox_client),
-        "syftobject_yaml_path": None,  # Will be set during save
-        "keep_files_in_place": keep_files_in_place
+        "syftobject_yaml_path": None  # Will be set during save
     }
     clean_metadata["_file_operations"] = file_operations
+    syft_obj_data["metadata"] = clean_metadata
     
-    # === AUTO-SAVE ===
+    # === SAVE YAML FIRST (for file-backed storage) ===
     if auto_save:
-        # Determine save location
-        if save_to:
-            save_path = save_to
-        else:
-            safe_name = name.lower().replace(" ", "_").replace("-", "_")
-            save_path = tmp_dir / f"{safe_name}_{uid_short}.syftobject.yaml"
+        # Ensure the file ends with .syftobject.yaml
+        if not save_path.name.endswith('.syftobject.yaml'):
+            if save_path.suffix == '.yaml':
+                save_path = save_path.with_suffix('.syftobject.yaml')
+            elif save_path.suffix == '':
+                save_path = save_path.with_suffix('.syftobject.yaml')
+            else:
+                save_path = Path(str(save_path) + '.syftobject.yaml')
         
-        # Save the syftobject.yaml file
-        syft_obj.save_yaml(save_path, create_syftbox_permissions=False)
+        # Save the YAML file directly
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        import yaml
+        # Convert data to JSON-serializable format (handle UUID, datetime)
+        temp_obj = SyftObject(**syft_obj_data)
+        json_data = temp_obj.model_dump(mode='json')
+        with open(save_path, 'w') as f:
+            yaml.dump(json_data, f, default_flow_style=False, sort_keys=True, indent=2)
         
-        # Move .syftobject.yaml file to SyftBox location if available and not keeping files in place
+        # === MOVE FILE TO SYFTBOX FIRST, THEN CREATE OBJECT ===
+        # Move .syftobject.yaml file to SyftBox location - ALWAYS move to SyftBox
         final_syftobj_path = save_path
-        if move_files_to_syftbox and syftbox_client and not str(save_path).startswith("syft://") and not keep_files_in_place:
+        
+        if syftbox_client and not str(save_path).startswith("syft://"):
             syftobj_filename = Path(save_path).name
             syftobj_url = f"syft://{email}/public/objects/{syftobj_filename}"
             
@@ -353,17 +600,109 @@ def syobj(
                     try:
                         syft_url_obj = SyftBoxURL(syftobj_url)
                         final_syftobj_path = syft_url_obj.to_local_path(datasites_path=syftbox_client.datasites)
+                        
+                        # Set permissions on the moved syftobject.yaml file using syft-perm
+                        if create_syftbox_permissions:
+                            try:
+                                import syft_perm as sp
+                                owner_email = detect_user_email()
+                                
+                                # Set permissions on the specific syftobject.yaml file
+                                sp.set_file_permissions(
+                                    final_syftobj_path,
+                                    read_users=final_discovery_read,
+                                    write_users=[owner_email],
+                                    admin_users=[owner_email]
+                                )
+                            except Exception as e:
+                                print(f"Warning: Could not set discovery permissions on {final_syftobj_path}: {e}")
                     except:
                         pass
         
+        # === CREATE FILE-BACKED SYFT OBJECT FROM FINAL LOCATION ===
+        syft_obj = SyftObject.from_yaml(final_syftobj_path)
+        
         # Track the final syftobject.yaml file path
-        clean_metadata["_file_operations"]["syftobject_yaml_path"] = str(final_syftobj_path)
+        syft_obj.metadata["_file_operations"]["syftobject_yaml_path"] = str(final_syftobj_path)
         
-        # Update the syft object's metadata
-        syft_obj.metadata.update(clean_metadata)
-        
-        # Create SyftBox permission files in the final location
-        if create_syftbox_permissions and not keep_files_in_place:
-            syft_obj._create_syftbox_permissions(Path(final_syftobj_path))
+        # Create permissions using syft-perm (with final paths)
+        if create_syftbox_permissions:
+            _set_permissions_with_syft_perm(
+                syft_obj,
+                final_discovery_read,
+                final_mock_read,
+                final_mock_write,
+                final_private_read,
+                final_private_write,
+                final_syftobj_path=str(final_syftobj_path)  # Pass the final path
+            )
+    else:
+        # If not auto-saving, create in-memory object with yaml path set to None
+        syft_obj = SyftObject(**syft_obj_data)
     
-    return syft_obj 
+    # Wrap in clean API
+    from .clean_api import wrap_syft_object
+    return wrap_syft_object(syft_obj)
+
+
+def _set_permissions_with_syft_perm(
+    syft_obj: SyftObject,
+    discovery_read: List[str],
+    mock_read: List[str],
+    mock_write: List[str],
+    private_read: List[str],
+    private_write: List[str],
+    final_syftobj_path: Optional[str] = None
+) -> None:
+    """Set permissions on the files using syft-perm."""
+    try:
+        # Note: Permissions for the syftobject.yaml and mock files are already set
+        # in the main syobj function after moving the files to SyftBox.
+        # We only need to set permissions on private files here.
+        
+        # Set permissions on private file/folder (only if it exists in SyftBox)
+        private_path = syft_obj.private_path
+        if private_path:
+            # Check if the file actually exists and is in SyftBox
+            from pathlib import Path
+            import os
+            
+            # Get SyftBox path
+            syftbox_path = os.path.expanduser("~/SyftBox")
+            
+            # Only set permissions if the file exists and is within SyftBox
+            if Path(private_path).exists() and str(Path(private_path).resolve()).startswith(syftbox_path):
+                sp.set_file_permissions(
+                    private_path,
+                    read_users=private_read,
+                    write_users=private_write,
+                    admin_users=private_write  # Admin defaults to write users
+                )
+    except Exception as e:
+        # If syft-perm is not available or fails, continue without setting permissions
+        print(f"Warning: Could not set permissions with syft-perm: {e}")
+
+
+def _create_mock_folder_structure(source: Path, target: Path):
+    """Create a mock version of a folder structure."""
+    for item in source.rglob("*"):
+        if item.is_file():
+            relative = item.relative_to(source)
+            mock_file = target / relative
+            mock_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Create mock content based on file type
+            if item.suffix in ['.json', '.yaml', '.yml']:
+                mock_file.write_text('{"mock": true, "data": "sample"}')
+            elif item.suffix in ['.txt', '.md']:
+                mock_file.write_text("This is mock content for demonstration.")
+            elif item.suffix in ['.csv']:
+                mock_file.write_text("col1,col2,col3\n1,2,3\n4,5,6")
+            elif item.suffix in ['.sh']:
+                mock_file.write_text("#!/bin/bash\necho 'Mock script'")
+            else:
+                # Create small binary file
+                mock_file.write_bytes(b"MOCK") 
+
+# Alias for backward compatibility
+create_object = syobj

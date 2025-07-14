@@ -1,103 +1,903 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charSet="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="preload" href="/_next/static/media/e4af272ccee01ff0-s.p.woff2" as="font" crossorigin=""
-    type="font/woff2" />
-  <link rel="stylesheet" href="/_next/static/css/e877b636ada95757.css" crossorigin="" data-precedence="next" />
-  <link rel="preload" as="script" fetchPriority="low" href="/_next/static/chunks/webpack-085916b0a0bf2f25.js"
-    crossorigin="" />
-  <script src="/_next/static/chunks/fd9d1056-a0a67b907ca59d16.js" async="" crossorigin=""></script>
-  <script src="/_next/static/chunks/938-7d7990bee4af6a02.js" async="" crossorigin=""></script>
-  <script src="/_next/static/chunks/main-app-7fd45d5f8784b4ac.js" async="" crossorigin=""></script>
-  <script src="/_next/static/chunks/350-cdd37825fc50f1f2.js" async=""></script>
-  <script src="/_next/static/chunks/app/widget/page-1d6914d1f2340bcd.js" async=""></script>
-  <title>SyftObjects Widget</title>
-  <meta name="description" content="SyftObjects Widget for Jupyter notebooks" />
-  <meta name="next-size-adjust" />
-  <script src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js" crossorigin="" noModule=""></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SyftObjects Widget</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 12px;
+            background: #ffffff;
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
+        }
+
+        .widget-container {
+            background: #ffffff;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            margin: 0;
+        }
+
+        .search-controls {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            padding: 0.75rem;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e5e7eb;
+            flex-shrink: 0;
+        }
+
+        .search-controls input {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+        }
+
+        .table-container {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: auto;
+            background: #ffffff;
+            min-height: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+        }
+
+        thead {
+            background: #f8f9fa;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th {
+            text-align: left;
+            padding: 0.375rem 0.25rem;
+            font-weight: 500;
+            font-size: 0.75rem;
+            border-bottom: 1px solid #e5e7eb;
+            position: sticky;
+            top: 0;
+            background: #f8f9fa;
+            z-index: 10;
+        }
+
+        td {
+            padding: 0.375rem 0.25rem;
+            border-bottom: 1px solid #f3f4f6;
+            vertical-align: top;
+            font-size: 0.75rem;
+            text-align: left;
+        }
+
+        tbody tr {
+            transition: background-color 0.15s;
+            cursor: pointer;
+        }
+
+        tbody tr:hover {
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        @keyframes rainbow {
+            0% { background-color: #ffe9ec; }
+            14.28% { background-color: #fff4ea; }
+            28.57% { background-color: #ffffea; }
+            42.86% { background-color: #eaffef; }
+            57.14% { background-color: #eaf6ff; }
+            71.43% { background-color: #f5eaff; }
+            85.71% { background-color: #ffeaff; }
+            100% { background-color: #ffe9ec; }
+        }
+
+        .rainbow-flash {
+            animation: rainbow 0.8s ease-in-out;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            border-top: 1px solid #e5e7eb;
+            background: rgba(0, 0, 0, 0.02);
+            flex-shrink: 0;
+        }
+
+        .pagination button {
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            border: 1px solid #e5e7eb;
+            background: white;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: #f3f4f6;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination .page-info {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .pagination .status {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            font-style: italic;
+            opacity: 0.8;
+            text-align: center;
+            flex: 1;
+        }
+
+        .pagination .pagination-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .truncate {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .btn {
+            padding: 0.125rem 0.375rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.125rem;
+            transition: all 0.15s;
+        }
+
+        .btn:hover {
+            opacity: 0.8;
+        }
+
+        .btn-blue {
+            background: #dbeafe;
+            color: #3b82f6;
+        }
+
+        .btn-purple {
+            background: #e9d5ff;
+            color: #a855f7;
+        }
+
+        .btn-red {
+            background: #fee2e2;
+            color: #ef4444;
+        }
+
+        .btn-green {
+            background: #d1fae5;
+            color: #10b981;
+        }
+
+        .btn-gray {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .btn-slate {
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+        .icon {
+            width: 0.5rem;
+            height: 0.5rem;
+        }
+
+        .type-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .admin-email {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: #374151;
+        }
+
+        .uid-text {
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: #374151;
+        }
+
+        .date-text {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #dc2626;
+            background: #fee2e2;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 500px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea.form-control {
+            min-height: 100px;
+            resize: vertical;
+        }
+    </style>
 </head>
-
-<body class="__className_e8ce0c">
-  <div class="min-h-screen bg-background">
-    <main class="container mx-auto px-4 py-6">
-      <div class="fixed inset-0 w-full h-full bg-background p-0 m-0 overflow-auto">
-        <div class="flex items-center justify-center min-h-screen p-4">
-          <div class="text-center space-y-4"><svg class="h-12 w-12 mx-auto syftbox-loading " viewBox="0 0 311 360"
-              fill="none" xmlns="http://www.w3.org/2000/svg">
-              <g clip-path="url(#clip0_7523_4240)">
-                <path d="M311.414 89.7878L155.518 179.998L-0.378906 89.7878L155.518 -0.422485L311.414 89.7878Z"
-                  fill="url(#paint0_linear_7523_4240)"></path>
-                <path d="M311.414 89.7878V270.208L155.518 360.423V179.998L311.414 89.7878Z"
-                  fill="url(#paint1_linear_7523_4240)"></path>
-                <path d="M155.518 179.998V360.423L-0.378906 270.208V89.7878L155.518 179.998Z"
-                  fill="url(#paint2_linear_7523_4240)"></path>
-              </g>
-              <defs>
-                <linearGradient id="paint0_linear_7523_4240" x1="-0.378904" y1="89.7878" x2="311.414" y2="89.7878"
-                  gradientUnits="userSpaceOnUse">
-                  <stop stop-color="#DC7A6E"></stop>
-                  <stop offset="0.251496" stop-color="#F6A464"></stop>
-                  <stop offset="0.501247" stop-color="#FDC577"></stop>
-                  <stop offset="0.753655" stop-color="#EFC381"></stop>
-                  <stop offset="1" stop-color="#B9D599"></stop>
-                </linearGradient>
-                <linearGradient id="paint1_linear_7523_4240" x1="309.51" y1="89.7878" x2="155.275" y2="360.285"
-                  gradientUnits="userSpaceOnUse">
-                  <stop stop-color="#BFCD94"></stop>
-                  <stop offset="0.245025" stop-color="#B2D69E"></stop>
-                  <stop offset="0.504453" stop-color="#8DCCA6"></stop>
-                  <stop offset="0.745734" stop-color="#5CB8B7"></stop>
-                  <stop offset="1" stop-color="#4CA5B8"></stop>
-                </linearGradient>
-                <linearGradient id="paint2_linear_7523_4240" x1="-0.378906" y1="89.7878" x2="155.761" y2="360.282"
-                  gradientUnits="userSpaceOnUse">
-                  <stop stop-color="#D7686D"></stop>
-                  <stop offset="0.225" stop-color="#C64B77"></stop>
-                  <stop offset="0.485" stop-color="#A2638E"></stop>
-                  <stop offset="0.703194" stop-color="#758AA8"></stop>
-                  <stop offset="1" stop-color="#639EAF"></stop>
-                </linearGradient>
-                <clipPath id="clip0_7523_4240">
-                  <rect width="311" height="360" fill="white"></rect>
-                </clipPath>
-              </defs>
-            </svg>
-          </div>
+<body>
+    <div class="widget-container">
+        <div class="search-controls">
+            <input id="search-input" placeholder="🔍 Search objects..." style="flex: 1;">
+            <input id="admin-filter" placeholder="Filter by Admin..." style="flex: 1;">
+            <button class="btn btn-blue" onclick="searchObjects()">Search</button>
+            <button class="btn btn-gray" onclick="clearSearch()">Clear</button>
+            <button class="btn btn-green" onclick="openCreateModal()">New</button>
+            <button class="btn btn-blue" onclick="selectAll()">Select All</button>
+            <button class="btn btn-gray" onclick="refreshObjects()">Refresh</button>
         </div>
-      </div>
-    </main>
-  </div>
-  <script src="/_next/static/chunks/webpack-085916b0a0bf2f25.js" crossorigin="" async=""></script>
-  <script>
-    (self.__next_f = self.__next_f || []).push([0]);
-    self.__next_f.push([2, null])
-  </script>
-  <script>
-    self.__next_f.push([1,
-      "1:HL[\"/_next/static/media/e4af272ccee01ff0-s.p.woff2\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/woff2\"}]\n2:HL[\"/_next/static/css/e877b636ada95757.css\",\"style\",{\"crossOrigin\":\"\"}]\n0:\"$L3\"\n"
-    ])
-  </script>
-  <script>
-    self.__next_f.push([1,
-      "4:I[7690,[],\"\"]\n6:I[7831,[],\"\"]\n7:I[4350,[\"350\",\"static/chunks/350-cdd37825fc50f1f2.js\",\"49\",\"static/chunks/app/widget/page-1d6914d1f2340bcd.js\"],\"\"]\n8:I[5613,[],\"\"]\n9:I[1778,[],\"\"]\nb:I[8955,[],\"\"]\n"
-    ])
-  </script>
-  <script>
-    self.__next_f.push([1,
-      "3:[[[\"$\",\"link\",\"0\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/css/e877b636ada95757.css\",\"precedence\":\"next\",\"crossOrigin\":\"\"}]],[\"$\",\"$L4\",null,{\"buildId\":\"u3p_e5hkhmQtfjK4vlpsx\",\"assetPrefix\":\"\",\"initialCanonicalUrl\":\"/widget/\",\"initialTree\":[\"\",{\"children\":[\"widget\",{\"children\":[\"__PAGE__\",{}]}]},\"$undefined\",\"$undefined\",true],\"initialSeedData\":[\"\",{\"children\":[\"widget\",{\"children\":[\"__PAGE__\",{},[\"$L5\",[\"$\",\"$L6\",null,{\"propsForComponent\":{\"params\":{}},\"Component\":\"$7\",\"isStaticGeneration\":true}],null]]},[null,[\"$\",\"div\",null,{\"className\":\"fixed inset-0 w-full h-full bg-background p-0 m-0 overflow-auto\",\"children\":[\"$\",\"$L8\",null,{\"parallelRouterKey\":\"children\",\"segmentPath\":[\"children\",\"widget\",\"children\"],\"loading\":\"$undefined\",\"loadingStyles\":\"$undefined\",\"loadingScripts\":\"$undefined\",\"hasLoading\":false,\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$L9\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":\"$undefined\",\"notFoundStyles\":\"$undefined\",\"styles\":null}]}],null]]},[null,[\"$\",\"html\",null,{\"lang\":\"en\",\"children\":[\"$\",\"body\",null,{\"className\":\"__className_e8ce0c\",\"children\":[\"$\",\"div\",null,{\"className\":\"min-h-screen bg-background\",\"children\":[\"$\",\"main\",null,{\"className\":\"container mx-auto px-4 py-6\",\"children\":[\"$\",\"$L8\",null,{\"parallelRouterKey\":\"children\",\"segmentPath\":[\"children\"],\"loading\":\"$undefined\",\"loadingStyles\":\"$undefined\",\"loadingScripts\":\"$undefined\",\"hasLoading\":false,\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$L9\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":[[\"$\",\"title\",null,{\"children\":\"404: This page could not be found.\"}],[\"$\",\"div\",null,{\"style\":{\"fontFamily\":\"system-ui,\\\"Segoe UI\\\",Roboto,Helvetica,Arial,sans-serif,\\\"Apple Color Emoji\\\",\\\"Segoe UI Emoji\\\"\",\"height\":\"100vh\",\"textAlign\":\"center\",\"display\":\"flex\",\"flexDirection\":\"column\",\"alignItems\":\"center\",\"justifyContent\":\"center\"},\"children\":[\"$\",\"div\",null,{\"children\":[[\"$\",\"style\",null,{\"dangerouslySetInnerHTML\":{\"__html\":\"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}\"}}],[\"$\",\"h1\",null,{\"className\":\"next-error-h1\",\"style\":{\"display\":\"inline-block\",\"margin\":\"0 20px 0 0\",\"padding\":\"0 23px 0 0\",\"fontSize\":24,\"fontWeight\":500,\"verticalAlign\":\"top\",\"lineHeight\":\"49px\"},\"children\":\"404\"}],[\"$\",\"div\",null,{\"style\":{\"display\":\"inline-block\"},\"children\":[\"$\",\"h2\",null,{\"style\":{\"fontSize\":14,\"fontWeight\":400,\"lineHeight\":\"49px\",\"margin\":0},\"children\":\"This page could not be found.\"}]}]]}]}]],\"notFoundStyles\":[],\"styles\":null}]}]}]}]}],null]],\"initialHead\":[false,\"$La\"],\"globalErrorComponent\":\"$b\"}]]\n"
-    ])
-  </script>
-  <script>
-    self.__next_f.push([1,
-      "a:[[\"$\",\"meta\",\"0\",{\"name\":\"viewport\",\"content\":\"width=device-width, initial-scale=1\"}],[\"$\",\"meta\",\"1\",{\"charSet\":\"utf-8\"}],[\"$\",\"title\",\"2\",{\"children\":\"SyftObjects Widget\"}],[\"$\",\"meta\",\"3\",{\"name\":\"description\",\"content\":\"SyftObjects Widget for Jupyter notebooks\"}],[\"$\",\"meta\",\"4\",{\"name\":\"next-size-adjust\"}]]\n5:null\n"
-    ])
-  </script>
-  <script>
-    self.__next_f.push([1, ""])
-  </script>
-</body>
 
-</html>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 1.5rem;">☑</th>
+                        <th style="width: 2rem;">#</th>
+                        <th style="width: 6rem;">Name</th>
+                        <th style="width: 8rem;">Description</th>
+                        <th style="width: 8rem;">Admin</th>
+                        <th style="width: 5rem;">UID</th>
+                        <th style="width: 7rem;">Created</th>
+                        <th style="width: 2.5rem;">Type</th>
+                        <th style="width: 5rem;">Files</th>
+                        <th style="width: 10rem;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="objects-tbody">
+                    <tr>
+                        <td colspan="10" class="loading">Loading objects...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination">
+            <div></div>
+            <span class="status" id="status-message">Loading objects from server...</span>
+            <div class="pagination-controls">
+                <button onclick="changePage(-1)" id="prev-btn" disabled>Previous</button>
+                <span class="page-info" id="page-info">Page 1 of 1</span>
+                <button onclick="changePage(1)" id="next-btn" disabled>Next</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Object Modal -->
+    <div id="createModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Create New Object</h2>
+                <span class="close" onclick="closeCreateModal()">&times;</span>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Name</label>
+                <input type="text" class="form-control" id="objectName" placeholder="Enter object name">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea class="form-control" id="objectDescription" placeholder="Enter description"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" id="objectEmail" placeholder="Enter email">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Private File Content</label>
+                <textarea class="form-control" id="privateContent" placeholder="Enter private file content"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Mock File Content</label>
+                <textarea class="form-control" id="mockContent" placeholder="Enter mock file content"></textarea>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="btn btn-gray" onclick="closeCreateModal()">Cancel</button>
+                <button class="btn btn-green" onclick="createObject()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let allObjects = [];
+        let filteredObjects = [];
+        let currentPage = 1;
+        let itemsPerPage = 50;
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadObjects();
+            
+            // Add enter key support for search
+            document.getElementById('search-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') searchObjects();
+            });
+            document.getElementById('admin-filter').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') searchObjects();
+            });
+        });
+
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        // Show status message
+        function showStatus(message, isError = false) {
+            const statusEl = document.getElementById('status-message');
+            statusEl.textContent = message;
+            statusEl.style.color = isError ? '#dc2626' : '#9ca3af';
+        }
+
+        // Load objects from API
+        async function loadObjects() {
+            try {
+                showStatus('Loading objects from server...');
+                const response = await fetch('/api/objects');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                allObjects = data.objects || [];
+                // Sort by creation date (newest first) so indices work correctly
+                allObjects.sort((a, b) => {
+                    const dateA = new Date(a.created_at || 0);
+                    const dateB = new Date(b.created_at || 0);
+                    return dateB - dateA; // Newest first
+                });
+                
+                // Apply index range filtering if specified
+                applyIndexRangeFilter();
+                
+                showStatus(`Loaded ${filteredObjects.length} objects${getFilterStatusText()}`);
+                renderTable();
+            } catch (error) {
+                console.error('Error loading objects:', error);
+                showStatus('Error loading objects: ' + error.message, true);
+                document.getElementById('objects-tbody').innerHTML = 
+                    '<tr><td colspan="10" class="error">Failed to load objects. Please check server connection.</td></tr>';
+            }
+        }
+
+        // Apply index range filtering based on URL parameters
+        function applyIndexRangeFilter() {
+            if (window.INDEX_RANGE_FILTER) {
+                const { startIndex, endIndex } = window.INDEX_RANGE_FILTER;
+                const totalObjects = allObjects.length;
+                
+                if (startIndex !== null || endIndex !== null) {
+                    // startIndex and endIndex are the display indices we want to show
+                    // allObjects is sorted newest first, so we need to convert display indices to array positions
+                    const start = startIndex !== null ? startIndex : 0;
+                    const end = endIndex !== null ? endIndex : totalObjects;
+                    
+                    // Convert display indices to array positions
+                    // Display index 0 = oldest object = last position in array
+                    // Display index (totalObjects-1) = newest object = first position in array
+                    filteredObjects = [];
+                    for (let i = start; i < end && i < totalObjects; i++) {
+                        const arrayPosition = totalObjects - 1 - i;
+                        if (arrayPosition >= 0 && arrayPosition < allObjects.length) {
+                            filteredObjects.push(allObjects[arrayPosition]);
+                        }
+                    }
+                    
+                    // Reverse to show newest to oldest by default
+                    filteredObjects.reverse();
+                    
+                    return;
+                }
+            }
+            
+            // No filtering, use all objects
+            filteredObjects = allObjects;
+        }
+
+        // Get filter status text for display
+        function getFilterStatusText() {
+            if (window.INDEX_RANGE_FILTER) {
+                const { startIndex, endIndex } = window.INDEX_RANGE_FILTER;
+                if (startIndex !== null || endIndex !== null) {
+                    const start = startIndex !== null ? startIndex : 0;
+                    const end = endIndex !== null ? endIndex - 1 : allObjects.length - 1;
+                    return ` (filtered to indices ${start}-${end})`;
+                }
+            }
+            return '';
+        }
+
+        // Render table with current page
+        function renderTable() {
+            const tbody = document.getElementById('objects-tbody');
+            const totalObjects = filteredObjects.length;
+            const totalPages = Math.max(1, Math.ceil(totalObjects / itemsPerPage));
+            
+            // Ensure currentPage is valid
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+            
+            // Update pagination controls
+            updatePaginationControls(totalPages);
+            
+            if (totalObjects === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;">No objects found</td></tr>';
+                return;
+            }
+            
+            // Calculate start and end indices
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = Math.min(start + itemsPerPage, totalObjects);
+            
+            // Generate table rows
+            let html = '';
+            for (let i = start; i < end; i++) {
+                const obj = filteredObjects[i];
+                const name = escapeHtml(obj.name || 'Unnamed Object');
+                const description = escapeHtml((obj.description || '').substring(0, 40) + '...');
+                const email = escapeHtml(obj.email || 'unknown@example.com');
+                const uid = obj.uid || '';
+                const uidShort = uid.substring(0, 8) + '...';
+                const created = obj.created_at ? new Date(obj.created_at).toLocaleDateString() : 'Unknown';
+                const fileType = obj.type || '.txt';
+                
+                // Calculate proper index
+                let displayIndex;
+                if (window.INDEX_RANGE_FILTER && (window.INDEX_RANGE_FILTER.startIndex !== null || window.INDEX_RANGE_FILTER.endIndex !== null)) {
+                    // For index range filtered views, since we reversed the order (newest first),
+                    // we need to calculate indices in reverse: highest index (newest) shows first
+                    const filterStart = window.INDEX_RANGE_FILTER.startIndex || 0;
+                    const filterEnd = window.INDEX_RANGE_FILTER.endIndex || totalObjects;
+                    displayIndex = (filterEnd - 1) - i;
+                } else {
+                    // For unfiltered views, newest objects get highest indices
+                    displayIndex = totalObjects - i - 1;
+                }
+                
+                html += `
+                    <tr onclick="copyObjectCode('${uid}', this)" style="cursor: pointer;">
+                        <td><input type="checkbox" onclick="event.stopPropagation()"></td>
+                        <td>${displayIndex}</td>
+                        <td><div class="truncate" style="font-weight: 500;" title="${name}">${name}</div></td>
+                        <td><div class="truncate" style="color: #6b7280;" title="${description}">${description}</div></td>
+                        <td>
+                            <div class="admin-email">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                                <span class="truncate">${email}</span>
+                            </div>
+                        </td>
+                        <td><span class="uid-text">${uidShort}</span></td>
+                        <td>
+                            <div class="date-text">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+                                    <line x1="16" x2="16" y1="2" y2="6"></line>
+                                    <line x1="8" x2="8" y1="2" y2="6"></line>
+                                    <line x1="3" x2="21" y1="10" y2="10"></line>
+                                </svg>
+                                <span class="truncate">${created}</span>
+                            </div>
+                        </td>
+                        <td><span class="type-badge">${fileType}</span></td>
+                        <td>
+                            <div style="display: flex; gap: 0.125rem;">
+                                <button class="btn btn-slate" onclick="event.stopPropagation(); editFile('${uid}', 'mock')" title="Edit mock file">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="2" x2="22" y1="12" y2="12"></line>
+                                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                                    </svg>
+                                    <span>Mock</span>
+                                </button>
+                                <button class="btn btn-gray" onclick="event.stopPropagation(); editFile('${uid}', 'private')" title="Edit private file">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                    </svg>
+                                    <span>Private</span>
+                                </button>
+                            </div>
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 0.125rem;">
+                                <button class="btn btn-blue" onclick="event.stopPropagation(); viewObject('${uid}')" title="View object details">Info</button>
+                                <button class="btn btn-purple" onclick="event.stopPropagation(); copyPath('${uid}')" title="Copy object info">Copy</button>
+                                <button class="btn btn-red" onclick="event.stopPropagation(); deleteObject('${uid}')" title="Delete object">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 6h18"></path>
+                                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                        <line x1="10" x2="10" y1="11" y2="17"></line>
+                                        <line x1="14" x2="14" y1="11" y2="17"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            tbody.innerHTML = html;
+        }
+
+        // Update pagination controls
+        function updatePaginationControls(totalPages) {
+            document.getElementById('page-info').textContent = `Page ${currentPage} of ${totalPages}`;
+            document.getElementById('prev-btn').disabled = currentPage === 1;
+            document.getElementById('next-btn').disabled = currentPage === totalPages;
+        }
+
+        // Change page
+        function changePage(direction) {
+            const totalPages = Math.max(1, Math.ceil(filteredObjects.length / itemsPerPage));
+            currentPage += direction;
+            if (currentPage < 1) currentPage = 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+            renderTable();
+        }
+
+        // Search objects
+        function searchObjects() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const adminFilter = document.getElementById('admin-filter').value.toLowerCase();
+            
+            // Start with base objects (either all objects or index-range filtered objects)
+            let baseObjects = allObjects;
+            let isIndexRangeFiltered = false;
+            
+            // Apply index range filtering first if specified
+            if (window.INDEX_RANGE_FILTER) {
+                const { startIndex, endIndex } = window.INDEX_RANGE_FILTER;
+                const totalObjects = allObjects.length;
+                
+                if (startIndex !== null || endIndex !== null) {
+                    const start = startIndex !== null ? startIndex : 0;
+                    const end = endIndex !== null ? endIndex : totalObjects;
+                    
+                    // Convert display indices to array positions
+                    baseObjects = [];
+                    for (let i = start; i < end && i < totalObjects; i++) {
+                        const arrayPosition = totalObjects - 1 - i;
+                        if (arrayPosition >= 0 && arrayPosition < allObjects.length) {
+                            baseObjects.push(allObjects[arrayPosition]);
+                        }
+                    }
+                    
+                    // Reverse to show newest to oldest by default
+                    baseObjects.reverse();
+                    isIndexRangeFiltered = true;
+                }
+            }
+            
+            // Apply search/admin filters on top of index range filtering
+            filteredObjects = baseObjects.filter(obj => {
+                const nameMatch = (obj.name || '').toLowerCase().includes(searchTerm);
+                const descMatch = (obj.description || '').toLowerCase().includes(searchTerm);
+                const adminMatch = adminFilter === '' || (obj.email || '').toLowerCase().includes(adminFilter);
+                
+                return (searchTerm === '' || nameMatch || descMatch) && adminMatch;
+            });
+            
+            // Only sort if not index range filtered (to preserve slice order)
+            if (!isIndexRangeFiltered) {
+                filteredObjects.sort((a, b) => {
+                    const dateA = new Date(a.created_at || 0);
+                    const dateB = new Date(b.created_at || 0);
+                    return dateB - dateA; // Newest first
+                });
+            }
+            
+            currentPage = 1;
+            renderTable();
+            showStatus(`Found ${filteredObjects.length} objects${getFilterStatusText()}`);
+        }
+
+        // Clear search
+        function clearSearch() {
+            document.getElementById('search-input').value = '';
+            document.getElementById('admin-filter').value = '';
+            
+            // Apply index range filtering (if any) instead of showing all objects
+            applyIndexRangeFilter();
+            
+            currentPage = 1;
+            renderTable();
+            showStatus(`Showing ${filteredObjects.length} objects${getFilterStatusText()}`);
+        }
+
+        // Refresh objects
+        function refreshObjects() {
+            loadObjects();
+        }
+
+        // Copy object code (mimicking Jupyter behavior)
+        function copyObjectCode(uid, rowElement) {
+            const code = `objects["${uid}"]`;
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(code).then(() => {
+                // Add rainbow animation
+                if (rowElement) {
+                    rowElement.classList.add('rainbow-flash');
+                    setTimeout(() => {
+                        rowElement.classList.remove('rainbow-flash');
+                    }, 800);
+                }
+                
+                showStatus(`Copied to clipboard: ${code}`);
+                setTimeout(() => {
+                    showStatus(`Showing ${filteredObjects.length} objects`);
+                }, 2000);
+            }).catch(() => {
+                showStatus('Failed to copy to clipboard', true);
+            });
+        }
+
+        // View object
+        function viewObject(uid) {
+            window.open(`/api/object/${uid}/view`, '_blank');
+        }
+
+        // Edit file
+        function editFile(uid, fileType) {
+            const obj = allObjects.find(o => o.uid === uid);
+            if (obj) {
+                let filePath;
+                
+                // Use actual file paths if available, otherwise fall back to URLs
+                if (fileType === 'private') {
+                    filePath = obj.file_paths?.private || obj.private_url;
+                } else if (fileType === 'mock') {
+                    filePath = obj.file_paths?.mock || obj.mock_url;
+                }
+                
+                if (!filePath) {
+                    showStatus('File path not found', true);
+                    return;
+                }
+                
+                const url = `/editor?path=${encodeURIComponent(filePath)}`;
+                window.open(url, '_blank');
+            }
+        }
+
+        // Copy path
+        function copyPath(uid) {
+            copyObjectCode(uid);
+        }
+
+        // Delete object
+        async function deleteObject(uid) {
+            if (!confirm('Are you sure you want to delete this object? This action cannot be undone.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/objects/${uid}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                showStatus('Object deleted successfully');
+                loadObjects(); // Refresh the list
+            } catch (error) {
+                console.error('Error deleting object:', error);
+                showStatus('Failed to delete object: ' + error.message, true);
+            }
+        }
+
+        // Select all (placeholder)
+        function selectAll() {
+            const checkboxes = document.querySelectorAll('tbody input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = true);
+            showStatus('All visible objects selected');
+        }
+
+        // Create object modal functions
+        function openCreateModal() {
+            document.getElementById('createModal').style.display = 'block';
+        }
+
+        function closeCreateModal() {
+            document.getElementById('createModal').style.display = 'none';
+            // Clear form
+            document.getElementById('objectName').value = '';
+            document.getElementById('objectDescription').value = '';
+            document.getElementById('objectEmail').value = '';
+            document.getElementById('privateContent').value = '';
+            document.getElementById('mockContent').value = '';
+        }
+
+        // Create new object
+        async function createObject() {
+            const name = document.getElementById('objectName').value.trim();
+            const description = document.getElementById('objectDescription').value.trim();
+            const email = document.getElementById('objectEmail').value.trim();
+            const privateContent = document.getElementById('privateContent').value.trim();
+            const mockContent = document.getElementById('mockContent').value.trim();
+
+            if (!name) {
+                showStatus('Please enter a name for the object', true);
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/objects', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name,
+                        description,
+                        email,
+                        private_file_content: privateContent,
+                        mock_file_content: mockContent,
+                        metadata: {},
+                        permissions: {
+                            mock_read: ['*'],
+                            mock_write: [email || 'admin@example.com'],
+                            private_read: [email || 'admin@example.com'],
+                            private_write: [email || 'admin@example.com'],
+                            syftobject: ['*']
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+                }
+
+                showStatus('Object created successfully');
+                closeCreateModal();
+                loadObjects(); // Refresh the list
+            } catch (error) {
+                console.error('Error creating object:', error);
+                showStatus('Failed to create object: ' + error.message, true);
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('createModal');
+            if (event.target === modal) {
+                closeCreateModal();
+            }
+        }
+    </script>
+</body>
+</html> 

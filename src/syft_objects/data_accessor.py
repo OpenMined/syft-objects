@@ -3,7 +3,49 @@ Data accessor for syft objects - provides multiple ways to access the same data
 """
 
 from pathlib import Path
-from typing import Any, Union, BinaryIO, TextIO
+from typing import Any, Union, BinaryIO, TextIO, List
+
+
+class FolderAccessor:
+    """Accessor for folder objects."""
+    
+    def __init__(self, folder_path: Path):
+        self.path = folder_path if isinstance(folder_path, Path) else Path(folder_path)
+    
+    def list_files(self, pattern: str = "*") -> List[Path]:
+        """List files in the folder matching pattern."""
+        return [f for f in self.path.glob(pattern) if f.is_file()]
+    
+    def list_all_files(self) -> List[Path]:
+        """Recursively list all files."""
+        return [f for f in self.path.rglob("*") if f.is_file()]
+    
+    def get_file(self, relative_path: str) -> Path:
+        """Get a specific file by relative path."""
+        file_path = self.path / relative_path
+        if not file_path.exists():
+            raise FileNotFoundError(f"File not found: {relative_path}")
+        return file_path
+    
+    def read_file(self, relative_path: str) -> str:
+        """Read a text file's contents."""
+        return self.get_file(relative_path).read_text()
+    
+    def exists(self) -> bool:
+        """Check if folder exists."""
+        return self.path.exists() and self.path.is_dir()
+    
+    def size(self) -> int:
+        """Get total size of all files in folder."""
+        total = 0
+        for file in self.path.rglob("*"):
+            if file.is_file():
+                total += file.stat().st_size
+        return total
+    
+    def __repr__(self):
+        file_count = len(list(self.path.rglob("*")))
+        return f"FolderAccessor(path={self.path}, files={file_count})"
 
 
 class DataAccessor:
@@ -31,7 +73,36 @@ class DataAccessor:
     def path(self) -> str:
         """Get the local file path for this data"""
         if self._cached_path is None:
-            self._cached_path = self._syft_object._get_local_file_path(self._syft_url)
+            # Convert syft:// URL to local path
+            if self._syft_url and self._syft_url.startswith("syft://"):
+                try:
+                    from .client import SyftBoxURL, SYFTBOX_AVAILABLE, get_syftbox_client
+                    if SYFTBOX_AVAILABLE:
+                        client = get_syftbox_client()
+                        if client:
+                            syft_url_obj = SyftBoxURL(self._syft_url)
+                            self._cached_path = str(syft_url_obj.to_local_path(datasites_path=client.datasites))
+                        else:
+                            self._cached_path = None
+                    else:
+                        self._cached_path = None
+                except Exception:
+                    self._cached_path = None
+            else:
+                # Fallback to direct path methods on the object
+                if hasattr(self._syft_object, 'mock_path') and self._syft_url == getattr(self._syft_object, 'mock', None):
+                    self._cached_path = self._syft_object.mock_path
+                elif hasattr(self._syft_object, 'private_path') and self._syft_url == getattr(self._syft_object, 'private', None):
+                    self._cached_path = self._syft_object.private_path
+                else:
+                    self._cached_path = None
+            
+            # For folders, ensure path doesn't have trailing /
+            if self._cached_path:
+                is_folder = getattr(self._syft_object, 'is_folder', False) or getattr(self._syft_object, '_is_folder', False)
+                if is_folder and self._cached_path.endswith('/'):
+                    self._cached_path = self._cached_path.rstrip('/')
+                    
         return self._cached_path
     
     @property
@@ -45,15 +116,32 @@ class DataAccessor:
         if not path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
         
-        # Try to open as text first, fall back to binary
+        # Check if file is binary by trying to read a small portion
         try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                f.read(512)  # Try reading first 512 bytes
             return open(file_path, 'r', encoding='utf-8')
         except UnicodeDecodeError:
             return open(file_path, 'rb')
     
     @property
     def obj(self) -> Any:
-        """Get the loaded object (DataFrame, dict, Connection, etc.)"""
+        """Get the loaded object - returns FolderAccessor for folders"""
+        # Only create FolderAccessor for actual folder objects, not Mock objects
+        # Check both is_folder and _is_folder for compatibility
+        is_folder = False
+        if hasattr(self._syft_object, 'is_folder'):
+            is_folder = self._syft_object.is_folder
+        elif hasattr(self._syft_object, '_is_folder'):
+            is_folder = self._syft_object._is_folder
+            
+        if is_folder:
+            path = self.path
+            if path is None:
+                # Return a meaningful error message instead of causing an exception
+                return f"Folder path not found for {self._syft_url}"
+            return FolderAccessor(Path(path))
+        
         if self._cached_obj is None:
             self._cached_obj = self._load_file_content()
         return self._cached_obj
@@ -170,6 +258,29 @@ class DataAccessor:
         """HTML representation for Jupyter widgets"""
         try:
             obj = self.obj
+            
+            # Handle error messages for folders when path is not found
+            if isinstance(obj, str) and obj.startswith("Folder path not found"):
+                # Extract the URL from the error message
+                url = self._syft_url or "Unknown URL"
+                return f'''<div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; background: #f9fafb;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <span style="font-size: 20px;">📁</span>
+                        <strong style="color: #1f2937;">Folder Object</strong>
+                    </div>
+                    <div style="color: #6b7280; font-size: 14px; line-height: 1.5;">
+                        <p style="margin: 0 0 8px 0;"><strong>URL:</strong> <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 3px; font-size: 12px;">{url}</code></p>
+                        <p style="margin: 0; font-style: italic;">⚠️ Folder contents cannot be displayed - SyftBox client not available</p>
+                    </div>
+                </div>'''
+            
+            # Handle FolderAccessor objects
+            if isinstance(obj, FolderAccessor):
+                files = obj.list_files()
+                file_list = "<br/>".join([f"📄 {f.name}" for f in files[:10]])
+                if len(files) > 10:
+                    file_list += f"<br/>... and {len(files) - 10} more files"
+                return f"<div><strong>📁 Folder:</strong> {obj.path}<br/><strong>Files ({len(files)}):</strong><br/>{file_list}</div>"
             
             # If the object has its own _repr_html_, use that
             if hasattr(obj, '_repr_html_') and callable(getattr(obj, '_repr_html_')):

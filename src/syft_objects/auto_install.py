@@ -10,8 +10,8 @@ from typing import Optional
 
 try:
     import requests
-except ImportError:
-    requests = None
+except ImportError:  # pragma: no cover
+    requests = None  # pragma: no cover
 
 
 def get_syftbox_apps_path() -> Optional[Path]:
@@ -346,9 +346,9 @@ def ensure_syftbox_app_installed(silent=True) -> bool:
         return True
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     # Allow running this module directly for testing
-    if ensure_syftbox_app_installed():
-        print("syft-objects app is available in SyftBox")
-    else:
-        print("syft-objects app is not available") 
+    if ensure_syftbox_app_installed():  # pragma: no cover
+        print("syft-objects app is available in SyftBox")  # pragma: no cover
+    else:  # pragma: no cover
+        print("syft-objects app is not available")  # pragma: no cover 
